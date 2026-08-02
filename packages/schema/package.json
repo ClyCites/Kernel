@@ -1,0 +1,33 @@
+{
+  "name": "@clycites/schema",
+  "version": "0.2.0",
+  "description": "Single source of truth for the ClyCites kernel core-facts schema",
+  "main": "dist/src/index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test test/**/*.test.ts"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.2",
+    "tsx": "^4.23.4",
+    "typescript": "^7.0.2"
+  },
+  "type": "module",
+  "types": "dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ]
+}

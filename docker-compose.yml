@@ -1,0 +1,22 @@
+services:
+  postgres:
+    # Multi-arch mirror of postgis/postgis, which publishes amd64 only.
+    # See docs/decisions/0004-postgis-image.md.
+    image: imresamu/postgis:16-3.5
+    container_name: clycites-kernel-db
+    environment:
+      POSTGRES_USER: clycites_owner
+      POSTGRES_PASSWORD: clycites_owner_dev_only
+      POSTGRES_DB: clycites
+    ports:
+      - "5433:5432"
+    volumes:
+      - kernel-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clycites_owner -d clycites"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  kernel-pgdata:

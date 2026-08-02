@@ -1,0 +1,7 @@
+packages:
+  - "packages/*"
+  - "apps/*"
+
+# tsx ships an esbuild binary that must be unpacked at install time.
+onlyBuiltDependencies:
+  - esbuild

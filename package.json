@@ -1,0 +1,27 @@
+{
+  "name": "clycites-kernel",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The ClyCites kernel — the append-only record layer",
+  "type": "module",
+  "packageManager": "pnpm@10.33.4",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "lint": "eslint .",
+    "dev": "turbo run dev",
+    "migrate": "pnpm --filter @clycites/kernel run migrate",
+    "openapi": "pnpm --filter @clycites/kernel run openapi"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.2",
+    "eslint": "^10.8.0",
+    "turbo": "^2.10.8",
+    "typescript": "6.0.3",
+    "typescript-eslint": "^8.65.0"
+  }
+}

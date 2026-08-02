@@ -301,6 +301,35 @@ export class RecordRepository {
     return rows;
   }
 
+  /**
+   * The replication feed. Ascending by `(recorded_at, id)` so a device can
+   * resume where it stopped, and deliberately unfiltered: a device replicating
+   * the log needs the superseded and retracted records too, or it cannot
+   * resolve a chain locally. Brief §5 phase 6.
+   */
+  async since(
+    after: { recordedAt: string; id: string } | undefined,
+    limit: number,
+  ): Promise<DerivedRecord[]> {
+    const params: unknown[] = [];
+    const where =
+      after === undefined
+        ? ''
+        : (params.push(after.recordedAt, after.id),
+          `where (r.recorded_at, r.id) > ($1::timestamptz, $2::uuid)`);
+    params.push(limit);
+
+    const { rows } = await this.pool.query<DerivedRecord>(
+      `select ${columnList('r')}, ${DERIVED}
+         from facts.record r
+        ${where}
+        order by r.recorded_at asc, r.id asc
+        limit $${params.length}`,
+      params,
+    );
+    return rows;
+  }
+
   /** Which of these ids a retraction targets. One query, not one per record. */
   async retractedAmong(ids: string[]): Promise<string[]> {
     if (ids.length === 0) return [];

@@ -175,6 +175,76 @@ export function buildOpenApiDocument(): OpenApiDocument {
     },
   };
 
+  schemas['Device'] = {
+    type: 'object',
+    required: ['device_id', 'registered_by', 'label', 'registered_at'],
+    properties: {
+      device_id: { type: 'string', format: 'uuid' },
+      registered_by: { type: 'string', format: 'uuid' },
+      label: { type: 'string' },
+      registered_at: { type: 'string', format: 'date-time' },
+    },
+  };
+
+  schemas['DeviceRegistration'] = {
+    type: 'object',
+    required: ['device_id', 'registered_by', 'label'],
+    properties: {
+      device_id: {
+        type: 'string',
+        format: 'uuid',
+        description: 'Generated on the device. The kernel never issues one.',
+      },
+      registered_by: { type: 'string', format: 'uuid' },
+      label: { type: 'string', minLength: 1, maxLength: 120 },
+    },
+  };
+
+  schemas['DrainResult'] = {
+    type: 'object',
+    required: ['id', 'outcome'],
+    properties: {
+      id: { type: ['string', 'null'], format: 'uuid' },
+      outcome: { type: 'string', enum: ['accepted', 'replayed', 'rejected'] },
+      code: { type: 'string' },
+      detail: { type: 'string' },
+      issues: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: ['path', 'message'],
+          properties: {
+            path: { type: 'string' },
+            message: { type: 'string' },
+          },
+        },
+      },
+    },
+  };
+
+  schemas['DrainReport'] = {
+    type: 'object',
+    required: ['results'],
+    properties: {
+      results: {
+        type: 'array',
+        items: ref('DrainResult'),
+        description:
+          'One entry per submitted record, in the order they were sent.',
+      },
+    },
+  };
+
+  schemas['Changes'] = {
+    type: 'object',
+    required: ['records', 'next_cursor', 'has_more'],
+    properties: {
+      records: { type: 'array', items: ref('RecordView') },
+      next_cursor: { type: ['string', 'null'] },
+      has_more: { type: 'boolean' },
+    },
+  };
+
   schemas['Problem'] = PROBLEM;
 
   return {
@@ -190,6 +260,7 @@ export function buildOpenApiDocument(): OpenApiDocument {
     tags: [
       { name: 'records', description: 'The fact log.' },
       { name: 'inference', description: 'Derived records, kept apart.' },
+      { name: 'sync', description: 'Offline devices push and pull.' },
       { name: 'operations', description: 'Liveness and readiness.' },
     ],
     paths: {
@@ -333,6 +404,95 @@ export function buildOpenApiDocument(): OpenApiDocument {
               content: { 'application/json': { schema: ref('RecordView') } },
             },
             '404': problemResponse('Not in the inference log.'),
+          },
+        },
+      },
+      '/devices': {
+        post: {
+          tags: ['sync'],
+          operationId: 'registerDevice',
+          summary: 'Register a device',
+          description:
+            'Idempotent. Re-registering the same device to the same party returns 200; claiming a device id already held by another party is a conflict.',
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': { schema: ref('DeviceRegistration') },
+            },
+          },
+          responses: {
+            '201': {
+              description: 'Registered.',
+              content: { 'application/json': { schema: ref('Device') } },
+            },
+            '200': {
+              description: 'Already registered to this party.',
+              content: { 'application/json': { schema: ref('Device') } },
+            },
+            '409': problemResponse('That device belongs to another party.'),
+            '422': problemResponse('The registration is not well formed.'),
+          },
+        },
+      },
+      '/sync/outbox': {
+        post: {
+          tags: ['sync'],
+          operationId: 'drainOutbox',
+          summary: 'Append a batch captured offline',
+          description:
+            'Every record is processed independently, so one bad record does not strand the rest of a device\u2019s outbox. The response is always 200 when the batch itself was well formed; per-record outcomes are in the body. Replaying a batch is safe.',
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'array',
+                  items: ref('RecordSubmission'),
+                  maxItems: 500,
+                },
+              },
+            },
+          },
+          responses: {
+            '200': {
+              description: 'The batch was received. See each result.',
+              content: { 'application/json': { schema: ref('DrainReport') } },
+            },
+            '422': problemResponse('The batch itself is not well formed.'),
+          },
+        },
+      },
+      '/sync/changes': {
+        get: {
+          tags: ['sync'],
+          operationId: 'pullChanges',
+          summary: 'Pull everything appended since a cursor',
+          description:
+            'The replication feed, oldest first. Unlike a default read it includes superseded and retracted records, because a device holding a partial copy of the log has to be able to resolve a chain without asking. The cursor is held by the device; the kernel keeps no per-device position.',
+          parameters: [
+            {
+              name: 'cursor',
+              in: 'query',
+              description: 'Omit to start from the beginning of the log.',
+              schema: { type: 'string' },
+            },
+            {
+              name: 'limit',
+              in: 'query',
+              schema: {
+                type: 'integer',
+                minimum: 1,
+                maximum: 500,
+                default: 100,
+              },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'A page of changes.',
+              content: { 'application/json': { schema: ref('Changes') } },
+            },
+            '400': problemResponse('The cursor is not one we issued.'),
           },
         },
       },

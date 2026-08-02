@@ -50,7 +50,7 @@ export class ReadService {
   /** By id, regardless of whether it has been superseded or retracted. */
   async get(id: string): Promise<RecordView | null> {
     const found = await this.repository.findByIdWithDerived(id);
-    return found === null ? null : view(found);
+    return found === null ? null : recordView(found);
   }
 
   /**
@@ -61,7 +61,7 @@ export class ReadService {
   async getInference(id: string): Promise<RecordView | null> {
     const found = await this.repository.findInferenceById(id);
     if (found === null) return null;
-    return view({ ...found, superseded_by: [], retracted: false });
+    return recordView({ ...found, superseded_by: [], retracted: false });
   }
 
   async list(options: ListOptions = {}): Promise<Page> {
@@ -87,7 +87,7 @@ export class ReadService {
     const page = rows.slice(0, limit);
     const last = page.at(-1);
     return {
-      records: page.map(view),
+      records: page.map(recordView),
       next_cursor: rows.length > limit && last !== undefined ? encodeCursor(last) : null,
     };
   }
@@ -106,7 +106,7 @@ export class ReadService {
     );
 
     return chain.map((record) =>
-      view({
+      recordView({
         ...record,
         // Superseders are themselves in the chain, so this needs no extra query.
         superseded_by: chain
@@ -118,7 +118,7 @@ export class ReadService {
   }
 }
 
-function view(row: DerivedRecord): RecordView {
+export function recordView(row: DerivedRecord): RecordView {
   return {
     // The schema's `superseded_by` holds one id; a fork has more than one, and
     // the array on the view is what callers must branch on.
@@ -129,13 +129,13 @@ function view(row: DerivedRecord): RecordView {
   };
 }
 
-function encodeCursor(record: StoredRecord): string {
+export function encodeCursor(record: StoredRecord): string {
   return Buffer.from(`${record.recorded_at}|${record.id}`, 'utf8').toString(
     'base64url',
   );
 }
 
-function decodeCursor(cursor: string): { recordedAt: string; id: string } {
+export function decodeCursor(cursor: string): { recordedAt: string; id: string } {
   const [recordedAt, id, ...rest] = Buffer.from(cursor, 'base64url')
     .toString('utf8')
     .split('|');

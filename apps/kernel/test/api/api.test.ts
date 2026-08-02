@@ -286,3 +286,64 @@ describe('liveness and readiness', () => {
     assert.notEqual(forged.headers.get('x-correlation-id'), 'run 42 <script>');
   });
 });
+
+/* ── sync ─────────────────────────────────────────────────────────────── */
+
+describe('offline devices reach the log through the same API', () => {
+  test('a device registers, and registering again is not an error', async () => {
+    const registration = {
+      device_id: uuidv7(),
+      registered_by: uuidv7(),
+      label: 'Masaka officer, tablet 4',
+    };
+
+    const created = await call('POST', '/v1/devices', registration);
+    assert.equal(created.status, 201);
+    conforms('Device', created.body);
+
+    const again = await call('POST', '/v1/devices', registration);
+    assert.equal(again.status, 200);
+    assert.deepEqual(again.body, created.body);
+  });
+
+  test('an outbox drains with a result per record', async () => {
+    const good = deliveryDocument();
+    const bad = deliveryDocument({ commodity: 'maize' });
+
+    const response = await call('POST', '/v1/sync/outbox', [good, bad]);
+    assert.equal(response.status, 200);
+    conforms('DrainReport', response.body);
+
+    const results = (response.body as { results: { outcome: string }[] }).results;
+    assert.deepEqual(
+      results.map((result) => result.outcome),
+      ['accepted', 'rejected'],
+    );
+
+    const stored = await call('GET', `/v1/records/${good['id'] as string}`);
+    assert.equal(stored.status, 200);
+  });
+
+  test('changes come back oldest first behind a cursor', async () => {
+    const response = await call('GET', '/v1/sync/changes?limit=1');
+    assert.equal(response.status, 200);
+    conforms('Changes', response.body);
+
+    const page = response.body as { records: unknown[]; next_cursor: string | null };
+    assert.equal(page.records.length, 1);
+    assert.notEqual(page.next_cursor, null);
+
+    const next = await call(
+      'GET',
+      `/v1/sync/changes?limit=1&cursor=${encodeURIComponent(page.next_cursor ?? '')}`,
+    );
+    assert.equal(next.status, 200);
+    assert.notDeepEqual(next.body, response.body);
+  });
+
+  test('a cursor we did not issue is a 400, not a 500', async () => {
+    const response = await call('GET', '/v1/sync/changes?cursor=nonsense');
+    assert.equal(response.status, 400);
+    conforms('Problem', response.body);
+  });
+});

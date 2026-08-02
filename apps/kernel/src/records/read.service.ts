@@ -6,6 +6,7 @@ import {
 } from '../consent/consent.service.js';
 import { schemaFor } from './entity-registry.js';
 import { QueryRejected } from './errors.js';
+import { resolveCustody, type Custody } from './custody.js';
 import { toDocument, type RecordDocument, type StoredRecord } from './record.js';
 import { RecordRepository, type DerivedRecord } from './record.repository.js';
 import { subjectFields, subjectsOf } from './subjects.js';
@@ -32,6 +33,8 @@ export interface RecordView {
   /** Direct superseders. More than one is a fork (spec §8 rule 4). */
   superseded_by: string[];
   retracted: boolean;
+  /** Lots only. Where the custody chain says the lot actually is. */
+  custody?: Custody;
 }
 
 export interface Page {
@@ -74,6 +77,7 @@ export class ReadService {
 
     const view = recordView(found);
     this.guard([view], reader);
+    await this.deriveCustody([view]);
     return view;
   }
 
@@ -115,6 +119,7 @@ export class ReadService {
     const last = page.at(-1);
     const views = page.map(recordView);
     this.guard(views, reader);
+    await this.deriveCustody(views);
 
     return {
       records: views,
@@ -150,8 +155,38 @@ export class ReadService {
       }),
     );
 
+    // Custody is deliberately not derived here. This view answers "what was
+    // claimed, and when", and overwriting every historical version with the
+    // current holder would erase the thing the caller came for.
     this.guard(views, reader);
     return views;
+  }
+
+  /**
+   * Replaces the stored `custodian` on every lot in the set with the one the
+   * transfer chain implies, and records the walk on the view. One query for
+   * the whole page, not one per lot.
+   *
+   * Runs after the guard so nothing is computed for records the caller was
+   * never entitled to see.
+   */
+  private async deriveCustody(views: RecordView[]): Promise<void> {
+    const lots = views.filter((view) => view.record['type'] === 'lot');
+    if (lots.length === 0) return;
+
+    const transfers = await this.repository.custodyTransfersFor(
+      lots.map((view) => view.record['id'] as string),
+    );
+
+    for (const view of lots) {
+      const id = view.record['id'] as string;
+      const custody = resolveCustody(
+        view.record['custodian'] as string,
+        transfers.filter((transfer) => transfer.lot === id),
+      );
+      view.custody = custody;
+      view.record['custodian'] = custody.custodian;
+    }
   }
 
   /**

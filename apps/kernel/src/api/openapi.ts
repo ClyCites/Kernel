@@ -143,6 +143,37 @@ export function buildOpenApiDocument(): OpenApiDocument {
     },
   };
 
+  schemas['Custody'] = {
+    type: 'object',
+    required: ['custodian', 'asserted', 'as_of', 'transfers', 'broken'],
+    description:
+      'How the kernel arrived at `record.custodian`. Present on lots only.',
+    properties: {
+      custodian: {
+        type: 'string',
+        format: 'uuid',
+        description: 'Who holds the lot now, per the transfer chain.',
+      },
+      asserted: {
+        type: 'string',
+        format: 'uuid',
+        description:
+          'The custodian named when the lot was created. Kept so the derived answer never erases the claimed one.',
+      },
+      as_of: {
+        type: ['string', 'null'],
+        format: 'date-time',
+        description: 'When the current holder took it. Null if nothing moved.',
+      },
+      transfers: { type: 'integer', minimum: 0 },
+      broken: {
+        type: 'boolean',
+        description:
+          'A transfer moved the lot from a party who was not holding it. Two simultaneous transfers present this way too. Surfaced, never resolved.',
+      },
+    },
+  };
+
   schemas['RecordView'] = {
     type: 'object',
     required: ['record', 'quality_flags', 'superseded_by', 'retracted'],
@@ -152,7 +183,7 @@ export function buildOpenApiDocument(): OpenApiDocument {
         type: 'array',
         items: { type: 'string' },
         description:
-          'Kernel-derived labels. Never merged into the record itself, so the bytes read back are the bytes that were asserted.',
+          'Kernel-derived labels. Never merged into the record itself, so the asserted body reads back byte for byte. The two exceptions are the fields the schema itself marks derived — `superseded_by` and, on a lot, `custodian` — which the kernel computes rather than serving a stale claim.',
       },
       superseded_by: {
         type: 'array',
@@ -161,6 +192,7 @@ export function buildOpenApiDocument(): OpenApiDocument {
           'Direct corrections of this record. More than one entry is a fork: two parties corrected the same record and the kernel will not choose between them.',
       },
       retracted: { type: 'boolean' },
+      custody: ref('Custody'),
     },
   };
 

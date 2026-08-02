@@ -3,6 +3,7 @@ import type { Pool, PoolClient } from 'pg';
 
 import { KERNEL_POOL } from '../storage/pool.js';
 import { containment } from './subjects.js';
+import type { CustodyTransferLink } from './custody.js';
 import type { RecordClass, StoredRecord } from './record.js';
 
 /**
@@ -347,6 +348,36 @@ export class RecordRepository {
       [ids],
     );
     return rows.map((row) => row.target);
+  }
+
+  /**
+   * Live custody transfers for these lots, oldest first.
+   *
+   * Superseded and retracted transfers are excluded: a corrected transfer must
+   * not move the lot twice, and a retracted one never happened. Ordering falls
+   * back to `recorded_at` then `id` so the walk is deterministic when two
+   * transfers share an `occurred_at` — which the offline clients make likely.
+   */
+  async custodyTransfersFor(
+    lotIds: readonly string[],
+  ): Promise<CustodyTransferLink[]> {
+    if (lotIds.length === 0) return [];
+    const { rows } = await this.pool.query<CustodyTransferLink>(
+      `select r.id,
+              r.body ->> 'lot'         as lot,
+              r.body ->> 'from_party'  as from_party,
+              r.body ->> 'to_party'    as to_party,
+              to_char(r.occurred_at at time zone 'UTC',
+                      'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as occurred_at
+         from facts.record r
+        where r.type = 'custody_transfer'
+          and r.body ->> 'lot' = any($1::text[])
+          and not ${SUPERSEDED}
+          and not ${RETRACTED}
+        order by r.occurred_at, r.recorded_at, r.id`,
+      [[...new Set(lotIds)]],
+    );
+    return rows;
   }
 
   /** True if any retraction targets this id. Spec §8.1. */

@@ -116,7 +116,7 @@ export class IngestService {
         type,
         document,
         delegationBasis: grant?.basis ?? null,
-        conversionFlags,
+        precomputed: conversionFlags,
       }),
     };
 

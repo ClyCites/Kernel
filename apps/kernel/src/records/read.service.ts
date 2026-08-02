@@ -7,6 +7,11 @@ import {
 import { schemaFor } from './entity-registry.js';
 import { QueryRejected } from './errors.js';
 import { resolveCustody, type Custody } from './custody.js';
+import {
+  EMPTY_TALLY,
+  resolveFulfilment,
+  type Fulfilment,
+} from './fulfilment.js';
 import { toDocument, type RecordDocument, type StoredRecord } from './record.js';
 import { RecordRepository, type DerivedRecord } from './record.repository.js';
 import { subjectFields, subjectsOf } from './subjects.js';
@@ -35,6 +40,8 @@ export interface RecordView {
   retracted: boolean;
   /** Lots only. Where the custody chain says the lot actually is. */
   custody?: Custody;
+  /** Agreements only. What the deliveries pointing at it add up to. */
+  fulfilment?: Fulfilment;
 }
 
 export interface Page {
@@ -77,7 +84,7 @@ export class ReadService {
 
     const view = recordView(found);
     this.guard([view], reader);
-    await this.deriveCustody([view]);
+    await this.derive([view]);
     return view;
   }
 
@@ -119,7 +126,7 @@ export class ReadService {
     const last = page.at(-1);
     const views = page.map(recordView);
     this.guard(views, reader);
-    await this.deriveCustody(views);
+    await this.derive(views);
 
     return {
       records: views,
@@ -163,12 +170,18 @@ export class ReadService {
   }
 
   /**
+   * Fields the schema marks derived and the kernel must therefore compute
+   * rather than serve from the body. Runs after the guard, so nothing is
+   * computed for records the caller was never entitled to see.
+   */
+  private async derive(views: RecordView[]): Promise<void> {
+    await Promise.all([this.deriveCustody(views), this.deriveFulfilment(views)]);
+  }
+
+  /**
    * Replaces the stored `custodian` on every lot in the set with the one the
    * transfer chain implies, and records the walk on the view. One query for
    * the whole page, not one per lot.
-   *
-   * Runs after the guard so nothing is computed for records the caller was
-   * never entitled to see.
    */
   private async deriveCustody(views: RecordView[]): Promise<void> {
     const lots = views.filter((view) => view.record['type'] === 'lot');
@@ -186,6 +199,33 @@ export class ReadService {
       );
       view.custody = custody;
       view.record['custodian'] = custody.custodian;
+    }
+  }
+
+  /**
+   * What has been delivered against each agreement in the set. Summed on every
+   * read; the Agreement carries no counter and must not grow one.
+   */
+  private async deriveFulfilment(views: RecordView[]): Promise<void> {
+    const agreements = views.filter(
+      (view) => view.record['type'] === 'agreement',
+    );
+    if (agreements.length === 0) return;
+
+    const tallies = await this.repository.deliveryTallies(
+      agreements.map((view) => view.record['id'] as string),
+    );
+
+    for (const view of agreements) {
+      const id = view.record['id'] as string;
+      const committed = view.record['quantity_committed'] as
+        | { normalized_kg?: number | null }
+        | undefined;
+
+      view.fulfilment = resolveFulfilment(
+        committed?.normalized_kg ?? null,
+        tallies.get(id) ?? EMPTY_TALLY,
+      );
     }
   }
 

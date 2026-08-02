@@ -4,6 +4,7 @@ import type { Pool, PoolClient } from 'pg';
 import { KERNEL_POOL } from '../storage/pool.js';
 import { containment } from './subjects.js';
 import type { CustodyTransferLink } from './custody.js';
+import type { DeliveryTally } from './fulfilment.js';
 import type { RecordClass, StoredRecord } from './record.js';
 
 /**
@@ -336,6 +337,43 @@ export class RecordRepository {
       params,
     );
     return rows;
+  }
+
+  /**
+   * What has been delivered against each of these agreements.
+   *
+   * Aggregated in SQL so a busy agreement does not pull every delivery across
+   * the wire. Superseded and retracted deliveries are excluded — a corrected
+   * delivery must count once, and a retracted one not at all.
+   */
+  async deliveryTallies(
+    agreementIds: readonly string[],
+  ): Promise<Map<string, DeliveryTally>> {
+    if (agreementIds.length === 0) return new Map();
+    const { rows } = await this.pool.query<DeliveryTally & { agreement: string }>(
+      `select r.body ->> 'fulfils' as agreement,
+              count(*)::int as deliveries,
+              count(*) filter (
+                where r.body ->> 'counterparty_confirmed_at' is not null
+              )::int as confirmed,
+              count(*) filter (
+                where r.body -> 'quantity' ->> 'normalized_kg' is null
+              )::int as unconvertible,
+              coalesce(
+                sum((r.body -> 'quantity' ->> 'normalized_kg')::numeric), 0
+              )::float8 as delivered_kg
+         from facts.record r
+        where r.type = 'delivery'
+          and r.body ->> 'fulfils' = any($1::text[])
+          and not ${SUPERSEDED}
+          and not ${RETRACTED}
+        group by 1`,
+      [[...new Set(agreementIds)]],
+    );
+
+    return new Map(
+      rows.map(({ agreement, ...tally }) => [agreement, tally]),
+    );
   }
 
   /** Which of these ids a retraction targets. One query, not one per record. */

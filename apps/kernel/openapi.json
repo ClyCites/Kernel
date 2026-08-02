@@ -11277,6 +11277,61 @@
           }
         }
       },
+      "Fulfilment": {
+        "type": "object",
+        "required": [
+          "deliveries",
+          "confirmed",
+          "unconvertible",
+          "delivered_kg",
+          "committed_kg",
+          "outstanding_kg",
+          "over_delivered",
+          "incomplete"
+        ],
+        "description": "What the deliveries pointing at this agreement add up to. Present on agreements only. Summed on every read — the agreement stores no counter, because a stored total is wrong the moment a delivery is corrected or retracted.",
+        "properties": {
+          "deliveries": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Deliveries counted. Superseded and retracted ones are excluded."
+          },
+          "confirmed": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Of those, how many the counterparty confirmed. Arrival and agreement are different facts."
+          },
+          "unconvertible": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Deliveries whose quantity never reached kilograms."
+          },
+          "delivered_kg": {
+            "type": "number"
+          },
+          "committed_kg": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Null when the agreement itself was never normalized, in which case the shortfall is unknowable rather than zero."
+          },
+          "outstanding_kg": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Negative when more arrived than was committed. Not clamped: an over-delivery is a fact worth seeing."
+          },
+          "over_delivered": {
+            "type": "boolean"
+          },
+          "incomplete": {
+            "type": "boolean",
+            "description": "At least one delivery is unconvertible, so `delivered_kg` is a floor and not a total. Any percentage taken from it understates."
+          }
+        }
+      },
       "RecordView": {
         "type": "object",
         "required": [
@@ -11309,6 +11364,9 @@
           },
           "custody": {
             "$ref": "#/components/schemas/Custody"
+          },
+          "fulfilment": {
+            "$ref": "#/components/schemas/Fulfilment"
           }
         }
       },

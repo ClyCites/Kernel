@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
+import { CONSENT_PURPOSES } from '../consent/consent.service.js';
 import { ENTITY_SCHEMAS } from '../records/entity-registry.js';
+import { SUBJECT_HEADER } from './subject.js';
 
 /**
  * OpenAPI 3.1 generated from the Zod schemas. Brief §5 phase 4: generated, not
@@ -89,6 +91,23 @@ function problemResponse(description: string): JsonSchema {
     content: { 'application/problem+json': { schema: ref('Problem') } },
   };
 }
+
+/**
+ * The verified subject. Authentik establishes the claim; the kernel receives it
+ * on this header and trusts the gateway. Every read is governed against it, so
+ * exposing the kernel port directly would make every read forgeable.
+ */
+const subjectHeader: JsonSchema = {
+  name: SUBJECT_HEADER,
+  in: 'header',
+  description:
+    'The authenticated party, set by the gateway. Reads without it are refused.',
+  schema: { type: 'string', format: 'uuid' },
+};
+
+const consentResponse: JsonSchema = problemResponse(
+  'No lawful basis for this disclosure. Consent is not implemented yet, so only a subject reading their own records and the party that asserted a record are permitted.',
+);
 
 export function buildOpenApiDocument(): OpenApiDocument {
   const types = Object.keys(ENTITY_SCHEMAS).sort();
@@ -319,11 +338,19 @@ export function buildOpenApiDocument(): OpenApiDocument {
               schema: { type: 'string', format: 'uuid' },
             },
             {
+              name: 'purpose',
+              in: 'query',
+              description:
+                'The lawful basis for the read, under the Data Protection and Privacy Act, 2019. Purpose-bound consent is not implemented yet, so naming a purpose is refused.',
+              schema: { type: 'string', enum: [...CONSENT_PURPOSES] },
+            },
+            {
               name: 'limit',
               in: 'query',
               schema: { type: 'integer', minimum: 1, maximum: 200, default: 50 },
             },
             { name: 'cursor', in: 'query', schema: { type: 'string' } },
+            subjectHeader,
           ],
           responses: {
             '200': {
@@ -331,6 +358,7 @@ export function buildOpenApiDocument(): OpenApiDocument {
               content: { 'application/json': { schema: ref('Page') } },
             },
             '400': problemResponse('The cursor is not one we issued.'),
+            '403': consentResponse,
             '422': problemResponse('No such record type.'),
           },
         },
@@ -349,12 +377,14 @@ export function buildOpenApiDocument(): OpenApiDocument {
               required: true,
               schema: { type: 'string', format: 'uuid' },
             },
+            subjectHeader,
           ],
           responses: {
             '200': {
               description: 'The record.',
               content: { 'application/json': { schema: ref('RecordView') } },
             },
+            '403': consentResponse,
             '404': problemResponse('Not in the log.'),
           },
         },
@@ -373,12 +403,14 @@ export function buildOpenApiDocument(): OpenApiDocument {
               required: true,
               schema: { type: 'string', format: 'uuid' },
             },
+            subjectHeader,
           ],
           responses: {
             '200': {
               description: 'The chain.',
               content: { 'application/json': { schema: ref('Chain') } },
             },
+            '403': consentResponse,
             '404': problemResponse('Not in the log.'),
           },
         },
@@ -397,12 +429,14 @@ export function buildOpenApiDocument(): OpenApiDocument {
               required: true,
               schema: { type: 'string', format: 'uuid' },
             },
+            subjectHeader,
           ],
           responses: {
             '200': {
               description: 'The inference.',
               content: { 'application/json': { schema: ref('RecordView') } },
             },
+            '403': consentResponse,
             '404': problemResponse('Not in the inference log.'),
           },
         },
@@ -468,7 +502,7 @@ export function buildOpenApiDocument(): OpenApiDocument {
           operationId: 'pullChanges',
           summary: 'Pull everything appended since a cursor',
           description:
-            'The replication feed, oldest first. Unlike a default read it includes superseded and retracted records, because a device holding a partial copy of the log has to be able to resolve a chain without asking. The cursor is held by the device; the kernel keeps no per-device position.',
+            'The replication feed, oldest first, scoped to the records the requesting party asserted. Unlike a default read it includes superseded and retracted records, because a device holding a partial copy of the log has to be able to resolve a chain without asking. The cursor is held by the device; the kernel keeps no per-device position.',
           parameters: [
             {
               name: 'cursor',
@@ -486,6 +520,7 @@ export function buildOpenApiDocument(): OpenApiDocument {
                 default: 100,
               },
             },
+            subjectHeader,
           ],
           responses: {
             '200': {
@@ -493,6 +528,7 @@ export function buildOpenApiDocument(): OpenApiDocument {
               content: { 'application/json': { schema: ref('Changes') } },
             },
             '400': problemResponse('The cursor is not one we issued.'),
+            '403': consentResponse,
           },
         },
       },

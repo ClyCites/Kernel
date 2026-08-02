@@ -1,10 +1,18 @@
 import { SCHEMA_VERSION } from '@clycites/schema';
 import { uuidv7 } from 'uuidv7';
 
+import type { Reader } from '../../src/records/read.service.js';
+
 /**
  * Fixtures modelled on Appendix A of the specification — a farmer delivering
  * twelve bags of maize to a cooperative that weighs and confirms.
  */
+
+/**
+ * Reads as a given party. Consent denies everything else, so a test that reads
+ * records must name someone entitled to see them — the subject or the asserter.
+ */
+export const readingAs = (requester: string | null): Reader => ({ requester });
 
 export const party = () => uuidv7();
 

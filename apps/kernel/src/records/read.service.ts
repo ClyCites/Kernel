@@ -1,13 +1,28 @@
 import { Inject, Injectable } from '@nestjs/common';
 
+import {
+  ConsentService,
+  type ConsentPurpose,
+} from '../consent/consent.service.js';
 import { schemaFor } from './entity-registry.js';
 import { QueryRejected } from './errors.js';
 import { toDocument, type RecordDocument, type StoredRecord } from './record.js';
 import { RecordRepository, type DerivedRecord } from './record.repository.js';
-import { subjectFields } from './subjects.js';
+import { subjectFields, subjectsOf } from './subjects.js';
 
 export const DEFAULT_PAGE_SIZE = 50;
 export const MAX_PAGE_SIZE = 200;
+
+/**
+ * Who is asking, and why. Every read carries one — there is no overload that
+ * omits it, so a new read path cannot skip the consent guard by accident.
+ */
+export interface Reader {
+  /** The verified subject claim. Null when none reached the kernel. */
+  requester: string | null;
+  /** Null means “my own records”. Any purpose is denied by the stub. */
+  purpose?: ConsentPurpose | null | undefined;
+}
 
 export interface RecordView {
   /** Exactly the shape `@clycites/schema` defines for this entity. */
@@ -40,17 +55,26 @@ export interface ListOptions {
  * superseded versions, the retracted ones — remains addressable by id, because
  * the log is append-only and a lender auditing a dispute needs to see what was
  * claimed before it was corrected.
+ *
+ * Every method here can return personal data and every method is therefore
+ * behind the consent guard, which today denies everything but a party's own
+ * records. See src/consent/consent.service.ts.
  */
 @Injectable()
 export class ReadService {
   constructor(
     @Inject(RecordRepository) private readonly repository: RecordRepository,
+    @Inject(ConsentService) private readonly consent: ConsentService,
   ) {}
 
   /** By id, regardless of whether it has been superseded or retracted. */
-  async get(id: string): Promise<RecordView | null> {
+  async get(id: string, reader: Reader): Promise<RecordView | null> {
     const found = await this.repository.findByIdWithDerived(id);
-    return found === null ? null : recordView(found);
+    if (found === null) return null;
+
+    const view = recordView(found);
+    this.guard([view], reader);
+    return view;
   }
 
   /**
@@ -58,13 +82,16 @@ export class ReadService {
    * invariant 2: an inference must never turn up where an observation was
    * expected.
    */
-  async getInference(id: string): Promise<RecordView | null> {
+  async getInference(id: string, reader: Reader): Promise<RecordView | null> {
     const found = await this.repository.findInferenceById(id);
     if (found === null) return null;
-    return recordView({ ...found, superseded_by: [], retracted: false });
+
+    const view = recordView({ ...found, superseded_by: [], retracted: false });
+    this.guard([view], reader);
+    return view;
   }
 
-  async list(options: ListOptions = {}): Promise<Page> {
+  async list(options: ListOptions, reader: Reader): Promise<Page> {
     if (options.type !== undefined && schemaFor(options.type) === null) {
       throw new QueryRejected(
         'unknown_record_type',
@@ -86,8 +113,11 @@ export class ReadService {
 
     const page = rows.slice(0, limit);
     const last = page.at(-1);
+    const views = page.map(recordView);
+    this.guard(views, reader);
+
     return {
-      records: page.map(recordView),
+      records: views,
       next_cursor: rows.length > limit && last !== undefined ? encodeCursor(last) : null,
     };
   }
@@ -96,7 +126,11 @@ export class ReadService {
    * Every version of a record, oldest first, walkable from any point in the
    * chain rather than only from its origin.
    */
-  async chain(id: string): Promise<RecordView[]> {
+  async chain(id: string, reader: Reader): Promise<RecordView[]> {
+    // Finding the origin is supersession resolution, not a disclosure: nothing
+    // is returned to the caller until the guard below has run.
+    this.consent.integrity('supersession_resolution');
+
     const origin = await this.repository.findChainOrigin(id);
     if (origin === null) return [];
 
@@ -105,7 +139,7 @@ export class ReadService {
       await this.repository.retractedAmong(chain.map((record) => record.id)),
     );
 
-    return chain.map((record) =>
+    const views = chain.map((record) =>
       recordView({
         ...record,
         // Superseders are themselves in the chain, so this needs no extra query.
@@ -115,6 +149,27 @@ export class ReadService {
         retracted: retracted.has(record.id),
       }),
     );
+
+    this.guard(views, reader);
+    return views;
+  }
+
+  /**
+   * The consent decision is built from the records that were actually fetched,
+   * so a caller cannot nominate their own subjects. It throws rather than
+   * filtering: half a page is not an answer.
+   */
+  private guard(views: RecordView[], reader: Reader): void {
+    if (views.length === 0) return;
+
+    this.consent.assertPermitted({
+      subjects: views.flatMap((view) => subjectsOf(view.record)),
+      asserters: views.map((view) => view.record['asserted_by'] as string),
+      requester: reader.requester,
+      purpose: reader.purpose ?? null,
+      record_types: views.map((view) => view.record['type'] as string),
+      at: new Date().toISOString(),
+    });
   }
 }
 

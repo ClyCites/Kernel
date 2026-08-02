@@ -6,8 +6,10 @@ import { startTestDatabase, type TestDatabase } from '../helpers/database.js';
 import {
   deliveryDocument,
   entityDocument,
+  readingAs,
   retractionDocument,
 } from '../helpers/fixtures.js';
+import { ConsentDenied, ConsentService } from '../../src/consent/consent.service.js';
 import { DelegationService } from '../../src/records/delegation.service.js';
 import { IngestService } from '../../src/records/ingest.service.js';
 import { RecordRepository } from '../../src/records/record.repository.js';
@@ -23,7 +25,12 @@ before(async () => {
   db = await startTestDatabase();
   const repository = new RecordRepository(db.app);
   ingest = new IngestService(repository, new DelegationService(repository));
-  sync = new SyncService(ingest, repository, new DeviceRepository(db.app));
+  sync = new SyncService(
+    ingest,
+    repository,
+    new DeviceRepository(db.app),
+    new ConsentService(),
+  );
 });
 
 after(async () => {
@@ -74,9 +81,13 @@ describe('device registration', () => {
 
 describe('draining an outbox', () => {
   test('one bad record does not strand the rest of the batch', async () => {
-    const good = deliveryDocument();
-    const alsoGood = entityDocument('harvest');
-    const bad = deliveryDocument({ quantity: { raw_value: 'twelve' } });
+    const officer = uuidv7();
+    const good = deliveryDocument({ asserted_by: officer });
+    const alsoGood = entityDocument('harvest', { asserted_by: officer });
+    const bad = deliveryDocument({
+      asserted_by: officer,
+      quantity: { raw_value: 'twelve' },
+    });
 
     const results = await sync.drain([good, bad, alsoGood]);
 
@@ -89,10 +100,12 @@ describe('draining an outbox', () => {
     assert.ok((results[1]?.issues?.length ?? 0) > 0);
 
     // The accepted ones really are in the log.
+    const page = await sync.changes({ limit: 500 }, readingAs(officer));
     for (const document of [good, alsoGood]) {
-      assert.ok(await sync.changes({ limit: 500 }).then((page) =>
+      assert.ok(
         page.records.some((view) => view.record['id'] === document['id']),
-      ));
+        `expected ${String(document['id'])} in the feed`,
+      );
     }
   });
 
@@ -139,24 +152,25 @@ describe('draining an outbox', () => {
 
 describe('pulling changes', () => {
   test('paging walks the log forwards, once each, with no gaps', async () => {
-    const before = await sync.changes({ limit: 500 });
-    const known = new Set(before.records.map((view) => view.record['id']));
-
+    const officer = uuidv7();
     const appended: string[] = [];
     for (let i = 0; i < 5; i += 1) {
-      const stored = await ingest.ingest(deliveryDocument());
+      const stored = await ingest.ingest(
+        deliveryDocument({ asserted_by: officer }),
+      );
       appended.push(stored.record.id);
     }
 
     const seen: string[] = [];
-    let cursor: string | null = before.next_cursor;
+    let cursor: string | null = null;
     for (let page = 0; page < 20; page += 1) {
       const changes: Awaited<ReturnType<SyncService['changes']>> =
-        await sync.changes({ cursor: cursor ?? undefined, limit: 2 });
+        await sync.changes(
+          { cursor: cursor ?? undefined, limit: 2 },
+          readingAs(officer),
+        );
       for (const view of changes.records) {
-        const id = view.record['id'] as string;
-        assert.equal(known.has(id), false, `${id} was already known`);
-        seen.push(id);
+        seen.push(view.record['id'] as string);
       }
       cursor = changes.next_cursor;
       if (!changes.has_more) break;
@@ -165,12 +179,36 @@ describe('pulling changes', () => {
     assert.deepEqual(seen, appended);
   });
 
+  test('the feed carries only the requesting party’s own records', async () => {
+    const mine = uuidv7();
+    const theirs = uuidv7();
+    const ours = await ingest.ingest(deliveryDocument({ asserted_by: mine }));
+    const notOurs = await ingest.ingest(
+      deliveryDocument({ asserted_by: theirs }),
+    );
+
+    const changes = await sync.changes({ limit: 500 }, readingAs(mine));
+    const ids = changes.records.map((view) => view.record['id']);
+
+    assert.deepEqual(ids, [ours.record.id]);
+    assert.equal(ids.includes(notOurs.record.id), false);
+  });
+
+  test('an unauthenticated pull returns nothing rather than everything', async () => {
+    await ingest.ingest(deliveryDocument());
+
+    await assert.rejects(
+      sync.changes({ limit: 500 }, readingAs(null)),
+      (error: unknown) => error instanceof ConsentDenied,
+    );
+  });
+
   test('the feed carries superseded and retracted records', async () => {
     const asserter = uuidv7();
     const original = await ingest.ingest(
       deliveryDocument({ asserted_by: asserter, to_party: asserter }),
     );
-    const start = await sync.changes({ limit: 500 });
+    const start = await sync.changes({ limit: 500 }, readingAs(asserter));
 
     const correction = await ingest.ingest(
       deliveryDocument({
@@ -186,10 +224,10 @@ describe('pulling changes', () => {
       retractionDocument(retracted.record.id, { asserted_by: asserter }),
     );
 
-    const changes = await sync.changes({
-      cursor: start.next_cursor ?? undefined,
-      limit: 500,
-    });
+    const changes = await sync.changes(
+      { cursor: start.next_cursor ?? undefined, limit: 500 },
+      readingAs(asserter),
+    );
     const ids = changes.records.map((view) => view.record['id']);
 
     assert.ok(ids.includes(correction.record.id));
@@ -205,7 +243,7 @@ describe('pulling changes', () => {
 
     // The record the correction replaced is still reachable from earlier in
     // the feed, labelled as superseded.
-    const whole = await sync.changes({ limit: 500 });
+    const whole = await sync.changes({ limit: 500 }, readingAs(asserter));
     assert.deepEqual(
       whole.records.find((view) => view.record['id'] === original.record.id)
         ?.superseded_by,
@@ -214,6 +252,8 @@ describe('pulling changes', () => {
   });
 
   test('a cursor we did not issue is refused', async () => {
-    await assert.rejects(sync.changes({ cursor: 'not-a-cursor' }));
+    await assert.rejects(
+      sync.changes({ cursor: 'not-a-cursor' }, readingAs(uuidv7())),
+    );
   });
 });

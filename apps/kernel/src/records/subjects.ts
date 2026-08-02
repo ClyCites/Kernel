@@ -43,3 +43,41 @@ export function containment(field: string, id: string): Record<string, unknown> 
   }
   return { [field]: id };
 }
+
+/**
+ * Who a stored record is about. The consent guard is built from this and never
+ * from request input, so a caller cannot nominate their own subjects.
+ *
+ * An empty result means the record cannot be attributed to anyone, which the
+ * consent decision treats as un-releasable rather than unrestricted.
+ */
+export function subjectsOf(record: Record<string, unknown>): string[] {
+  const type = record['type'];
+  if (typeof type !== 'string') return [];
+
+  const found = new Set<string>();
+  for (const field of subjectFields(type)) {
+    if (field === 'id') {
+      const id = record['id'];
+      if (typeof id === 'string') found.add(id);
+      continue;
+    }
+
+    const [outer, inner] = field.split('[].');
+    if (outer === undefined) continue;
+    const value = record[outer];
+
+    if (inner === undefined) {
+      if (typeof value === 'string') found.add(value);
+      continue;
+    }
+
+    if (!Array.isArray(value)) continue;
+    for (const element of value) {
+      const nested = (element as Record<string, unknown> | null)?.[inner];
+      if (typeof nested === 'string') found.add(nested);
+    }
+  }
+
+  return [...found];
+}

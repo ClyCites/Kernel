@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 
+import { ConsentDenied } from '../consent/consent.service.js';
 import { QueryRejected, RecordRejected } from '../records/errors.js';
 import { CORRELATION_HEADER } from './correlation.middleware.js';
 
@@ -71,6 +72,18 @@ export class ProblemFilter implements ExceptionFilter {
   }
 
   private toProblem(exception: unknown): Problem {
+    if (exception instanceof ConsentDenied) {
+      // The reason is machine-readable on purpose: it is what an integration
+      // quotes when it asks for the consent spec to be written.
+      return {
+        type: `/problems/${exception.decision.reason}`,
+        title: TITLES[403]!,
+        status: 403,
+        detail: exception.decision.detail,
+        code: exception.decision.reason,
+      };
+    }
+
     if (exception instanceof RecordRejected) {
       const status = STATUS_BY_CODE[exception.code] ?? 422;
       return {

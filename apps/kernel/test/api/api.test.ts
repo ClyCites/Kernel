@@ -11,6 +11,7 @@ import 'reflect-metadata';
 import { AppModule } from '../../src/app.module.js';
 import { KERNEL_POOL } from '../../src/storage/pool.js';
 import { buildOpenApiDocument } from '../../src/api/openapi.js';
+import { SUBJECT_HEADER } from '../../src/api/subject.js';
 import { startTestDatabase, type TestDatabase } from '../helpers/database.js';
 import { deliveryDocument } from '../helpers/fixtures.js';
 
@@ -49,12 +50,20 @@ async function call(
   method: string,
   path: string,
   body?: unknown,
+  options: { as?: string | null } = {},
 ): Promise<Json> {
+  const subject = options.as === undefined ? undefined : options.as;
   const response = await fetch(`${base}${path}`, {
     method,
     ...(body === undefined
       ? {}
-      : { body: JSON.stringify(body), headers: { 'content-type': 'application/json' } }),
+      : { body: JSON.stringify(body) }),
+    headers: {
+      ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+      ...(subject === undefined || subject === null
+        ? {}
+        : { [SUBJECT_HEADER]: subject }),
+    },
   });
   return {
     status: response.status,
@@ -128,7 +137,8 @@ describe('the generated OpenAPI document (brief §5.4)', () => {
 
 describe('a Delivery round-trips through the public API', () => {
   test('submit, then read back, both conforming to the document', async () => {
-    const submission = deliveryDocument();
+    const asserter = uuidv7();
+    const submission = deliveryDocument({ asserted_by: asserter });
     conforms('DeliverySubmission', submission);
 
     const created = await call('POST', '/v1/records', submission);
@@ -137,7 +147,9 @@ describe('a Delivery round-trips through the public API', () => {
     assert.equal(created.headers.get('location'), `/v1/records/${submission['id']}`);
     conforms('RecordView', created.body);
 
-    const fetched = await call('GET', `/v1/records/${submission['id']}`);
+    const fetched = await call('GET', `/v1/records/${submission['id']}`, undefined, {
+      as: asserter,
+    });
 
     assert.equal(fetched.status, 200);
     conforms('RecordView', fetched.body);
@@ -165,7 +177,12 @@ describe('a Delivery round-trips through the public API', () => {
     const asserter = uuidv7();
     await call('POST', '/v1/records', deliveryDocument({ asserted_by: asserter }));
 
-    const page = await call('GET', `/v1/records?type=delivery&asserted_by=${asserter}`);
+    const page = await call(
+      'GET',
+      `/v1/records?type=delivery&asserted_by=${asserter}`,
+      undefined,
+      { as: asserter },
+    );
 
     assert.equal(page.status, 200);
     conforms('Page', page.body);
@@ -185,11 +202,61 @@ describe('a Delivery round-trips through the public API', () => {
       }),
     );
 
-    const chain = await call('GET', `/v1/records/${first['id']}/chain`);
+    const chain = await call('GET', `/v1/records/${first['id']}/chain`, undefined, {
+      as: asserter,
+    });
 
     assert.equal(chain.status, 200);
     conforms('Chain', chain.body);
     assert.equal((chain.body as { records: unknown[] }).records.length, 2);
+  });
+});
+
+/* ── consent ──────────────────────────────────────────────────────────── */
+
+describe('reads are refused without a lawful basis (spec §10)', () => {
+  test('an anonymous read of a real record is 403, not 200', async () => {
+    const submission = deliveryDocument();
+    await call('POST', '/v1/records', submission);
+
+    const response = await call('GET', `/v1/records/${submission['id']}`);
+
+    assert.equal(response.status, 403);
+    conforms('Problem', response.body);
+    assert.equal(
+      (response.body as Record<string, unknown>)['code'],
+      'consent_not_implemented',
+    );
+  });
+
+  test('a stranger cannot read someone else’s record', async () => {
+    const submission = deliveryDocument();
+    await call('POST', '/v1/records', submission);
+
+    const response = await call('GET', `/v1/records/${submission['id']}`, undefined, {
+      as: uuidv7(),
+    });
+
+    assert.equal(response.status, 403);
+  });
+
+  test('naming a purpose is refused until the consent spec exists', async () => {
+    const asserter = uuidv7();
+    const submission = deliveryDocument({ asserted_by: asserter });
+    await call('POST', '/v1/records', submission);
+
+    const response = await call(
+      'GET',
+      `/v1/records?type=delivery&asserted_by=${asserter}&purpose=credit_assessment`,
+      undefined,
+      { as: asserter },
+    );
+
+    assert.equal(response.status, 403);
+    assert.equal(
+      (response.body as Record<string, unknown>)['code'],
+      'consent_not_implemented',
+    );
   });
 });
 
@@ -307,8 +374,9 @@ describe('offline devices reach the log through the same API', () => {
   });
 
   test('an outbox drains with a result per record', async () => {
-    const good = deliveryDocument();
-    const bad = deliveryDocument({ commodity: 'maize' });
+    const officer = uuidv7();
+    const good = deliveryDocument({ asserted_by: officer });
+    const bad = deliveryDocument({ asserted_by: officer, commodity: 'maize' });
 
     const response = await call('POST', '/v1/sync/outbox', [good, bad]);
     assert.equal(response.status, 200);
@@ -320,12 +388,24 @@ describe('offline devices reach the log through the same API', () => {
       ['accepted', 'rejected'],
     );
 
-    const stored = await call('GET', `/v1/records/${good['id'] as string}`);
+    const stored = await call(
+      'GET',
+      `/v1/records/${good['id'] as string}`,
+      undefined,
+      { as: officer },
+    );
     assert.equal(stored.status, 200);
   });
 
   test('changes come back oldest first behind a cursor', async () => {
-    const response = await call('GET', '/v1/sync/changes?limit=1');
+    const officer = uuidv7();
+    for (let i = 0; i < 2; i += 1) {
+      await call('POST', '/v1/records', deliveryDocument({ asserted_by: officer }));
+    }
+
+    const response = await call('GET', '/v1/sync/changes?limit=1', undefined, {
+      as: officer,
+    });
     assert.equal(response.status, 200);
     conforms('Changes', response.body);
 
@@ -336,13 +416,24 @@ describe('offline devices reach the log through the same API', () => {
     const next = await call(
       'GET',
       `/v1/sync/changes?limit=1&cursor=${encodeURIComponent(page.next_cursor ?? '')}`,
+      undefined,
+      { as: officer },
     );
     assert.equal(next.status, 200);
     assert.notDeepEqual(next.body, response.body);
   });
 
+  test('a device pulling without a verified subject gets nothing', async () => {
+    const response = await call('GET', '/v1/sync/changes?limit=1');
+
+    assert.equal(response.status, 403);
+    conforms('Problem', response.body);
+  });
+
   test('a cursor we did not issue is a 400, not a 500', async () => {
-    const response = await call('GET', '/v1/sync/changes?cursor=nonsense');
+    const response = await call('GET', '/v1/sync/changes?cursor=nonsense', undefined, {
+      as: uuidv7(),
+    });
     assert.equal(response.status, 400);
     conforms('Problem', response.body);
   });

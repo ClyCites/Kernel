@@ -160,6 +160,24 @@
             }
           },
           {
+            "name": "purpose",
+            "in": "query",
+            "description": "The lawful basis for the read, under the Data Protection and Privacy Act, 2019. Purpose-bound consent is not implemented yet, so naming a purpose is refused.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "credit_assessment",
+                "insurance_underwriting",
+                "input_supply",
+                "market_intelligence",
+                "traceability_claim",
+                "advisory",
+                "research",
+                "regulatory_reporting"
+              ]
+            }
+          },
+          {
             "name": "limit",
             "in": "query",
             "schema": {
@@ -174,6 +192,15 @@
             "in": "query",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "x-clycites-subject",
+            "in": "header",
+            "description": "The authenticated party, set by the gateway. Reads without it are refused.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
             }
           }
         ],
@@ -190,6 +217,16 @@
           },
           "400": {
             "description": "The cursor is not one we issued.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No lawful basis for this disclosure. Consent is not implemented yet, so only a subject reading their own records and the party that asserted a record are permitted.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -228,6 +265,15 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "x-clycites-subject",
+            "in": "header",
+            "description": "The authenticated party, set by the gateway. Reads without it are refused.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         ],
         "responses": {
@@ -237,6 +283,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RecordView"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No lawful basis for this disclosure. Consent is not implemented yet, so only a subject reading their own records and the party that asserted a record are permitted.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             }
@@ -271,6 +327,15 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "x-clycites-subject",
+            "in": "header",
+            "description": "The authenticated party, set by the gateway. Reads without it are refused.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         ],
         "responses": {
@@ -280,6 +345,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Chain"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No lawful basis for this disclosure. Consent is not implemented yet, so only a subject reading their own records and the party that asserted a record are permitted.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             }
@@ -314,6 +389,15 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "x-clycites-subject",
+            "in": "header",
+            "description": "The authenticated party, set by the gateway. Reads without it are refused.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         ],
         "responses": {
@@ -323,6 +407,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RecordView"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No lawful basis for this disclosure. Consent is not implemented yet, so only a subject reading their own records and the party that asserted a record are permitted.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             }
@@ -455,7 +549,7 @@
         ],
         "operationId": "pullChanges",
         "summary": "Pull everything appended since a cursor",
-        "description": "The replication feed, oldest first. Unlike a default read it includes superseded and retracted records, because a device holding a partial copy of the log has to be able to resolve a chain without asking. The cursor is held by the device; the kernel keeps no per-device position.",
+        "description": "The replication feed, oldest first, scoped to the records the requesting party asserted. Unlike a default read it includes superseded and retracted records, because a device holding a partial copy of the log has to be able to resolve a chain without asking. The cursor is held by the device; the kernel keeps no per-device position.",
         "parameters": [
           {
             "name": "cursor",
@@ -474,6 +568,15 @@
               "maximum": 500,
               "default": 100
             }
+          },
+          {
+            "name": "x-clycites-subject",
+            "in": "header",
+            "description": "The authenticated party, set by the gateway. Reads without it are refused.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         ],
         "responses": {
@@ -489,6 +592,16 @@
           },
           "400": {
             "description": "The cursor is not one we issued.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No lawful basis for this disclosure. Consent is not implemented yet, so only a subject reading their own records and the party that asserted a record are permitted.",
             "content": {
               "application/problem+json": {
                 "schema": {

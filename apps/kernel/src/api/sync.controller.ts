@@ -7,12 +7,14 @@ import {
   Inject,
   Post,
   Query,
+  Req,
   Res,
 } from '@nestjs/common';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { z } from 'zod';
 
 import { MAX_CHANGES, SyncService } from '../sync/sync.service.js';
+import { verifiedSubject } from './subject.js';
 
 const ChangesQuery = z.object({
   cursor: z.string().optional(),
@@ -52,7 +54,10 @@ export class SyncController {
   }
 
   @Get('sync/changes')
-  async changes(@Query() query: unknown): Promise<unknown> {
+  async changes(
+    @Query() query: unknown,
+    @Req() request: Request,
+  ): Promise<unknown> {
     const parsed = ChangesQuery.safeParse(query);
     if (!parsed.success) {
       throw new BadRequestException(
@@ -62,9 +67,12 @@ export class SyncController {
       );
     }
 
-    return this.sync.changes({
-      cursor: parsed.data.cursor,
-      limit: parsed.data.limit,
-    });
+    return this.sync.changes(
+      {
+        cursor: parsed.data.cursor,
+        limit: parsed.data.limit,
+      },
+      { requester: verifiedSubject(request), purpose: null },
+    );
   }
 }

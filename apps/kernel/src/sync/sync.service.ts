@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { z } from 'zod';
 
+import { ConsentDenied, ConsentService } from '../consent/consent.service.js';
 import { IngestService } from '../records/ingest.service.js';
 import { QueryRejected, RecordRejected } from '../records/errors.js';
 import { RecordRepository } from '../records/record.repository.js';
@@ -8,8 +9,10 @@ import {
   decodeCursor,
   encodeCursor,
   recordView,
+  type Reader,
   type RecordView,
 } from '../records/read.service.js';
+import { subjectsOf } from '../records/subjects.js';
 import { DeviceRepository, type Device } from './device.repository.js';
 
 const DEFAULT_BATCH = 100;
@@ -62,6 +65,7 @@ export class SyncService {
     @Inject(IngestService) private readonly ingest: IngestService,
     @Inject(RecordRepository) private readonly repository: RecordRepository,
     @Inject(DeviceRepository) private readonly devices: DeviceRepository,
+    @Inject(ConsentService) private readonly consent: ConsentService,
   ) {}
 
   async register(
@@ -124,21 +128,56 @@ export class SyncService {
     return outcomes;
   }
 
-  /** Everything appended after `cursor`, oldest first. */
-  async changes(options: {
-    cursor?: string | undefined;
-    limit?: number | undefined;
-  }): Promise<Changes> {
+  /**
+   * Everything the requesting party appended after `cursor`, oldest first.
+   *
+   * This is the widest disclosure surface in the kernel, so it is scoped to the
+   * requester at the query level and then put through the same consent guard as
+   * every other read. An unauthenticated pull returns nothing rather than
+   * everything.
+   */
+  async changes(
+    options: {
+      cursor?: string | undefined;
+      limit?: number | undefined;
+    },
+    reader: Reader,
+  ): Promise<Changes> {
+    if (reader.requester === null) {
+      throw new ConsentDenied(
+        this.consent.decide({
+          subjects: [],
+          asserters: [],
+          requester: null,
+          purpose: reader.purpose ?? null,
+          record_types: [],
+          at: new Date().toISOString(),
+        }),
+      );
+    }
+
     const limit = Math.min(options.limit ?? DEFAULT_CHANGES, MAX_CHANGES);
     const after =
       options.cursor === undefined ? undefined : decodeCursor(options.cursor);
 
-    const rows = await this.repository.since(after, limit + 1);
+    const rows = await this.repository.since(after, limit + 1, reader.requester);
     const page = rows.slice(0, limit);
     const last = page.at(-1);
+    const views = page.map(recordView);
+
+    if (views.length > 0) {
+      this.consent.assertPermitted({
+        subjects: views.flatMap((view) => subjectsOf(view.record)),
+        asserters: views.map((view) => view.record['asserted_by'] as string),
+        requester: reader.requester,
+        purpose: reader.purpose ?? null,
+        record_types: views.map((view) => view.record['type'] as string),
+        at: new Date().toISOString(),
+      });
+    }
 
     return {
-      records: page.map(recordView),
+      records: views,
       next_cursor: last === undefined ? (options.cursor ?? null) : encodeCursor(last),
       has_more: rows.length > limit,
     };

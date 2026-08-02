@@ -8,13 +8,20 @@ import {
   Param,
   Post,
   Query,
+  Req,
   Res,
 } from '@nestjs/common';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { z } from 'zod';
 
+import { CONSENT_PURPOSES } from '../consent/consent.service.js';
 import { IngestService } from '../records/ingest.service.js';
-import { MAX_PAGE_SIZE, ReadService } from '../records/read.service.js';
+import {
+  MAX_PAGE_SIZE,
+  ReadService,
+  type Reader,
+} from '../records/read.service.js';
+import { verifiedSubject } from './subject.js';
 
 /**
  * Query parameters are the kernel's own surface, not record contents, so they
@@ -27,6 +34,7 @@ const ListQuery = z.object({
   subject: z.uuid().optional(),
   limit: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).optional(),
   cursor: z.string().optional(),
+  purpose: z.enum(CONSENT_PURPOSES).optional(),
 });
 
 const Id = z.uuid();
@@ -48,11 +56,19 @@ export class RecordsController {
     response.status(result.replayed ? 200 : 201);
     response.setHeader('Location', `/v1/records/${result.record.id}`);
 
-    return this.read.get(result.record.id);
+    // Echoing the record back is a read and goes through the same guard. The
+    // requester is the record's own asserter, taken from the stored record
+    // rather than from the request.
+    return this.read.get(result.record.id, {
+      requester: result.record.asserted_by,
+    });
   }
 
   @Get('records')
-  async list(@Query() query: unknown): Promise<unknown> {
+  async list(
+    @Query() query: unknown,
+    @Req() request: Request,
+  ): Promise<unknown> {
     const parsed = ListQuery.safeParse(query);
     if (!parsed.success) {
       throw new BadRequestException(
@@ -62,34 +78,53 @@ export class RecordsController {
       );
     }
 
-    return this.read.list({
-      type: parsed.data.type,
-      assertedBy: parsed.data.asserted_by,
-      subject: parsed.data.subject,
-      limit: parsed.data.limit,
-      cursor: parsed.data.cursor,
-    });
+    return this.read.list(
+      {
+        type: parsed.data.type,
+        assertedBy: parsed.data.asserted_by,
+        subject: parsed.data.subject,
+        limit: parsed.data.limit,
+        cursor: parsed.data.cursor,
+      },
+      this.reader(request, parsed.data.purpose),
+    );
   }
 
   @Get('records/:id')
-  async get(@Param('id') id: string): Promise<unknown> {
-    const view = await this.read.get(this.id(id));
+  async get(@Param('id') id: string, @Req() request: Request): Promise<unknown> {
+    const view = await this.read.get(this.id(id), this.reader(request));
     if (view === null) throw new NotFoundException(`no record ${id}`);
     return view;
   }
 
   @Get('records/:id/chain')
-  async chain(@Param('id') id: string): Promise<unknown> {
-    const records = await this.read.chain(this.id(id));
+  async chain(
+    @Param('id') id: string,
+    @Req() request: Request,
+  ): Promise<unknown> {
+    const records = await this.read.chain(this.id(id), this.reader(request));
     if (records.length === 0) throw new NotFoundException(`no record ${id}`);
     return { records };
   }
 
   @Get('inferences/:id')
-  async inference(@Param('id') id: string): Promise<unknown> {
-    const view = await this.read.getInference(this.id(id));
+  async inference(
+    @Param('id') id: string,
+    @Req() request: Request,
+  ): Promise<unknown> {
+    const view = await this.read.getInference(
+      this.id(id),
+      this.reader(request),
+    );
     if (view === null) throw new NotFoundException(`no inference ${id}`);
     return view;
+  }
+
+  private reader(
+    request: Request,
+    purpose?: (typeof CONSENT_PURPOSES)[number] | undefined,
+  ): Reader {
+    return { requester: verifiedSubject(request), purpose: purpose ?? null };
   }
 
   private id(value: string): string {

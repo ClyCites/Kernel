@@ -4,7 +4,13 @@ import { CORE_ENTITIES } from '@clycites/schema';
 import { uuidv7 } from 'uuidv7';
 
 import { startTestDatabase, type TestDatabase } from '../helpers/database.js';
-import { ENTITY_BODIES, entityDocument, retractionDocument } from '../helpers/fixtures.js';
+import {
+  ENTITY_BODIES,
+  entityDocument,
+  readingAs,
+  retractionDocument,
+} from '../helpers/fixtures.js';
+import { ConsentService } from '../../src/consent/consent.service.js';
 import { DelegationService } from '../../src/records/delegation.service.js';
 import { IngestService } from '../../src/records/ingest.service.js';
 import { ReadService } from '../../src/records/read.service.js';
@@ -20,7 +26,7 @@ before(async () => {
   db = await startTestDatabase();
   const repository = new RecordRepository(db.app);
   ingest = new IngestService(repository, new DelegationService(repository));
-  read = new ReadService(repository);
+  read = new ReadService(repository, new ConsentService());
 });
 
 after(async () => {
@@ -50,13 +56,14 @@ describe('the registry covers the schema', () => {
 describe('every entity uses the same write and read path', () => {
   for (const type of Object.keys(ENTITY_BODIES)) {
     test(`${type} round-trips`, async () => {
-      const document = entityDocument(type);
+      const asserter = uuidv7();
+      const document = entityDocument(type, { asserted_by: asserter });
       const stored = await ingest.ingest(document);
 
       assert.equal(stored.record.type, type);
       assert.equal(stored.record.record_class, 'observation');
 
-      const view = await read.get(stored.record.id);
+      const view = await read.get(stored.record.id, readingAs(asserter));
       assert.ok(view, `${type} should be readable`);
       assert.equal(view.record['type'], type);
       assert.equal(view.retracted, false);
@@ -75,10 +82,13 @@ describe('every entity uses the same write and read path', () => {
 
     assert.equal(retraction.record.type, 'retraction');
 
-    const view = await read.get(target.record.id);
+    const view = await read.get(target.record.id, readingAs(asserter));
     assert.equal(view?.retracted, true);
 
-    const page = await read.list({ type: 'harvest' });
+    const page = await read.list(
+      { type: 'harvest', assertedBy: asserter },
+      readingAs(asserter),
+    );
     assert.equal(
       page.records.some((each) => each.record['id'] === target.record.id),
       false,
@@ -100,13 +110,16 @@ describe('every entity uses the same write and read path', () => {
       }),
     );
 
-    const chain = await read.chain(second.record.id);
+    const chain = await read.chain(second.record.id, readingAs(holder));
     assert.deepEqual(
       chain.map((view) => view.record['id']),
       [first.record.id, second.record.id],
     );
 
-    const page = await read.list({ type: 'plot', subject: holder });
+    const page = await read.list(
+      { type: 'plot', subject: holder },
+      readingAs(holder),
+    );
     assert.deepEqual(
       page.records.map((view) => view.record['id']),
       [second.record.id],
@@ -117,8 +130,14 @@ describe('every entity uses the same write and read path', () => {
 
 describe('subject filters', () => {
   test('a party is found by its own id', async () => {
-    const stored = await ingest.ingest(entityDocument('party'));
-    const page = await read.list({ subject: stored.record.id });
+    const asserter = uuidv7();
+    const stored = await ingest.ingest(
+      entityDocument('party', { asserted_by: asserter }),
+    );
+    const page = await read.list(
+      { subject: stored.record.id },
+      readingAs(asserter),
+    );
 
     assert.deepEqual(
       page.records.map((view) => view.record['id']),
@@ -128,8 +147,10 @@ describe('subject filters', () => {
 
   test('an agreement is found by a party nested in its parties array', async () => {
     const supplier = uuidv7();
+    const asserter = uuidv7();
     const stored = await ingest.ingest(
       entityDocument('agreement', {
+        asserted_by: asserter,
         parties: [
           { party: supplier, role: 'supplier' },
           { party: uuidv7(), role: 'buyer' },
@@ -137,7 +158,10 @@ describe('subject filters', () => {
       }),
     );
 
-    const page = await read.list({ subject: supplier, type: 'agreement' });
+    const page = await read.list(
+      { subject: supplier, type: 'agreement' },
+      readingAs(asserter),
+    );
     assert.deepEqual(
       page.records.map((view) => view.record['id']),
       [stored.record.id],
@@ -146,11 +170,18 @@ describe('subject filters', () => {
 
   test('an obligation is found by the delivery it arose from', async () => {
     const delivery = uuidv7();
+    const asserter = uuidv7();
     const stored = await ingest.ingest(
-      entityDocument('obligation', { arising_from: delivery }),
+      entityDocument('obligation', {
+        asserted_by: asserter,
+        arising_from: delivery,
+      }),
     );
 
-    const page = await read.list({ subject: delivery, type: 'obligation' });
+    const page = await read.list(
+      { subject: delivery, type: 'obligation' },
+      readingAs(asserter),
+    );
     assert.deepEqual(
       page.records.map((view) => view.record['id']),
       [stored.record.id],
@@ -160,12 +191,17 @@ describe('subject filters', () => {
   test('a custody transfer is found by either side of it', async () => {
     const from = uuidv7();
     const to = uuidv7();
+    const asserter = uuidv7();
     const stored = await ingest.ingest(
-      entityDocument('custody_transfer', { from_party: from, to_party: to }),
+      entityDocument('custody_transfer', {
+        asserted_by: asserter,
+        from_party: from,
+        to_party: to,
+      }),
     );
 
     for (const party of [from, to]) {
-      const page = await read.list({ subject: party });
+      const page = await read.list({ subject: party }, readingAs(asserter));
       assert.deepEqual(
         page.records.map((view) => view.record['id']),
         [stored.record.id],
@@ -178,8 +214,10 @@ describe('subject filters', () => {
 describe('quality flags reach the entities that need them', () => {
   /** Spec §9.1. Store the discrepancy; never refuse the record. */
   test('a lot whose components do not add up is flagged, not rejected', async () => {
+    const asserter = uuidv7();
     const stored = await ingest.ingest(
       entityDocument('lot', {
+        asserted_by: asserter,
         quantity: {
           raw_value: 40,
           raw_unit: 'bag',
@@ -221,7 +259,7 @@ describe('quality flags reach the entities that need them', () => {
       `expected the discrepancy to be flagged, got ${stored.record.quality_flags.join(', ')}`,
     );
 
-    const view = await read.get(stored.record.id);
+    const view = await read.get(stored.record.id, readingAs(asserter));
     assert.ok(view?.quality_flags.includes('mass_balance_discrepancy'));
   });
 

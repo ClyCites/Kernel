@@ -303,26 +303,33 @@ export class RecordRepository {
 
   /**
    * The replication feed. Ascending by `(recorded_at, id)` so a device can
-   * resume where it stopped, and deliberately unfiltered: a device replicating
-   * the log needs the superseded and retracted records too, or it cannot
-   * resolve a chain locally. Brief §5 phase 6.
+   * resume where it stopped, and deliberately unfiltered by status: a device
+   * replicating the log needs the superseded and retracted records too, or it
+   * cannot resolve a chain locally. Brief §5 phase 6.
+   *
+   * It is scoped to one asserting party. A whole-log feed is the widest
+   * disclosure surface in the kernel, and there is no consent implementation
+   * that could justify one — see `ConsentService`. A device therefore pulls
+   * back what its own party wrote, which is the asserter allowance and nothing
+   * more.
    */
   async since(
     after: { recordedAt: string; id: string } | undefined,
     limit: number,
+    assertedBy: string,
   ): Promise<DerivedRecord[]> {
-    const params: unknown[] = [];
-    const where =
-      after === undefined
-        ? ''
-        : (params.push(after.recordedAt, after.id),
-          `where (r.recorded_at, r.id) > ($1::timestamptz, $2::uuid)`);
+    const params: unknown[] = [assertedBy];
+    const where = ['r.asserted_by = $1::uuid'];
+    if (after !== undefined) {
+      params.push(after.recordedAt, after.id);
+      where.push(`(r.recorded_at, r.id) > ($2::timestamptz, $3::uuid)`);
+    }
     params.push(limit);
 
     const { rows } = await this.pool.query<DerivedRecord>(
       `select ${columnList('r')}, ${DERIVED}
          from facts.record r
-        ${where}
+        where ${where.join(' and ')}
         order by r.recorded_at asc, r.id asc
         limit $${params.length}`,
       params,

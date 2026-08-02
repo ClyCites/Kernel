@@ -55,6 +55,12 @@ export interface QualityContext {
   document: Record<string, unknown>;
   /** How the delegation behind `on_behalf_of` was granted, when there is one. */
   delegationBasis?: string | null;
+  /**
+   * Findings from resolving the record's `conversion_id`s against the
+   * registry. Computed by `ConversionService` because that lookup is async;
+   * they arrive as input so this function stays synchronous and pure.
+   */
+  conversionFlags?: string[];
 }
 
 export function qualityFlags(context: QualityContext): string[] {
@@ -69,6 +75,7 @@ export function qualityFlags(context: QualityContext): string[] {
     flagTransfer(context.document, flags);
   }
   if (context.type === 'lot') flagMassBalance(context.document, flags);
+  for (const flag of context.conversionFlags ?? []) flags.add(flag);
 
   return [...flags].sort();
 }

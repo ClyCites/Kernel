@@ -7,14 +7,13 @@ import { startTestDatabase, type TestDatabase } from '../helpers/database.js';
 import {
   ENTITY_BODIES,
   entityDocument,
+  ingestServiceFor,
   readingAs,
   retractionDocument,
 } from '../helpers/fixtures.js';
 import { ConsentService } from '../../src/consent/consent.service.js';
-import { DelegationService } from '../../src/records/delegation.service.js';
 import { IngestService } from '../../src/records/ingest.service.js';
 import { ReadService } from '../../src/records/read.service.js';
-import { RecordRepository } from '../../src/records/record.repository.js';
 import { registeredTypes } from '../../src/records/entity-registry.js';
 import { SUBJECT_FIELDS, subjectFields } from '../../src/records/subjects.js';
 
@@ -24,8 +23,8 @@ let read: ReadService;
 
 before(async () => {
   db = await startTestDatabase();
-  const repository = new RecordRepository(db.app);
-  ingest = new IngestService(repository, new DelegationService(repository));
+  const { ingest: service, repository } = ingestServiceFor(db.app);
+  ingest = service;
   read = new ReadService(repository, new ConsentService());
 });
 

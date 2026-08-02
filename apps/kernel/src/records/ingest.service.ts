@@ -4,6 +4,7 @@ import { schemaFor, registeredTypes } from './entity-registry.js';
 import { RecordRejected } from './errors.js';
 import { qualityFlags } from './quality.js';
 import { DelegationService } from './delegation.service.js';
+import { ConversionService } from '../registry/conversion.service.js';
 import { RecordRepository } from './record.repository.js';
 import {
   splitEnvelope,
@@ -33,6 +34,7 @@ export class IngestService {
   constructor(
     @Inject(RecordRepository) private readonly repository: RecordRepository,
     @Inject(DelegationService) private readonly delegations: DelegationService,
+    @Inject(ConversionService) private readonly conversions: ConversionService,
   ) {}
 
   async ingest(payload: unknown): Promise<IngestResult> {
@@ -86,6 +88,14 @@ export class IngestService {
     await this.checkSupersession(envelope, type);
     if (type === 'retraction') await this.checkRetraction(envelope, body);
 
+    // A client-supplied `normalized_kg` the kernel cannot reproduce is exactly
+    // what currently looks trustworthy and isn't. Per P6 this flags, never
+    // rejects — the record is still someone's account of what happened.
+    const conversionFlags = await this.conversions.flags(
+      document,
+      String(envelope['occurred_at']),
+    );
+
     const record: StoredRecord = {
       id: String(envelope['id']),
       type,
@@ -106,6 +116,7 @@ export class IngestService {
         type,
         document,
         delegationBasis: grant?.basis ?? null,
+        conversionFlags,
       }),
     };
 

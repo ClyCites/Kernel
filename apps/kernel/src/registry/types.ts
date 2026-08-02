@@ -1,0 +1,87 @@
+import { z } from 'zod';
+import {
+  ConversionBasis,
+  ObservationMethod,
+  RawUnit,
+  SubjectType,
+} from '@clycites/schema';
+
+/**
+ * Registry shapes that `@clycites/schema` deliberately does not define.
+ *
+ * The vendored schema is the only definition of an entity the kernel stores as
+ * a record. These are not records — they are reference data. `observation_type`
+ * is a namespaced string in the schema and `Grade.scheme` is opaque precisely
+ * because *which* values are legal is a kernel concern, not a core-facts one.
+ *
+ * If a second consumer ever needs these, promote them to
+ * `packages/registry-schema`. One consumer does not justify a package.
+ */
+
+/** Which `ObservationValue` variant an observation of this type must carry. */
+export const ObservationValueKind = z.enum([
+  'quantity',
+  'scalar',
+  'category',
+  'boolean',
+  'text',
+]);
+export type ObservationValueKind = z.infer<typeof ObservationValueKind>;
+
+/**
+ * `owner` is the party accountable for the entry. Open decision D8 is what
+ * powers that ownership carries; the name is recorded either way, because an
+ * unowned vocabulary grows entries nobody can retire.
+ */
+export const ObservationTypeEntry = z.object({
+  code: z
+    .string()
+    .regex(/^[a-z0-9_]+(\.[a-z0-9_]+)+$/, 'expected namespaced type'),
+  version: z.int().positive(),
+  label: z.string().min(1),
+  unit: z.string().min(1).nullable(),
+  value_kind: ObservationValueKind,
+  permitted_methods: z.array(ObservationMethod).min(1),
+  subject_types: z.array(SubjectType).min(1),
+  owner: z.string().min(1),
+  source: z.string().nullable(),
+});
+export type ObservationTypeEntry = z.infer<typeof ObservationTypeEntry>;
+
+/**
+ * Schemes are stored opaquely. `ordinal` orders values inside one scheme and
+ * carries no meaning across schemes — UNBS Grade 1 and a buyer's Grade 1 are
+ * different claims, and the kernel never ranks one against the other.
+ */
+export const GradingSchemeValue = z.object({
+  scheme: z.string().min(1),
+  value: z.string().min(1),
+  label: z.string().nullable(),
+  ordinal: z.int().nullable(),
+});
+export type GradingSchemeValue = z.infer<typeof GradingSchemeValue>;
+
+export const GradingSchemeEntry = z.object({
+  scheme: z.string().min(1),
+  label: z.string().min(1),
+  owner: z.string().min(1),
+  source: z.string().nullable(),
+});
+export type GradingSchemeEntry = z.infer<typeof GradingSchemeEntry>;
+
+/** The stored form of `@clycites/schema`'s `UnitConversion`, plus its lineage. */
+export const UnitConversionRow = z.object({
+  id: z.uuid(),
+  from_unit: RawUnit,
+  to_unit: RawUnit,
+  factor: z.number().positive(),
+  commodity: z.string().nullable(),
+  region_code: z.string().nullable(),
+  region_vintage: z.string().nullable(),
+  valid_from: z.string().nullable(),
+  valid_to: z.string().nullable(),
+  basis: ConversionBasis,
+  source: z.string().nullable(),
+  supersedes: z.uuid().nullable(),
+});
+export type UnitConversionRow = z.infer<typeof UnitConversionRow>;

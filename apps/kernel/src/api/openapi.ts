@@ -560,6 +560,25 @@ export function buildOpenApiDocument(): OpenApiDocument {
           },
         },
       },
+      '/metrics': {
+        get: {
+          tags: ['operations'],
+          operationId: 'metrics',
+          summary: 'Prometheus metrics',
+          description:
+            'Normalized mass grouped by the basis of the conversion behind it, ' +
+            'and the share of it resting on an unverified default factor. ' +
+            'A high assumed share is the honest state of the unit registry, ' +
+            'not a fault in the endpoint.',
+          responses: {
+            '200': {
+              description: 'Prometheus text exposition format.',
+              content: { 'text/plain': { schema: { type: 'string' } } },
+            },
+            '500': problemResponse('The rollup could not be computed.'),
+          },
+        },
+      },
     },
     components: { schemas },
   };

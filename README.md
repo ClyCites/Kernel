@@ -121,6 +121,7 @@ anything.
 | `POST /v1/sync/outbox` | Drain a batch captured offline |
 | `GET /v1/sync/changes` | Everything appended since a cursor |
 | `GET /v1/health`, `GET /v1/ready` | Liveness, readiness |
+| `GET /v1/metrics` | Prometheus text. Includes the share of normalized mass resting on an unverified conversion factor — it reads high, and that is the point |
 
 Errors are RFC 9457 problem documents and carry a correlation id.
 

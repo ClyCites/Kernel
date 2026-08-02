@@ -4,9 +4,12 @@ import { SCHEMA_VERSION } from '@clycites/schema';
 import { uuidv7 } from 'uuidv7';
 
 import { startTestDatabase, type TestDatabase } from '../helpers/database.js';
-import { deliveryDocument, readingAs } from '../helpers/fixtures.js';
+import {
+  deliveryDocument,
+  ingestServiceFor,
+  readingAs,
+} from '../helpers/fixtures.js';
 import { ConsentService } from '../../src/consent/consent.service.js';
-import { DelegationService } from '../../src/records/delegation.service.js';
 import { IngestService } from '../../src/records/ingest.service.js';
 import { ReadService } from '../../src/records/read.service.js';
 import { RecordRepository } from '../../src/records/record.repository.js';
@@ -19,8 +22,7 @@ let read: ReadService;
 
 before(async () => {
   db = await startTestDatabase();
-  repository = new RecordRepository(db.app);
-  ingest = new IngestService(repository, new DelegationService(repository));
+  ({ ingest, repository } = ingestServiceFor(db.app));
   read = new ReadService(repository, new ConsentService());
 });
 

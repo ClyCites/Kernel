@@ -3,8 +3,11 @@ import assert from 'node:assert/strict';
 import { uuidv7 } from 'uuidv7';
 
 import { startTestDatabase, type TestDatabase } from '../helpers/database.js';
-import { delegationDocument, deliveryDocument } from '../helpers/fixtures.js';
-import { DelegationService } from '../../src/records/delegation.service.js';
+import {
+  delegationDocument,
+  deliveryDocument,
+  ingestServiceFor,
+} from '../helpers/fixtures.js';
 import { IngestService } from '../../src/records/ingest.service.js';
 import { RecordRepository } from '../../src/records/record.repository.js';
 import { RecordRejected } from '../../src/records/errors.js';
@@ -15,8 +18,7 @@ let repository: RecordRepository;
 
 before(async () => {
   db = await startTestDatabase();
-  repository = new RecordRepository(db.app);
-  ingest = new IngestService(repository, new DelegationService(repository));
+  ({ ingest, repository } = ingestServiceFor(db.app));
 });
 
 after(async () => {

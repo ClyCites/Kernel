@@ -1,12 +1,35 @@
 import { SCHEMA_VERSION } from '@clycites/schema';
 import { uuidv7 } from 'uuidv7';
+import type { Pool } from 'pg';
 
+import { ConversionService } from '../../src/registry/conversion.service.js';
+import { DelegationService } from '../../src/records/delegation.service.js';
+import { IngestService } from '../../src/records/ingest.service.js';
+import { RecordRepository } from '../../src/records/record.repository.js';
+import { RegistryRepository } from '../../src/registry/registry.repository.js';
 import type { Reader } from '../../src/records/read.service.js';
 
 /**
  * Fixtures modelled on Appendix A of the specification — a farmer delivering
  * twelve bags of maize to a cooperative that weighs and confirms.
  */
+
+/**
+ * The write path, assembled by hand. Tests construct services directly rather
+ * than through the Nest container because `tsx` does not emit decorator
+ * metadata — see docs/decisions/0003-toolchain.md.
+ */
+export const ingestServiceFor = (
+  pool: Pool,
+): { ingest: IngestService; repository: RecordRepository } => {
+  const repository = new RecordRepository(pool);
+  const ingest = new IngestService(
+    repository,
+    new DelegationService(repository),
+    new ConversionService(new RegistryRepository(pool)),
+  );
+  return { ingest, repository };
+};
 
 /**
  * Reads as a given party. Consent denies everything else, so a test that reads

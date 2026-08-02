@@ -6,11 +6,11 @@ import { startTestDatabase, type TestDatabase } from '../helpers/database.js';
 import {
   deliveryDocument,
   entityDocument,
+  ingestServiceFor,
   readingAs,
   retractionDocument,
 } from '../helpers/fixtures.js';
 import { ConsentDenied, ConsentService } from '../../src/consent/consent.service.js';
-import { DelegationService } from '../../src/records/delegation.service.js';
 import { IngestService } from '../../src/records/ingest.service.js';
 import { RecordRepository } from '../../src/records/record.repository.js';
 import { RecordRejected } from '../../src/records/errors.js';
@@ -24,7 +24,7 @@ let ingest: IngestService;
 before(async () => {
   db = await startTestDatabase();
   const repository = new RecordRepository(db.app);
-  ingest = new IngestService(repository, new DelegationService(repository));
+  ({ ingest } = ingestServiceFor(db.app));
   sync = new SyncService(
     ingest,
     repository,

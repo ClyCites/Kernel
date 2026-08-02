@@ -33,3 +33,14 @@ export class RecordRejected extends Error {
     this.name = 'RecordRejected';
   }
 }
+
+/** A read the kernel cannot carry out. Nothing to do with record contents. */
+export class QueryRejected extends Error {
+  constructor(
+    readonly code: 'invalid_cursor' | 'unknown_record_type',
+    message: string,
+  ) {
+    super(message);
+    this.name = 'QueryRejected';
+  }
+}

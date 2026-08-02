@@ -2,10 +2,11 @@ import { Module } from '@nestjs/common';
 
 import { DelegationService } from './delegation.service.js';
 import { IngestService } from './ingest.service.js';
+import { ReadService } from './read.service.js';
 import { RecordRepository } from './record.repository.js';
 
 @Module({
-  providers: [RecordRepository, DelegationService, IngestService],
-  exports: [RecordRepository, DelegationService, IngestService],
+  providers: [RecordRepository, DelegationService, IngestService, ReadService],
+  exports: [RecordRepository, DelegationService, IngestService, ReadService],
 })
 export class RecordsModule {}

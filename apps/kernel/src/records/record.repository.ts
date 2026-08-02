@@ -42,6 +42,40 @@ const columnList = (alias = ''): string => {
 
 const COLUMNS = columnList();
 
+/** Correlated existence tests, written once so the read path cannot diverge. */
+const SUPERSEDED = `exists (select 1 from facts.record s where s.supersedes = r.id)`;
+const RETRACTED = `exists (
+  select 1 from facts.record t
+   where t.type = 'retraction' and t.body ->> 'target' = r.id::text
+)`;
+
+/**
+ * `superseded_by` is a list because spec §8 rule 4 allows two people to correct
+ * the same record. More than one entry is a fork, and the caller is told rather
+ * than handed a winner the kernel picked.
+ */
+const DERIVED = `coalesce(
+    (select array_agg(s.id order by s.recorded_at) from facts.record s where s.supersedes = r.id),
+    '{}'
+  ) as superseded_by,
+  ${RETRACTED} as retracted`;
+
+export interface DerivedRecord extends StoredRecord {
+  superseded_by: string[];
+  retracted: boolean;
+}
+
+export interface ListFilter {
+  type?: string | undefined;
+  assertedBy?: string | undefined;
+  /** The party or entity a record is about, matched against declared fields. */
+  subject?: { id: string; fields: readonly string[] } | undefined;
+  includeSuperseded?: boolean | undefined;
+  includeRetracted?: boolean | undefined;
+  limit: number;
+  cursor?: { recordedAt: string; id: string } | undefined;
+}
+
 const NAMESPACE: Record<RecordClass, string> = {
   observation: 'facts.record',
   inference: 'inference.record',
@@ -191,6 +225,89 @@ export class RecordRepository {
       [id, maxDepth],
     );
     return rows;
+  }
+
+  /**
+   * The earliest record in the chain `id` belongs to — walking `supersedes`
+   * backwards. A chain is walkable from any point, not just from its origin.
+   */
+  async findChainOrigin(id: string, maxDepth = 64): Promise<string | null> {
+    const { rows } = await this.pool.query<{ id: string; depth: number }>(
+      `with recursive back as (
+         select id, supersedes, 0 as depth from facts.record where id = $1
+         union all
+         select prior.id, prior.supersedes, back.depth + 1
+           from facts.record prior
+           join back on back.supersedes = prior.id
+          where back.depth < $2
+       )
+       select id, depth from back order by depth desc limit 1`,
+      [id, maxDepth],
+    );
+    return rows[0]?.id ?? null;
+  }
+
+  /** Fetch by id with the derived fields the read path needs. */
+  async findByIdWithDerived(id: string): Promise<DerivedRecord | null> {
+    const { rows } = await this.pool.query<DerivedRecord>(
+      `select ${columnList('r')}, ${DERIVED} from facts.record r where r.id = $1`,
+      [id],
+    );
+    return rows[0] ?? null;
+  }
+
+  /**
+   * The default read. Superseded and retracted records are absent unless asked
+   * for by id — brief §5 phase 3.
+   */
+  async list(filter: ListFilter): Promise<DerivedRecord[]> {
+    const params: unknown[] = [];
+    const bind = (value: unknown): string => {
+      params.push(value);
+      return `$${params.length}`;
+    };
+
+    const where: string[] = [];
+    if (filter.type !== undefined) where.push(`r.type = ${bind(filter.type)}`);
+    if (filter.assertedBy !== undefined) {
+      where.push(`r.asserted_by = ${bind(filter.assertedBy)}`);
+    }
+    if (filter.subject !== undefined) {
+      const { id, fields } = filter.subject;
+      const matches = fields.map(
+        (field) => `r.body @> ${bind(JSON.stringify({ [field]: id }))}::jsonb`,
+      );
+      where.push(matches.length > 0 ? `(${matches.join(' or ')})` : 'false');
+    }
+    if (filter.includeSuperseded !== true) where.push(`not ${SUPERSEDED}`);
+    if (filter.includeRetracted !== true) where.push(`not ${RETRACTED}`);
+    if (filter.cursor !== undefined) {
+      where.push(
+        `(r.recorded_at, r.id) < (${bind(filter.cursor.recordedAt)}::timestamptz, ${bind(filter.cursor.id)}::uuid)`,
+      );
+    }
+
+    const { rows } = await this.pool.query<DerivedRecord>(
+      `select ${columnList('r')}, ${DERIVED}
+         from facts.record r
+        ${where.length > 0 ? `where ${where.join(' and ')}` : ''}
+        order by r.recorded_at desc, r.id desc
+        limit ${bind(filter.limit)}`,
+      params,
+    );
+    return rows;
+  }
+
+  /** Which of these ids a retraction targets. One query, not one per record. */
+  async retractedAmong(ids: string[]): Promise<string[]> {
+    if (ids.length === 0) return [];
+    const { rows } = await this.pool.query<{ target: string }>(
+      `select distinct body ->> 'target' as target
+         from facts.record
+        where type = 'retraction' and body ->> 'target' = any($1::text[])`,
+      [ids],
+    );
+    return rows.map((row) => row.target);
   }
 
   /** True if any retraction targets this id. Spec §8.1. */

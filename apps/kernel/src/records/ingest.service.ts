@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import { schemaFor, registeredTypes } from './entity-registry.js';
 import { RecordRejected } from './errors.js';
@@ -30,8 +30,6 @@ export interface IngestResult {
  */
 @Injectable()
 export class IngestService {
-  private readonly logger = new Logger(IngestService.name);
-
   constructor(
     private readonly repository: RecordRepository,
     private readonly delegations: DelegationService,
@@ -86,6 +84,7 @@ export class IngestService {
           });
 
     await this.checkSupersession(envelope, type);
+    if (type === 'retraction') await this.checkRetraction(envelope, body);
 
     const record: StoredRecord = {
       id: String(envelope['id']),
@@ -120,12 +119,6 @@ export class IngestService {
         'id_conflict',
         `record ${record.id} already exists with different contents`,
         [{ path: 'id', message: 'id already used by a different record' }],
-      );
-    }
-
-    if (!result.replayed && record.quality_flags.length > 0) {
-      this.logger.log(
-        `appended ${type} ${record.id} with flags: ${record.quality_flags.join(', ')}`,
       );
     }
 
@@ -177,6 +170,39 @@ export class IngestService {
             message: 'the correction comes from a different party',
           },
         ],
+      );
+    }
+  }
+
+  /**
+   * Spec §8.1. A retraction hides a record from default reads without removing
+   * it, so it has the same authority requirement as a correction.
+   */
+  private async checkRetraction(
+    envelope: RecordDocument,
+    body: RecordDocument,
+  ): Promise<void> {
+    const targetId = String(body['target']);
+    const target = await this.repository.findById(targetId);
+
+    if (!target) {
+      throw new RecordRejected(
+        'supersession_invalid',
+        `record ${targetId} is not in the log`,
+        [{ path: 'target', message: 'no such record' }],
+      );
+    }
+
+    const claimant =
+      asNullableString(envelope['on_behalf_of']) ??
+      String(envelope['asserted_by']);
+    const originalClaimant = target.on_behalf_of ?? target.asserted_by;
+
+    if (claimant !== originalClaimant) {
+      throw new RecordRejected(
+        'supersession_invalid',
+        `only ${originalClaimant} may retract their own record`,
+        [{ path: 'target', message: 'the retraction comes from a different party' }],
       );
     }
   }

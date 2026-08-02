@@ -1,5 +1,5 @@
 import type { z } from 'zod';
-import { Delegation, Delivery } from '@clycites/schema';
+import { Delegation, Delivery, Retraction } from '@clycites/schema';
 
 /**
  * The entity schemas the ingest pipeline accepts, keyed by envelope `type`.
@@ -13,11 +13,15 @@ import { Delegation, Delivery } from '@clycites/schema';
  *   - `delegation`, because the provenance step cannot be exercised without it —
  *     `on_behalf_of` is checked against a Delegation record in the log.
  *
- * Phase 5 adds the remaining fourteen.
+ * Phase 3 adds `retraction`, without which no read path can be shown to exclude
+ * retracted records.
+ *
+ * Phase 5 adds the remaining thirteen.
  */
 export const ENTITY_SCHEMAS = {
   delivery: Delivery,
   delegation: Delegation,
+  retraction: Retraction,
 } as const satisfies Record<string, z.ZodType>;
 
 export type RegisteredEntityType = keyof typeof ENTITY_SCHEMAS;

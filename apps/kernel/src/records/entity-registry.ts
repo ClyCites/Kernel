@@ -1,26 +1,52 @@
 import type { z } from 'zod';
-import { Delegation, Delivery, Retraction } from '@clycites/schema';
+import {
+  Account,
+  Agreement,
+  CustodyTransfer,
+  Delegation,
+  Delivery,
+  Facility,
+  Harvest,
+  Lot,
+  Membership,
+  Obligation,
+  Observation,
+  Party,
+  Planting,
+  Plot,
+  Retraction,
+  SettlementReference,
+} from '@clycites/schema';
 
 /**
- * The entity schemas the ingest pipeline accepts, keyed by envelope `type`.
+ * The entity schemas the kernel accepts, keyed by envelope `type`.
  *
  * Every entry points at `@clycites/schema`. Nothing here restates a field, and
  * nothing validates a record a second time (brief §7).
  *
- * Phase 2 registers two:
- *   - `delivery`, the commercially significant entity the write path was built
- *     against;
- *   - `delegation`, because the provenance step cannot be exercised without it —
- *     `on_behalf_of` is checked against a Delegation record in the log.
- *
- * Phase 3 adds `retraction`, without which no read path can be shown to exclude
- * retracted records.
- *
- * Phase 5 adds the remaining thirteen.
+ * All sixteen core entities are here, and none of them needed special handling.
+ * The envelope is identical across entities, so ingest, provenance,
+ * supersession and idempotency are entity-agnostic. The only per-entity code in
+ * the kernel is two lookup tables — which fields name a record's subject
+ * (`subjects.ts`) and which plausibility checks apply (`quality.ts`) — not
+ * branches in the pipeline.
  */
 export const ENTITY_SCHEMAS = {
-  delivery: Delivery,
+  party: Party,
+  account: Account,
   delegation: Delegation,
+  membership: Membership,
+  facility: Facility,
+  plot: Plot,
+  planting: Planting,
+  harvest: Harvest,
+  observation: Observation,
+  lot: Lot,
+  custody_transfer: CustodyTransfer,
+  delivery: Delivery,
+  agreement: Agreement,
+  obligation: Obligation,
+  settlement_reference: SettlementReference,
   retraction: Retraction,
 } as const satisfies Record<string, z.ZodType>;
 

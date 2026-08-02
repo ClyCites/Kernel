@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { Pool, PoolClient } from 'pg';
 
 import { KERNEL_POOL } from '../storage/pool.js';
+import { containment } from './subjects.js';
 import type { RecordClass, StoredRecord } from './record.js';
 
 /**
@@ -274,8 +275,10 @@ export class RecordRepository {
     }
     if (filter.subject !== undefined) {
       const { id, fields } = filter.subject;
-      const matches = fields.map(
-        (field) => `r.body @> ${bind(JSON.stringify({ [field]: id }))}::jsonb`,
+      const matches = fields.map((field) =>
+        field === 'id'
+          ? `r.id = ${bind(id)}`
+          : `r.body @> ${bind(JSON.stringify(containment(field, id)))}::jsonb`,
       );
       where.push(matches.length > 0 ? `(${matches.join(' or ')})` : 'false');
     }

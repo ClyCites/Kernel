@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 import { RecordRejected } from './errors.js';
 import { RecordRepository } from './record.repository.js';
@@ -32,7 +32,9 @@ export interface DelegationGrant {
  */
 @Injectable()
 export class DelegationService {
-  constructor(private readonly repository: RecordRepository) {}
+  constructor(
+    @Inject(RecordRepository) private readonly repository: RecordRepository,
+  ) {}
 
   async authorise(request: DelegationRequest): Promise<DelegationGrant> {
     const original = await this.repository.findById(request.delegation);

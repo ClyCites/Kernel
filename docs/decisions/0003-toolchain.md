@@ -40,6 +40,20 @@ installable side-by-side with TypeScript 6.
 - CI runs on Node 22 (the version named in §3). Local development on Node 24
   also works; `engines` requires `>=22`.
 
+## Dependency injection must name its tokens
+
+Tests run through `tsx`, which transpiles with esbuild, and **esbuild does not
+implement `emitDecoratorMetadata`**. Nest's usual trick of reading constructor
+parameter types from `design:paramtypes` therefore produces nothing under the
+test runner: the container constructs the class with no arguments at all and
+every dependency is `undefined` at the first call, with no error from Nest to
+say so.
+
+So every constructor parameter carries an explicit `@Inject(Token)`, including
+the ones whose type would have been enough under `tsc`. It costs a few
+characters and removes an entire class of failure that only appears at runtime,
+only in one of the two toolchains, and only once a request arrives.
+
 ## Findings reported upstream
 
 Linting the vendored schema (before it was excluded) surfaced three unused

@@ -27,6 +27,11 @@ jobs:
 
       - run: pnpm lint
 
+      # The committed contract is generated. If it drifts from the schemas,
+      # applications are coding against a document that is no longer true.
+      - run: pnpm openapi
+      - run: git diff --exit-code apps/kernel/openapi.json
+
       # Integration tests start their own Postgres via Testcontainers, which
       # needs the Docker daemon the runner already provides.
       - run: pnpm test

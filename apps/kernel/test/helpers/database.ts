@@ -51,8 +51,9 @@ export async function startTestDatabase(): Promise<TestDatabase> {
     ownerUrl,
     appPassword: APP_PASSWORD,
     stop: async () => {
-      await app.end();
-      await owner.end();
+      // A Nest app under test ends the pool through its shutdown hook first.
+      await app.end().catch(() => {});
+      await owner.end().catch(() => {});
       await container.stop();
     },
   };

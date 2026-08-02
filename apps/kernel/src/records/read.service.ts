@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 import { schemaFor } from './entity-registry.js';
 import { QueryRejected } from './errors.js';
@@ -43,7 +43,9 @@ export interface ListOptions {
  */
 @Injectable()
 export class ReadService {
-  constructor(private readonly repository: RecordRepository) {}
+  constructor(
+    @Inject(RecordRepository) private readonly repository: RecordRepository,
+  ) {}
 
   /** By id, regardless of whether it has been superseded or retracted. */
   async get(id: string): Promise<RecordView | null> {

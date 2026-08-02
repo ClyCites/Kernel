@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 import { schemaFor, registeredTypes } from './entity-registry.js';
 import { RecordRejected } from './errors.js';
@@ -31,8 +31,8 @@ export interface IngestResult {
 @Injectable()
 export class IngestService {
   constructor(
-    private readonly repository: RecordRepository,
-    private readonly delegations: DelegationService,
+    @Inject(RecordRepository) private readonly repository: RecordRepository,
+    @Inject(DelegationService) private readonly delegations: DelegationService,
   ) {}
 
   async ingest(payload: unknown): Promise<IngestResult> {

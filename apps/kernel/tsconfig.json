@@ -11,6 +11,7 @@
     "outDir": "dist",
     "rootDir": ".",
     "skipLibCheck": true,
+    "esModuleInterop": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "verbatimModuleSyntax": false,

@@ -113,16 +113,36 @@ describe('the seed is honest about what it does not know', () => {
     }
   });
 
-  test('only definitional conversions are marked measured', async () => {
-    const { rows } = await db.app.query<{ from_unit: string }>(
-      `select from_unit from registry.unit_conversion
-        where basis = 'measured' order by from_unit`,
+  test('a factor claiming to be measured shows the sample it was measured from', async () => {
+    // 0012 gave `measured` its real meaning: somebody weighed a sample. The
+    // three SI rows from 0010 predate that and are grandfathered — the comment
+    // in 0012 says so — but nothing added since may claim `measured` without
+    // showing its working.
+    const { rows } = await db.app.query<{
+      from_unit: string;
+      sample_size: number | null;
+      source: string | null;
+    }>(
+      `select from_unit, sample_size, source from registry.unit_conversion
+        where basis = 'measured' order by from_unit, id`,
     );
 
-    assert.deepEqual(
-      rows.map((row) => row.from_unit),
-      ['gram', 'kg', 'tonne'],
-      'measured is reserved for SI relationships that cannot be wrong',
+    const grandfathered = new Set(['gram', 'kg', 'tonne']);
+    for (const row of rows) {
+      if (grandfathered.has(row.from_unit) && row.sample_size === null) continue;
+      assert.ok(
+        row.sample_size !== null && row.sample_size > 0,
+        `a measured ${row.from_unit} factor states no sample size`,
+      );
+      assert.ok(
+        row.source !== null && row.source.length > 0,
+        `a measured ${row.from_unit} factor cites no source`,
+      );
+    }
+
+    assert.ok(
+      rows.some((row) => !grandfathered.has(row.from_unit)),
+      'no genuinely measured factor exists — the invariant is asserting nothing',
     );
   });
 

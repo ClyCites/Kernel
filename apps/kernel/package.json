@@ -11,7 +11,8 @@
     "start": "node dist/src/main.js",
     "test": "tsx --test \"test/**/*.test.ts\"",
     "migrate": "tsx src/storage/migrate-cli.ts",
-    "openapi": "tsx src/api/openapi-cli.ts"
+    "openapi": "tsx src/api/openapi-cli.ts",
+    "seed": "tsx src/seed/cli.ts"
   },
   "dependencies": {
     "@clycites/schema": "workspace:*",

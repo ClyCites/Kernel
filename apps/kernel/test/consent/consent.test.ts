@@ -69,12 +69,30 @@ function delivery(overrides: Partial<RecordFacts> = {}): RecordFacts {
     type: 'delivery',
     subjects: [FARMER, COOP],
     parties: [FARMER, COOP],
+    via: null,
     asserted_by: CLERK,
     occurred_at: SEASON,
     financial: true,
     lawful_basis: 'special_data_consent',
     ...overrides,
   };
+}
+
+/**
+ * A harvest, which names no party at all. It reaches one only through the plot
+ * it was taken from — the case that made a farmer a third party to their own
+ * production record.
+ */
+function harvest(plot: string, overrides: Partial<RecordFacts> = {}): RecordFacts {
+  return delivery({
+    type: 'harvest',
+    subjects: [plot],
+    parties: [],
+    via: plot,
+    financial: false,
+    lawful_basis: 'contract_performance',
+    ...overrides,
+  });
 }
 
 /** A custody transfer: the same two parties, no money in it. */
@@ -119,6 +137,106 @@ const grantTo = async (
   });
   return row.id;
 };
+
+/**
+ * Farm Intelligence reads Planting, Harvest and Observation and nothing else.
+ * None of them names a party, so until the hop existed the farmer whose
+ * production record it is was a third party to it.
+ */
+describe('a record reaches its party in one hop', () => {
+  let plot: string;
+
+  before(async () => {
+    plot = uuidv7();
+    await ingest.ingest(
+      entityDocument('plot', {
+        id: plot,
+        held_by: FARMER,
+        occurred_at: '2026-01-02T00:00:00Z',
+        asserted_by: FARMER,
+      }),
+    );
+  });
+
+  test('the farmer reads their own harvest as self', async () => {
+    const decision = await consent.decide(asking(FARMER, [harvest(plot)]));
+
+    assert.equal(decision.allowed, true);
+    assert.equal(decision.reason, 'self_read');
+    assert.equal(decision.access, 'self');
+  });
+
+  test('their cooperative reads it as member body', async () => {
+    const decision = await consent.decide(asking(COOP, [harvest(plot)]));
+
+    // The coop is not a party to a harvest at all. It reaches this one because
+    // every party the record resolves to — the plot's holder — is its member,
+    // which is s.9(3)(c), and a harvest carries no financial information.
+    assert.equal(decision.allowed, true);
+    assert.equal(decision.reason, 'member_body');
+    assert.equal(decision.access, 'member_body');
+  });
+
+  test('a cooperative does not reach a member’s dealings with an outsider', async () => {
+    const outsider = uuidv7();
+    const decision = await consent.decide(
+      asking(
+        COOP,
+        [
+          custody({
+            parties: [FARMER, outsider],
+            subjects: [FARMER, outsider],
+            asserted_by: outsider,
+          }),
+        ],
+        { purpose: 'advisory' },
+      ),
+    );
+
+    // Nothing financial here, so a member body would have been let through.
+    // Needing a grant at all is what proves it classified as a third party.
+    assert.equal(decision.allowed, false);
+    assert.equal(decision.reason, 'no_grant');
+  });
+
+  test('a stranger is still a third party to it', async () => {
+    const stranger = uuidv7();
+    const decision = await consent.decide(
+      asking(stranger, [harvest(plot)], { purpose: 'advisory' }),
+    );
+
+    assert.equal(decision.allowed, false);
+    assert.equal(decision.reason, 'no_grant');
+  });
+
+  test('a hop that resolves to nobody is denied, and says so', async () => {
+    const decision = await consent.decide(
+      asking(FARMER, [harvest(uuidv7())], { purpose: 'advisory' }),
+    );
+
+    assert.equal(decision.allowed, false);
+    assert.equal(decision.reason, 'subject_unresolvable');
+  });
+
+  test('the asserter still reaches a record whose subject will not resolve', async () => {
+    const scout = uuidv7();
+    const decision = await consent.decide(
+      asking(scout, [harvest(uuidv7(), { asserted_by: scout })]),
+    );
+
+    assert.equal(decision.allowed, true);
+    assert.equal(decision.reason, 'asserter_read');
+  });
+
+  test('the hop is one hop, so a harvest does not inherit the plot’s own plot', async () => {
+    // The plot resolves to its holder and stops. Nothing follows `held_by`
+    // onward, which is what keeps this a lookup rather than a graph walk.
+    const decision = await consent.decide(asking(FARMER, [harvest(plot)]));
+
+    assert.deepEqual(decision.grants, []);
+    assert.equal(decision.access, 'self');
+  });
+});
 
 describe('the four access classes', () => {
   test('the asserter reads what it wrote, with no grant', async () => {

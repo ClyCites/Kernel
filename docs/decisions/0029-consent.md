@@ -14,7 +14,7 @@ Four classes:
 | --- | --- | --- |
 | Self | the requester is a party to the record | no |
 | Asserter | the requester stated the record | no |
-| Member body | the requester is an organisation the subject holds an active membership in, and the record was asserted by or transacted with it | only for financial records, and only while the flag below stands |
+| Member body | the requester is an organisation the record's parties hold an active membership in — any one of them if it is itself a party, all of them if it is not | only for financial records, and only while the flag below stands |
 | Third party | everything else | always |
 
 Member body is the class that unblocks the applications. It maps onto
@@ -56,6 +56,39 @@ merely a counterparty to is exactly the case s.9(3)(c) governs. Letting `self`
 swallow it would make the flag inert. A farmer reading their own priced
 delivery is still `self`, because no subject of it holds a membership in the
 farmer.
+
+## Who a record is about, when it says so only indirectly
+
+Planting, Harvest and Observation carry no party field. Taken literally that
+makes a farmer a third party to their own harvest, which is the opposite of
+why the platform exists, and it empties Farm Intelligence — the app reads those
+three types and nothing else.
+
+So classification resolves subjects transitively, with two bounds.
+
+**One hop, declared per type.** `PARTY_HOP_FIELDS` in
+`src/records/subjects.ts`: Planting and Harvest through `plot`, Observation
+through `subject_ref`. The record reached is read for its own party fields and
+its own hop is not followed. An open graph walk would be both a performance
+problem and a disclosure surface, since every extra edge widens who counts as
+a party without anyone having decided that it should. The whole page resolves
+in one query.
+
+**Unresolvable denies, visibly.** Where the hop names no record — an
+observation of a region, whose `subject_ref` can name none by construction, or
+a plot that has not synced yet — the read is refused with `subject_unresolvable`
+rather than falling through to third party. Not knowing who a record is about
+is not permission to release it, and the reason has to read differently from a
+refusal that was actually decided. Asserter is checked first, so the party that
+wrote the record still gets it back.
+
+The non-party member-body branch is the other half of this. A cooperative is
+not a party to its member's harvest at all, so it reaches one only through
+membership — and then only where **every** party the record resolves to is its
+member at `occurred_at`. Otherwise reading a member's data would carry an
+outsider's along with it, and a coop would acquire a view of its members'
+dealings with everyone else. s.9(3)(c) is about processing members'
+information, not about everyone they trade with.
 
 ## The flag
 
@@ -129,11 +162,11 @@ audit write beside it.
 
 ## Known limits, and the next consent questions
 
-**Indirect party resolution is not done.** Planting, Harvest, Observation and
-Retraction have no party field at all — their holder is reachable only through
-the plot's `held_by`, which is a join the decision point does not do. A farmer
-reading their own harvest therefore classifies as third party. This is the
-first thing to fix and it is tracked in `docs/runbook.md` §8.
+**Retraction still has no party route.** Planting, Harvest and Observation now
+resolve through one hop; Retraction deliberately does not. Its target may be
+any record, including a priced one, and a hop that lands on financial data
+without the hopping record being marked financial would route around s.9. The
+retractor reaches it as asserter. Revisit with D7.
 
 **Aggregate and anonymised access is out of scope.** Data Intelligence needs
 it, and it is a different question: what de-identification standard makes an

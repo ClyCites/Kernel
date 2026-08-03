@@ -35,6 +35,7 @@ import {
 import {
   resolveSubject,
   partiesOf,
+  partyHopOf,
   subjectFields,
   subjectsOf,
   type SubjectResolution,
@@ -446,6 +447,7 @@ export class ReadService {
         type: record.type,
         subjects: subjectsOf(document),
         parties: partiesOf(document),
+        via: partyHopOf(document),
         asserted_by: record.asserted_by,
         occurred_at: record.occurred_at,
         financial: carriesFinancialData(record.type, record.body),

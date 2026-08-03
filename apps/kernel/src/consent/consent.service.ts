@@ -81,6 +81,7 @@ export type ConsentReason =
   // denied
   | 'unattributed_record'
   | 'no_attributable_party'
+  | 'subject_unresolvable'
   | 'no_verified_subject'
   | 'purpose_required'
   | 'no_grant'
@@ -113,6 +114,11 @@ export interface RecordFacts {
   subjects: readonly string[];
   /** Only the parties. A lot cannot give a grant. */
   parties: readonly string[];
+  /**
+   * The record this one reaches a party through, when it names none itself.
+   * A harvest's plot; an observation's subject. One hop, and only one.
+   */
+  via: string | null;
   asserted_by: string;
   occurred_at: string;
   /** s.9(1) special data: a priced delivery, an obligation, a settlement. */
@@ -189,14 +195,29 @@ export class ConsentService {
       );
     }
 
-    const membership = await this.resolveMembership(requester, request);
+    const records = await this.resolveParties(request);
+    const membership = await this.resolveMembership(requester, records, request);
 
     const grants: string[] = [];
     let strongest: AccessClass = 'self';
 
-    for (const record of request.records) {
+    for (const record of records) {
       const access = classify(record, requester, membership);
       if (CLASS_ORDER[access] > CLASS_ORDER[strongest]) strongest = access;
+
+      // Unresolvable is not permission. It reads the same as a refusal from
+      // outside and must not read the same from in here, so it gets its own
+      // reason — the third value, alongside allowed and refused.
+      if (
+        access !== 'asserter' &&
+        record.via !== null &&
+        record.parties.length === 0
+      ) {
+        return deny(
+          'subject_unresolvable',
+          `${record.type} ${record.id} reaches a party only through ${record.via}, which resolves to none`,
+        );
+      }
 
       const refusal = this.permitsBasis(record, access);
       if (refusal !== null) return refusal;
@@ -229,14 +250,14 @@ export class ConsentService {
           { purpose: request.purpose, recordType: record.type, at: request.at },
         );
 
-        if (resolved.grant === null) {
+        if (resolved.refusal !== null) {
           // Member body plus financial data plus no grant is the s.9 case, and
           // it gets its own reason so the flag's effect is legible in the
           // audit log rather than hidden inside a generic refusal.
           const reason =
-            access === 'member_body' && resolved.reason === 'no_grant'
+            access === 'member_body' && resolved.refusal === 'no_grant'
               ? 'financial_needs_consent'
-              : resolved.reason;
+              : resolved.refusal;
 
           return deny(
             reason,
@@ -294,6 +315,33 @@ export class ConsentService {
   }
 
   /**
+   * Fill in the parties of records that name none directly.
+   *
+   * A harvest names a plot and the plot names its holder. Resolving that is
+   * what makes a farmer the subject of their own production record rather than
+   * a third party to it. One batched query for the page, one hop, no walk.
+   */
+  private async resolveParties(
+    request: ConsentRequest,
+  ): Promise<RecordFacts[]> {
+    const hops = request.records
+      .filter((record) => record.parties.length === 0 && record.via !== null)
+      .map((record) => record.via as string);
+
+    if (hops.length === 0) return [...request.records];
+
+    const resolved = await this.repository.partiesOfRecords(
+      hops,
+      request.dataset,
+    );
+
+    return request.records.map((record) => {
+      if (record.parties.length > 0 || record.via === null) return record;
+      return { ...record, parties: resolved.get(record.via) ?? [] };
+    });
+  }
+
+  /**
    * Membership, resolved from the log at each record's `occurred_at`.
    *
    * At `occurred_at` and not at now, because spec §5.4 says a farmer's
@@ -304,11 +352,11 @@ export class ConsentService {
    */
   private async resolveMembership(
     requester: string,
+    records: readonly RecordFacts[],
     request: ConsentRequest,
   ): Promise<Set<string>> {
     const queries: MembershipQuery[] = [];
-    for (const record of request.records) {
-      if (!record.parties.includes(requester)) continue;
+    for (const record of records) {
       for (const party of record.parties) {
         if (party !== requester) {
           queries.push({ member: party, at: record.occurred_at });
@@ -373,16 +421,23 @@ export function classify(
   if (record.asserted_by === requester) return 'asserter';
 
   const party = record.parties.includes(requester);
-  if (
-    party &&
-    record.parties.some(
-      (other) =>
-        other !== requester &&
-        membership.has(membershipKey(other, record.occurred_at)),
-    )
-  ) {
+  const others = record.parties.filter((other) => other !== requester);
+  const member = (other: string): boolean =>
+    membership.has(membershipKey(other, record.occurred_at));
+
+  // Two shapes of member body, and the difference is not cosmetic.
+  //
+  // A counterparty needs only one of the other sides to be its member: it is
+  // already entitled to the record as a party, and membership decides whether
+  // it may also see what the record says about that member.
+  //
+  // A body that is not a party at all — a coop reading a member's harvest —
+  // must have every party to the record as its member. Otherwise reading a
+  // member's data would carry an outsider's along with it, and a coop would
+  // acquire a view of its members' dealings with everyone else. s.9(3)(c) is
+  // about processing members' information, not about everyone they trade with.
+  if (others.length > 0 && (party ? others.some(member) : others.every(member)))
     return 'member_body';
-  }
 
   return party ? 'self' : 'third_party';
 }
@@ -406,11 +461,13 @@ export type GrantRefusal = Extract<
   | 'grant_wrong_record_type'
 >;
 
-export interface GrantResolution {
-  grant: ConsentGrantRow | null;
-  reason: GrantRefusal;
-  detail: string;
-}
+/**
+ * One field to branch on, and it is impossible to read the wrong one: a
+ * refusal has no grant and a grant has no refusal.
+ */
+export type GrantResolution =
+  | { grant: ConsentGrantRow; refusal: null; detail: string }
+  | { grant: null; refusal: GrantRefusal; detail: string };
 
 /** How specific a refusal is. The most specific one is what gets reported. */
 const REFUSAL_RANK: Record<GrantRefusal, number> = {
@@ -440,13 +497,13 @@ export function resolveGrant(
   const at = Date.parse(query.at);
   let best: GrantResolution = {
     grant: null,
-    reason: 'no_grant',
+    refusal: 'no_grant',
     detail: 'no grant exists',
   };
 
-  const note = (reason: GrantRefusal, detail: string): void => {
-    if (REFUSAL_RANK[reason] >= REFUSAL_RANK[best.reason]) {
-      best = { grant: null, reason, detail };
+  const note = (refusal: GrantRefusal, detail: string): void => {
+    if (REFUSAL_RANK[refusal] >= REFUSAL_RANK[best.refusal ?? 'no_grant']) {
+      best = { grant: null, refusal, detail };
     }
   };
 
@@ -477,7 +534,7 @@ export function resolveGrant(
       note('no_grant', 'the grant had not been given yet');
       continue;
     }
-    return { grant, reason: 'no_grant', detail: 'granted' };
+    return { grant, refusal: null, detail: 'granted' };
   }
 
   return best;

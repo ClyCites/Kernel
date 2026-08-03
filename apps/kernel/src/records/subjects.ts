@@ -42,9 +42,8 @@ export function subjectFields(type?: string | undefined): readonly string[] {
  * an agreement as much as about two parties, but only a party can give a grant,
  * and resolving a grant against a lot id is meaningless.
  *
- * Entities absent here — planting, harvest, observation, retraction — have no
- * party field at all. Their holder is reachable only through the plot, which is
- * a join this does not do. See docs/decisions/0029-consent.md.
+ * Entities absent here have no party field at all. Most of them reach one in a
+ * single hop — see `PARTY_HOP_FIELDS`.
  */
 export const PARTY_SUBJECT_FIELDS: Record<string, readonly string[]> = {
   party: ['id'],
@@ -66,6 +65,50 @@ export function partiesOf(record: Record<string, unknown>): string[] {
   const type = record['type'];
   if (typeof type !== 'string') return [];
   return collect(record, PARTY_SUBJECT_FIELDS[type] ?? []);
+}
+
+/**
+ * The one field a party-less record reaches a party through.
+ *
+ * A farmer's harvest names a plot, and the plot names its holder. Without this
+ * the farmer is a third party to their own production record, which is the
+ * opposite of why the platform exists — and it blocks Farm Intelligence, which
+ * reads these three types and nothing else.
+ *
+ * Exactly one hop, declared per type. Not a graph walk: an unbounded traversal
+ * is both a performance problem and a disclosure surface, since every extra
+ * edge widens who counts as a party without anyone deciding that it should.
+ * The record reached is read for its own direct parties and its own hop is not
+ * followed.
+ *
+ * `retraction` is deliberately absent. Its target may be any record, including
+ * a priced one, and a hop that can land on financial data without the record
+ * doing the hopping being marked financial would route around s.9. The
+ * retractor reaches it as asserter anyway.
+ */
+export const PARTY_HOP_FIELDS: Record<string, string> = {
+  planting: 'plot',
+  harvest: 'plot',
+  observation: 'subject_ref',
+};
+
+/**
+ * The record this one reaches a party through, if any.
+ *
+ * An observation of a party resolves through the party's own record, which is
+ * about itself; an observation of a region resolves through nothing, because
+ * regions are registry rows and no uuid names one. Both fall out of the same
+ * lookup rather than being special-cased.
+ */
+export function partyHopOf(record: Record<string, unknown>): string | null {
+  const type = record['type'];
+  if (typeof type !== 'string') return null;
+
+  const field = PARTY_HOP_FIELDS[type];
+  if (field === undefined) return null;
+
+  const ref = record[field];
+  return typeof ref === 'string' ? ref : null;
 }
 
 /**

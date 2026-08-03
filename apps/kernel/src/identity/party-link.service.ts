@@ -192,6 +192,7 @@ export class PartyLinkService {
         type: 'party_link',
         subjects: about.subjects,
         parties: about.subjects,
+        via: null,
         asserted_by: about.asserters[0] ?? (reader.requester ?? subject),
         occurred_at: new Date().toISOString(),
         financial: false,

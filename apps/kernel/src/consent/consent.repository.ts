@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { Pool } from 'pg';
 
 import { KERNEL_POOL } from '../storage/pool.js';
+import { partiesOf } from '../records/subjects.js';
 import type { Dataset } from '../records/record.js';
 
 export interface ConsentGrantRow {
@@ -119,6 +120,38 @@ export class ConsentRepository {
 
     return new Set(
       rows.map((row) => `${row.member}|${new Date(row.at).toISOString()}`),
+    );
+  }
+
+  /**
+   * The direct parties of the records named, keyed by record id.
+   *
+   * One hop and no further: what comes back is read for its own party fields
+   * and its own hop is not followed. Retracted rows are included — a retracted
+   * plot still says who held it, and hiding it here would lock a farmer out of
+   * their own harvest.
+   */
+  async partiesOfRecords(
+    ids: readonly string[],
+    dataset: Dataset,
+  ): Promise<Map<string, string[]>> {
+    if (ids.length === 0) return new Map();
+
+    const { rows } = await this.pool.query<{
+      id: string;
+      type: string;
+      body: Record<string, unknown>;
+    }>(
+      `select id, type, body from facts.record
+        where id = any($1::uuid[]) and dataset = $2`,
+      [[...new Set(ids)], dataset],
+    );
+
+    return new Map(
+      rows.map((row) => [
+        row.id,
+        partiesOf({ ...row.body, id: row.id, type: row.type }),
+      ]),
     );
   }
 

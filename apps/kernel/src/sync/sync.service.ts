@@ -13,7 +13,7 @@ import {
   type Reader,
   type RecordView,
 } from '../records/read.service.js';
-import { partiesOf, subjectsOf } from '../records/subjects.js';
+import { partiesOf, partyHopOf, subjectsOf } from '../records/subjects.js';
 import { toDocument } from '../records/record.js';
 import { carriesFinancialData } from '../records/lawful-basis.js';
 import { DeviceRepository, type Device } from './device.repository.js';
@@ -198,6 +198,7 @@ export class SyncService {
           type: record.type,
           subjects: subjectsOf(document),
           parties: partiesOf(document),
+          via: partyHopOf(document),
           asserted_by: record.asserted_by,
           occurred_at: record.occurred_at,
           financial: carriesFinancialData(record.type, record.body),

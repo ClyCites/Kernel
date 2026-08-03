@@ -449,6 +449,7 @@ export class ReadService {
         parties: partiesOf(document),
         via: partyHopOf(document),
         asserted_by: record.asserted_by,
+        on_behalf_of: record.on_behalf_of,
         occurred_at: record.occurred_at,
         financial: carriesFinancialData(record.type, record.body),
         lawful_basis: record.lawful_basis,

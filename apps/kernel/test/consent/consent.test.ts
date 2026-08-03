@@ -71,6 +71,7 @@ function delivery(overrides: Partial<RecordFacts> = {}): RecordFacts {
     parties: [FARMER, COOP],
     via: null,
     asserted_by: CLERK,
+    on_behalf_of: COOP,
     occurred_at: SEASON,
     financial: true,
     lawful_basis: 'special_data_consent',
@@ -171,10 +172,26 @@ describe('a record reaches its party in one hop', () => {
 
     // The coop is not a party to a harvest at all. It reaches this one because
     // every party the record resolves to — the plot's holder — is its member,
-    // which is s.9(3)(c), and a harvest carries no financial information.
+    // and its officer recorded it on the coop's behalf under a delegation.
     assert.equal(decision.allowed, true);
     assert.equal(decision.reason, 'member_body');
     assert.equal(decision.access, 'member_body');
+  });
+
+  test('a cooperative does not reach a harvest it had no hand in', async () => {
+    // Same farmer, same membership, a plot the coop has nothing to do with.
+    // Belonging to a cooperative for input credit on one plot does not hand
+    // it the farmer's other plots and their sales to a private trader.
+    const decision = await consent.decide(
+      asking(
+        COOP,
+        [harvest(plot, { asserted_by: FARMER, on_behalf_of: null })],
+        { purpose: 'advisory' },
+      ),
+    );
+
+    assert.equal(decision.allowed, false);
+    assert.equal(decision.reason, 'no_grant');
   });
 
   test('a cooperative does not reach a member’s dealings with an outsider', async () => {

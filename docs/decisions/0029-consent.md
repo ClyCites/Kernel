@@ -14,7 +14,7 @@ Four classes:
 | --- | --- | --- |
 | Self | the requester is a party to the record | no |
 | Asserter | the requester stated the record | no |
-| Member body | the requester is an organisation the record's parties hold an active membership in — any one of them if it is itself a party, all of them if it is not | only for financial records, and only while the flag below stands |
+| Member body | the requester is an organisation the record's parties hold an active membership in, **and** it has a nexus to the record — see below | only for financial records, and only while the flag below stands |
 | Third party | everything else | always |
 
 Member body is the class that unblocks the applications. It maps onto
@@ -82,13 +82,29 @@ is not permission to release it, and the reason has to read differently from a
 refusal that was actually decided. Asserter is checked first, so the party that
 wrote the record still gets it back.
 
-The non-party member-body branch is the other half of this. A cooperative is
-not a party to its member's harvest at all, so it reaches one only through
-membership — and then only where **every** party the record resolves to is its
-member at `occurred_at`. Otherwise reading a member's data would carry an
-outsider's along with it, and a coop would acquire a view of its members'
-dealings with everyone else. s.9(3)(c) is about processing members'
-information, not about everyone they trade with.
+The non-party member-body branch is the other half of this, and it carries two
+conditions at once, not either.
+
+**Every party the record resolves to must be its member** at `occurred_at`.
+Otherwise reading a member's data would carry an outsider's along with it.
+
+**And the organisation must have a nexus to the record** — it asserted the
+record, or the record was asserted by a party acting under its delegation.
+`on_behalf_of` names the party a writer was acting for and is checked against a
+Delegation at ingest, so it is verified authority rather than a claim.
+
+The second condition is not belt and braces. A farmer belongs to a cooperative
+for input credit on one plot and farms two others, selling that produce to a
+private trader. Their harvests resolve to themselves alone, so the every-party
+bound is satisfied by plots and sales the cooperative has nothing to do with,
+and without nexus it would read the farmer's entire production history.
+Membership in one cooperative must not surrender a whole farming operation to
+it, and multiple memberships are normal.
+
+What nexus keeps working is the ordinary case: a coop officer records a
+member's harvest under a bylaw-basis delegation. What it excludes is a harvest
+the farmer recorded independently or through another cooperative's app, which
+is a third-party read and needs a grant.
 
 ## The flag
 
@@ -105,6 +121,12 @@ processing its members' financial data, flip it. If not, cooperatives collect
 consent at enrolment, which they would be doing anyway.
 
 **Fail closed. Default true. Do not flip it without a written answer.**
+
+The nexus condition sharpens the same counsel question and belongs with it:
+does s.9(3)(c) cover a cooperative processing a member's data unrelated to its
+own dealings with that member? The reading taken here is no, and the
+conservative default is nexus-required. It is in the classifier because that is
+where it has to run, but it is a legal question, not a design one.
 
 The counsel question is narrow enough to answer yes or no: *does s.9(3)(c)
 permit a cooperative to process its members' financial information without

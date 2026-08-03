@@ -194,6 +194,7 @@ export class PartyLinkService {
         parties: about.subjects,
         via: null,
         asserted_by: about.asserters[0] ?? (reader.requester ?? subject),
+        on_behalf_of: null,
         occurred_at: new Date().toISOString(),
         financial: false,
         lawful_basis: 'contract_performance',

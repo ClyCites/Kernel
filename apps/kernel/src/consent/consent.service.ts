@@ -120,6 +120,11 @@ export interface RecordFacts {
    */
   via: string | null;
   asserted_by: string;
+  /**
+   * The party `asserted_by` was acting for, verified against a Delegation at
+   * ingest. A membership body's nexus to a record it is not a party to.
+   */
+  on_behalf_of: string | null;
   occurred_at: string;
   /** s.9(1) special data: a priced delivery, an obligation, a settlement. */
   financial: boolean;
@@ -432,12 +437,23 @@ export function classify(
   // it may also see what the record says about that member.
   //
   // A body that is not a party at all — a coop reading a member's harvest —
-  // must have every party to the record as its member. Otherwise reading a
-  // member's data would carry an outsider's along with it, and a coop would
-  // acquire a view of its members' dealings with everyone else. s.9(3)(c) is
-  // about processing members' information, not about everyone they trade with.
-  if (others.length > 0 && (party ? others.some(member) : others.every(member)))
-    return 'member_body';
+  // needs two things at once. Every party to the record must be its member,
+  // or reading a member's data would carry an outsider's along with it. And it
+  // must have a nexus to the record: `on_behalf_of` names the party a writer
+  // was acting for, checked against a Delegation at ingest, so a coop officer
+  // recording a member's harvest under a bylaw delegation qualifies and a
+  // harvest the farmer recorded independently does not. The other limb of
+  // nexus — the organisation asserted it itself — is the asserter class above.
+  //
+  // Without the nexus, membership in one cooperative would surrender a
+  // farmer's whole operation to it: their harvests resolve to themselves
+  // alone, so the every-party bound is satisfied by plots and sales that
+  // cooperative has nothing to do with. Multiple memberships are normal.
+  const memberBody = party
+    ? others.some(member)
+    : others.every(member) && record.on_behalf_of === requester;
+
+  if (others.length > 0 && memberBody) return 'member_body';
 
   return party ? 'self' : 'third_party';
 }

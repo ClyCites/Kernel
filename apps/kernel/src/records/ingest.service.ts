@@ -3,8 +3,10 @@ import { Inject, Injectable } from '@nestjs/common';
 import { schemaFor, registeredTypes } from './entity-registry.js';
 import { RecordRejected } from './errors.js';
 import { qualityFlags } from './quality.js';
+import { chainDepth, DEFAULT_SUPERSESSION_MAX_DEPTH } from './lineage.js';
 import { DelegationService } from './delegation.service.js';
 import { ConversionService } from '../registry/conversion.service.js';
+import { KERNEL_CONFIG, type KernelConfig } from '../config.js';
 import { RecordRepository } from './record.repository.js';
 import { subjectTypeMismatched } from './subjects.js';
 import {
@@ -62,6 +64,10 @@ export class IngestService {
     @Inject(RecordRepository) private readonly repository: RecordRepository,
     @Inject(DelegationService) private readonly delegations: DelegationService,
     @Inject(ConversionService) private readonly conversions: ConversionService,
+    @Inject(KERNEL_CONFIG)
+    private readonly config: Pick<KernelConfig, 'SUPERSESSION_MAX_DEPTH'> = {
+      SUPERSESSION_MAX_DEPTH: DEFAULT_SUPERSESSION_MAX_DEPTH,
+    },
   ) {}
 
   async ingest(
@@ -83,12 +89,15 @@ export class IngestService {
 
     // `recorded_at` is set by the kernel on receipt, never by the client
     // (spec §4). A client-supplied value is discarded rather than trusted.
-    // `superseded_by` is derived and likewise not accepted from the wire.
+    // `superseded_by` and `stale` are derived and likewise not accepted from
+    // the wire — a client able to assert `stale: false` could assert its way
+    // out of the re-run a superseded input is supposed to force.
     const candidate: RecordDocument = {
       ...submitted,
       recorded_at: new Date().toISOString(),
     };
     delete candidate['superseded_by'];
+    delete candidate['stale'];
 
     const parsed = schema.safeParse(candidate);
     if (!parsed.success) {
@@ -118,7 +127,7 @@ export class IngestService {
             occurredAt: String(envelope['occurred_at']),
           });
 
-    await this.checkSupersession(envelope, type, dataset);
+    const supersessionFlags = await this.checkSupersession(envelope, type, dataset);
     if (type === 'retraction') await this.checkRetraction(envelope, body, dataset);
     // A client-supplied `normalized_kg` the kernel cannot reproduce is exactly
     // what currently looks trustworthy and isn't. Per P6 this flags, never
@@ -130,6 +139,7 @@ export class IngestService {
 
     const derived = [
       ...conversionFlags,
+      ...supersessionFlags,
       ...(await this.subjectFlags(type, body, dataset)),
     ];
 
@@ -177,15 +187,19 @@ export class IngestService {
 
   /**
    * Spec §8. A correction is a new record of the same type pointing at the one
-   * it replaces, written by the party who made the original claim.
+   * it replaces, written by the party who made the original claim or by someone
+   * holding an explicit correction right over them.
+   *
+   * Returns the flags the correction carries, so weaker authority stays visible
+   * on the record rather than only in the delegation it named.
    */
   private async checkSupersession(
     envelope: RecordDocument,
     type: string,
     dataset: Dataset,
-  ): Promise<void> {
+  ): Promise<string[]> {
     const supersedes = asNullableString(envelope['supersedes']);
-    if (supersedes === null) return;
+    if (supersedes === null) return [];
 
     const target = await this.repository.findById(supersedes);
     // A record in another corpus is not visible from this one, so it reads as
@@ -207,17 +221,82 @@ export class IngestService {
       );
     }
 
-    // Spec §8 rule 1. `on_behalf_of` is the party whose claim this is, and it
-    // has already been checked against a delegation by this point.
+    const flags = await this.checkChainShape(envelope, supersedes);
+    return [...flags, ...(await this.checkCorrectionRight(envelope, target, type))];
+  }
+
+  /**
+   * Spec §8 rule 3. Refuse a link that would close a cycle, and bound how long
+   * a chain may grow.
+   *
+   * A cycle cannot be built today: `supersedes` must name a record already in
+   * the log, and a fresh record's id is by definition not, so every edge points
+   * from a new node to an old one. That argument holds only as long as both
+   * halves do, and it lives in two different methods — this check makes the
+   * property local instead of emergent, and costs one query on the rare write
+   * that supersedes anything at all.
+   */
+  private async checkChainShape(
+    envelope: RecordDocument,
+    supersedes: string,
+  ): Promise<string[]> {
+    const limit = this.config.SUPERSESSION_MAX_DEPTH;
+    const ancestry = await this.repository.ancestorsOf(supersedes, limit);
+    const id = String(envelope['id']);
+
+    if (ancestry.ids.includes(id)) {
+      throw new RecordRejected(
+        'supersession_invalid',
+        `record ${id} already appears in the chain it would supersede — this would close a cycle`,
+        [{ path: 'supersedes', message: 'a correction may not close a cycle' }],
+      );
+    }
+
+    const { depth, exceeded, deep } = chainDepth(ancestry.depth, limit);
+    if (exceeded) {
+      // Structural, not a judgement about the contents. Past the bound the
+      // chain stops being resolvable on the read path, so accepting the record
+      // would make every later read of it wrong rather than merely slow.
+      throw new RecordRejected(
+        'supersession_invalid',
+        `the supersession chain is ${depth} deep and the limit is ${limit}`,
+        [{ path: 'supersedes', message: 'correction chain too long' }],
+      );
+    }
+
+    return deep ? ['supersession_chain_deep'] : [];
+  }
+
+  /**
+   * Spec §8 rule 1. Only the original `asserted_by`, or a party holding an
+   * explicit correction right over them, may supersede.
+   *
+   * The correction right is a Delegation, resolved exactly as `on_behalf_of` is
+   * — in scope for the record type, active at `occurred_at`, not revoked or
+   * retracted. It must be named on the record. Searching the log for some
+   * delegation that happens to authorise the writer would mean a correction's
+   * authority depended on what else had been written since, which is not a
+   * thing anyone could audit.
+   */
+  private async checkCorrectionRight(
+    envelope: RecordDocument,
+    target: StoredRecord,
+    type: string,
+  ): Promise<string[]> {
+    // `on_behalf_of` is the party whose claim this is, and it has already been
+    // checked against a delegation by this point.
     const claimant =
       asNullableString(envelope['on_behalf_of']) ??
       String(envelope['asserted_by']);
     const originalClaimant = target.on_behalf_of ?? target.asserted_by;
 
-    if (claimant !== originalClaimant) {
+    if (claimant === originalClaimant) return [];
+
+    const named = asNullableString(envelope['delegation']);
+    if (named === null || envelope['on_behalf_of'] != null) {
       throw new RecordRejected(
         'supersession_invalid',
-        `only ${originalClaimant} may correct their own record`,
+        `only ${originalClaimant}, or a party they have delegated correction of ${type} to, may correct this record`,
         [
           {
             path: 'supersedes',
@@ -226,6 +305,21 @@ export class IngestService {
         ],
       );
     }
+
+    const grant = await this.delegations.authorise({
+      delegation: named,
+      delegator: originalClaimant,
+      delegate: claimant,
+      recordType: type,
+      occurredAt: String(envelope['occurred_at']),
+    });
+
+    // Spec §5.3. A correction somebody made to their own claim and one made for
+    // them under a coop bylaw are not equal evidence, and the chain view is
+    // where a lender sees the difference.
+    return grant.basis === 'organisational_bylaw'
+      ? ['corrected_under_delegation', 'corrected_under_organisational_bylaw']
+      : ['corrected_under_delegation'];
   }
 
   /**

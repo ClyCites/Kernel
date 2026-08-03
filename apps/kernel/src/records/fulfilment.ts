@@ -13,6 +13,8 @@ export interface DeliveryTally {
   confirmed: number;
   /** Deliveries whose quantity never reached kilograms. */
   unconvertible: number;
+  /** Deliveries under an unresolved correction, added to nothing. See 0021. */
+  forked: number;
   delivered_kg: number;
 }
 
@@ -23,8 +25,9 @@ export interface Fulfilment extends DeliveryTally {
   outstanding_kg: number | null;
   over_delivered: boolean;
   /**
-   * True when at least one delivery could not be converted, so `delivered_kg`
-   * is a floor rather than a total. Any percentage taken from it understates.
+   * True when at least one delivery could not be converted or is forked, so
+   * `delivered_kg` is a floor rather than a total. Any percentage taken from it
+   * understates.
    */
   incomplete: boolean;
 }
@@ -33,6 +36,7 @@ export const EMPTY_TALLY: DeliveryTally = {
   deliveries: 0,
   confirmed: 0,
   unconvertible: 0,
+  forked: 0,
   delivered_kg: 0,
 };
 
@@ -40,7 +44,7 @@ export function resolveFulfilment(
   committedKg: number | null,
   tally: DeliveryTally,
 ): Fulfilment {
-  const incomplete = tally.unconvertible > 0;
+  const incomplete = tally.unconvertible > 0 || tally.forked > 0;
   const outstanding =
     committedKg === null ? null : committedKg - tally.delivered_kg;
 
@@ -48,8 +52,8 @@ export function resolveFulfilment(
     ...tally,
     committed_kg: committedKg,
     outstanding_kg: outstanding,
-    // An unconvertible delivery can only push the total up, so a shortfall is
-    // still uncertain — but an overage already established is real.
+    // An unconvertible or forked delivery can only push the total up, so a
+    // shortfall is still uncertain — but an overage already established is real.
     over_delivered: outstanding !== null && outstanding < 0,
     incomplete,
   };

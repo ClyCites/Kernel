@@ -67,6 +67,41 @@ const RETRACTED = `exists (
 )`;
 
 /**
+ * True when this record descends from one that two people corrected.
+ *
+ * A fork has two tips, so "the tip" is not a thing a derived view can sum. The
+ * whole ancestry is walked, not just the parent: a fork upstream leaves every
+ * record below it unresolved, and counting one branch of it would be the
+ * kernel picking a winner it has no basis to pick. See decision 0021.
+ *
+ * Retracted branches do not count towards the fork. Withdrawing one of two
+ * competing corrections is the one way a fork gets resolved, and it has to
+ * work without anything being edited.
+ */
+const FORKED = `exists (
+  with recursive ancestor(id) as (
+      select r.supersedes where r.supersedes is not null
+    union all
+      select p.supersedes
+        from facts.record p
+        join ancestor a on p.id = a.id and p.dataset = r.dataset
+       where p.supersedes is not null
+  )
+  select 1 from ancestor a
+   where (
+     select count(*) from facts.record s
+      where s.supersedes = a.id
+        and s.dataset = r.dataset
+        and not exists (
+          select 1 from facts.record t
+           where t.type = 'retraction'
+             and t.body ->> 'target' = s.id::text
+             and t.dataset = s.dataset
+        )
+   ) > 1
+)`;
+
+/**
  * `superseded_by` is a list because spec §8 rule 4 allows two people to correct
  * the same record. More than one entry is a fork, and the caller is told rather
  * than handed a winner the kernel picked.
@@ -405,7 +440,8 @@ export class RecordRepository {
    *
    * Aggregated in SQL so a busy agreement does not pull every delivery across
    * the wire. Superseded and retracted deliveries are excluded — a corrected
-   * delivery must count once, and a retracted one not at all.
+   * delivery must count once, and a retracted one not at all. Forked ones are
+   * counted separately and added to nothing.
    */
   async deliveryTallies(
     agreementIds: readonly string[],
@@ -414,15 +450,19 @@ export class RecordRepository {
     if (agreementIds.length === 0) return new Map();
     const { rows } = await this.pool.query<DeliveryTally & { agreement: string }>(
       `select r.body ->> 'fulfils' as agreement,
-              count(*)::int as deliveries,
+              count(*) filter (where not ${FORKED})::int as deliveries,
               count(*) filter (
                 where r.body ->> 'counterparty_confirmed_at' is not null
+                  and not ${FORKED}
               )::int as confirmed,
               count(*) filter (
                 where r.body -> 'quantity' ->> 'normalized_kg' is null
+                  and not ${FORKED}
               )::int as unconvertible,
+              count(*) filter (where ${FORKED})::int as forked,
               coalesce(
-                sum((r.body -> 'quantity' ->> 'normalized_kg')::numeric), 0
+                sum((r.body -> 'quantity' ->> 'normalized_kg')::numeric)
+                  filter (where not ${FORKED}), 0
               )::float8 as delivered_kg
          from facts.record r
         where r.type = 'delivery'
@@ -460,6 +500,7 @@ export class RecordRepository {
       `select r.body ->> 'obligation'                as obligation,
               r.body -> 'amount' ->> 'currency'      as currency,
               r.body ->> 'verification_status'       as verification_status,
+              ${FORKED}                              as forked,
               count(*)::int                          as records,
               coalesce(
                 sum((r.body -> 'amount' ->> 'amount_minor')::bigint), 0
@@ -470,7 +511,7 @@ export class RecordRepository {
           and r.dataset = $2
           and not ${SUPERSEDED}
           and not ${RETRACTED}
-        group by 1, 2, 3`,
+        group by 1, 2, 3, 4`,
       [[...new Set(obligationIds)], dataset],
     );
 
@@ -500,14 +541,107 @@ export class RecordRepository {
     return new Map(rows.map(({ id, ...target }) => [id, target]));
   }
 
+  /**
+   * Whether each of these records has been superseded or retracted. Spec §8
+   * rule 5, resolved for a whole page of inferences in one round trip.
+   *
+   * Both namespaces are searched. At `inference_depth` 0 every input is an
+   * observation, but a model consuming another model's output names inference
+   * ids, and looking only in `facts.record` would report those as unresolved —
+   * which reads as "we could not check" and would hide the compounding error
+   * the depth field exists to expose.
+   *
+   * Retraction is looked up in `facts.record` for both, because a Retraction is
+   * an observation about the log whichever namespace its target lives in.
+   */
+  async dependencyStatus(
+    ids: readonly string[],
+    dataset: Dataset,
+  ): Promise<Map<string, { superseded: boolean; retracted: boolean }>> {
+    if (ids.length === 0) return new Map();
+    const { rows } = await this.pool.query<{
+      id: string;
+      superseded: boolean;
+      retracted: boolean;
+    }>(
+      `with dependency as (
+         select id, dataset, 'facts.record'::text as namespace
+           from facts.record where id = any($1::uuid[])
+         union all
+         select id, dataset, 'inference.record'
+           from inference.record where id = any($1::uuid[])
+       )
+       select d.id,
+              case d.namespace
+                when 'facts.record' then exists (
+                  select 1 from facts.record s
+                   where s.supersedes = d.id and s.dataset = d.dataset
+                )
+                else exists (
+                  select 1 from inference.record s
+                   where s.supersedes = d.id and s.dataset = d.dataset
+                )
+              end as superseded,
+              exists (
+                select 1 from facts.record t
+                 where t.type = 'retraction'
+                   and t.body ->> 'target' = d.id::text
+                   and t.dataset = d.dataset
+              ) as retracted
+         from dependency d
+        where d.dataset = $2`,
+      [[...new Set(ids)], dataset],
+    );
+
+    return new Map(
+      rows.map(({ id, ...status }) => [id, status]),
+    );
+  }
+
+  /**
+   * Every record between `id` and the origin of its chain, walking `supersedes`
+   * backwards, nearest first.
+   *
+   * `truncated` means the walk stopped at `maxDepth` rather than at an origin,
+   * so `depth` is a floor. Callers must treat that as "at least this long" —
+   * reporting it as an exact depth would let a chain grow past the bound while
+   * every check that watches the bound reads a constant.
+   */
+  async ancestorsOf(
+    id: string,
+    maxDepth: number,
+  ): Promise<{ ids: string[]; depth: number; truncated: boolean }> {
+    const { rows } = await this.pool.query<{ id: string; depth: number }>(
+      `with recursive back as (
+         select id, supersedes, 0 as depth from facts.record where id = $1
+         union all
+         select prior.id, prior.supersedes, back.depth + 1
+           from facts.record prior
+           join back on back.supersedes = prior.id
+          where back.depth < $2
+       )
+       select id, depth from back order by depth`,
+      [id, maxDepth],
+    );
+
+    const deepest = rows.at(-1)?.depth ?? 0;
+    return {
+      ids: rows.map((row) => row.id),
+      depth: deepest,
+      truncated: deepest >= maxDepth,
+    };
+  }
+
   /** Which of these ids a retraction targets. One query, not one per record. */
-  async retractedAmong(ids: string[]): Promise<string[]> {
+  async retractedAmong(ids: string[], dataset: Dataset): Promise<string[]> {
     if (ids.length === 0) return [];
     const { rows } = await this.pool.query<{ target: string }>(
       `select distinct body ->> 'target' as target
          from facts.record
-        where type = 'retraction' and body ->> 'target' = any($1::text[])`,
-      [ids],
+        where type = 'retraction'
+          and body ->> 'target' = any($1::text[])
+          and dataset = $2`,
+      [ids, dataset],
     );
     return rows.map((row) => row.target);
   }
@@ -516,7 +650,9 @@ export class RecordRepository {
    * Live custody transfers for these lots, oldest first.
    *
    * Superseded and retracted transfers are excluded: a corrected transfer must
-   * not move the lot twice, and a retracted one never happened. Ordering falls
+   * not move the lot twice, and a retracted one never happened. A forked one is
+   * returned flagged rather than dropped, so the caller can say the sequence is
+   * incomplete instead of quietly walking past a gap. Ordering falls
    * back to `recorded_at` then `id` so the walk is deterministic when two
    * transfers share an `occurred_at` — which the offline clients make likely.
    */
@@ -531,6 +667,7 @@ export class RecordRepository {
               r.body ->> 'from_party'  as from_party,
               r.body ->> 'to_party'    as to_party,
               (r.body -> 'quantity' ->> 'normalized_kg')::float8 as weighed_kg,
+              ${FORKED} as forked,
               to_char(r.occurred_at at time zone 'UTC',
                       'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as occurred_at
          from facts.record r
@@ -564,6 +701,7 @@ export class RecordRepository {
               case when r.body -> 'value' ->> 'kind' = 'quantity'
                    then (r.body -> 'value' -> 'value' ->> 'normalized_kg')::float8
               end as kg,
+              ${FORKED} as forked,
               to_char(r.occurred_at at time zone 'UTC',
                       'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as occurred_at
          from facts.record r

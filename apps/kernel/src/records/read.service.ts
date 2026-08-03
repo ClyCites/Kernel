@@ -25,6 +25,11 @@ import {
   type SettlementSummary,
 } from './settlement.js';
 import {
+  dependenciesOf,
+  resolveStaleness,
+  type Staleness,
+} from './staleness.js';
+import {
   resolveSubject,
   subjectFields,
   subjectsOf,
@@ -73,6 +78,8 @@ export interface RecordView {
   subject?: SubjectResolution;
   /** Obligations only. What settlement records say about this one obligation. */
   settlement?: SettlementSummary;
+  /** Inferences only. Whether the records it was computed from have moved. */
+  staleness?: Staleness;
 }
 
 export interface Page {
@@ -134,7 +141,36 @@ export class ReadService {
 
     const view = recordView({ ...found, superseded_by: [], retracted: false });
     this.guard([view], reader);
+    await this.deriveStaleness([view], datasetOf(reader));
     return view;
+  }
+
+  /**
+   * Spec §8 rule 5. Whether each inference still stands on what it was computed
+   * from.
+   *
+   * One query for the whole set, and the stored `stale` boolean is not
+   * consulted — a client that could assert `stale: false` could assert its way
+   * out of a re-run, so ingest discards the field and this is the only answer.
+   */
+  private async deriveStaleness(
+    views: RecordView[],
+    dataset: Dataset,
+  ): Promise<void> {
+    const inferences = views.filter(
+      (view) => view.record['record_class'] === 'inference',
+    );
+    if (inferences.length === 0) return;
+
+    const perView = inferences.map((view) => dependenciesOf(view.record));
+    const status = await this.repository.dependencyStatus(
+      perView.flat(),
+      dataset,
+    );
+
+    inferences.forEach((view, index) => {
+      view.staleness = resolveStaleness(perView[index] ?? [], status);
+    });
   }
 
   async list(options: ListOptions, reader: Reader): Promise<Page> {
@@ -188,7 +224,10 @@ export class ReadService {
     if (scoped.length === 0) return [];
 
     const retracted = new Set(
-      await this.repository.retractedAmong(scoped.map((record) => record.id)),
+      await this.repository.retractedAmong(
+        scoped.map((record) => record.id),
+        dataset,
+      ),
     );
 
     const views = scoped.map((record) =>

@@ -180,7 +180,14 @@ export function buildOpenApiDocument(): OpenApiDocument {
 
   schemas['Custody'] = {
     type: 'object',
-    required: ['custodian', 'asserted', 'as_of', 'transfers', 'broken'],
+    required: [
+      'custodian',
+      'asserted',
+      'as_of',
+      'transfers',
+      'forked',
+      'broken',
+    ],
     description:
       'How the kernel arrived at `record.custodian`. Present on lots only.',
     properties: {
@@ -201,6 +208,11 @@ export function buildOpenApiDocument(): OpenApiDocument {
         description: 'When the current holder took it. Null if nothing moved.',
       },
       transfers: { type: 'integer', minimum: 0 },
+      forked: {
+        type: 'boolean',
+        description:
+          'A transfer in the sequence was corrected two ways at once and was left out of the walk, so `custodian` is where the lot got to before the dispute and not necessarily where it is.',
+      },
       broken: {
         type: 'boolean',
         description:
@@ -218,6 +230,8 @@ export function buildOpenApiDocument(): OpenApiDocument {
       'referenced_minor',
       'unreferenced_minor',
       'currency_mismatch',
+      'forked',
+      'incomplete',
       'disputed',
     ],
     description:
@@ -245,6 +259,17 @@ export function buildOpenApiDocument(): OpenApiDocument {
         minimum: 0,
         description:
           'Settlements denominated in some other currency. Counted, never converted — adding across currencies would invent an exchange rate.',
+      },
+      forked: {
+        type: 'integer',
+        minimum: 0,
+        description:
+          'Settlements corrected two ways at once. Counted, never summed — a fork has two tips and the kernel will not pick one.',
+      },
+      incomplete: {
+        type: 'boolean',
+        description:
+          'A settlement was left out because it is forked, so `unreferenced_minor` is an upper bound.',
       },
       disputed: { type: 'boolean' },
     },
@@ -357,7 +382,7 @@ export function buildOpenApiDocument(): OpenApiDocument {
       incomplete: {
         type: 'boolean',
         description:
-          'A weighing or a loss could not be read in kilograms, so the arithmetic is partial. A clean-looking balance on an incomplete ledger means nothing.',
+          'A weighing or a loss could not be read in kilograms, or one of them is under an unresolved correction, so the arithmetic is partial. A clean-looking balance on an incomplete ledger means nothing.',
       },
       legs: { type: 'array', items: ref('BalanceLeg') },
     },
@@ -369,6 +394,7 @@ export function buildOpenApiDocument(): OpenApiDocument {
       'deliveries',
       'confirmed',
       'unconvertible',
+      'forked',
       'delivered_kg',
       'committed_kg',
       'outstanding_kg',
@@ -395,6 +421,12 @@ export function buildOpenApiDocument(): OpenApiDocument {
         minimum: 0,
         description: 'Deliveries whose quantity never reached kilograms.',
       },
+      forked: {
+        type: 'integer',
+        minimum: 0,
+        description:
+          'Deliveries under an unresolved correction. A fork has two tips, so neither branch is added to `delivered_kg` and neither is counted in `deliveries`.',
+      },
       delivered_kg: { type: 'number' },
       committed_kg: {
         type: ['number', 'null'],
@@ -410,7 +442,43 @@ export function buildOpenApiDocument(): OpenApiDocument {
       incomplete: {
         type: 'boolean',
         description:
-          'At least one delivery is unconvertible, so `delivered_kg` is a floor and not a total. Any percentage taken from it understates.',
+          'At least one delivery is unconvertible or forked, so `delivered_kg` is a floor and not a total. Any percentage taken from it understates.',
+      },
+    },
+  };
+
+  schemas['Staleness'] = {
+    type: 'object',
+    required: [
+      'stale',
+      'reasons',
+      'superseded_inputs',
+      'retracted_inputs',
+      'unresolved_inputs',
+    ],
+    description:
+      'Spec §8 rule 5. Whether the records this inference was computed from have moved since. Present on inferences only. Derived on every read and never written into the body: the log is append-only, so a stored flag could only be corrected by a second record asserting the first is stale, and it would be wrong again the moment an input moved. A `stale` supplied on ingest is discarded.',
+    properties: {
+      stale: { type: 'boolean' },
+      reasons: {
+        type: 'array',
+        items: { type: 'string', enum: ['input_superseded', 'input_retracted'] },
+        description:
+          'Both can apply at once. A superseded input means a newer value exists and the model can re-run. A retracted input means the input is gone and recomputation may be impossible — a different problem with a different answer.',
+      },
+      superseded_inputs: {
+        type: 'array',
+        items: { type: 'string', format: 'uuid' },
+      },
+      retracted_inputs: {
+        type: 'array',
+        items: { type: 'string', format: 'uuid' },
+      },
+      unresolved_inputs: {
+        type: 'array',
+        items: { type: 'string', format: 'uuid' },
+        description:
+          'Named as a dependency but not found. Not staleness — it is a statement that the check could not be made.',
       },
     },
   };
@@ -438,6 +506,7 @@ export function buildOpenApiDocument(): OpenApiDocument {
       fulfilment: ref('Fulfilment'),
       subject: ref('SubjectResolution'),
       settlement: ref('SettlementSummary'),
+      staleness: ref('Staleness'),
     },
   };
 

@@ -18,6 +18,8 @@ export interface CustodyTransferLink {
   from_party: string;
   to_party: string;
   occurred_at: string;
+  /** Under an unresolved correction, so neither version may move the lot. */
+  forked: boolean;
 }
 
 export interface Custody {
@@ -28,6 +30,12 @@ export interface Custody {
   /** When the current holder took it. Null when nothing has moved. */
   as_of: string | null;
   transfers: number;
+  /**
+   * A transfer in the sequence was corrected two ways at once and was left out
+   * of the walk, so `custodian` is where the lot got to before the dispute and
+   * not necessarily where it is. See decision 0021.
+   */
+  forked: boolean;
   /**
    * A transfer moved the lot from someone who was not holding it. Two people
    * transferring the same lot at once presents this way too — both are a chain
@@ -44,8 +52,9 @@ export interface Custody {
  */
 export function resolveCustody(
   assertedCustodian: string,
-  transfers: readonly CustodyTransferLink[],
+  allTransfers: readonly CustodyTransferLink[],
 ): Custody {
+  const transfers = allTransfers.filter((t) => !t.forked);
   let holder = assertedCustodian;
   let asOf: string | null = null;
   let broken = false;
@@ -61,6 +70,7 @@ export function resolveCustody(
     asserted: assertedCustodian,
     as_of: asOf,
     transfers: transfers.length,
+    forked: transfers.length !== allTransfers.length,
     broken,
   };
 }

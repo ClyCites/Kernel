@@ -57,11 +57,26 @@ describe('fulfilment arithmetic', () => {
       deliveries: 4,
       confirmed: 2,
       unconvertible: 1,
+      forked: 0,
       delivered_kg: 600,
     });
 
     assert.equal(fulfilment.incomplete, true);
     assert.equal(fulfilment.delivered_kg, 600);
+  });
+
+  test('a forked delivery makes the total a floor too', () => {
+    const fulfilment = resolveFulfilment(1000, {
+      ...EMPTY_TALLY,
+      deliveries: 3,
+      forked: 2,
+      delivered_kg: 600,
+    });
+
+    assert.equal(fulfilment.incomplete, true);
+    // Neither branch of the fork is in the total, and neither is in `deliveries`.
+    assert.equal(fulfilment.deliveries, 3);
+    assert.equal(fulfilment.outstanding_kg, 400);
   });
 
   test('an unnormalized commitment makes the shortfall unknowable', () => {
@@ -174,6 +189,76 @@ describe('an agreement reports what its deliveries add up to', () => {
 
     assert.equal(view?.fulfilment?.deliveries, 1);
     assert.equal(view?.fulfilment?.delivered_kg, 2800);
+  });
+
+  /**
+   * Spec §8 rule 4. Two officers correcting the same delivery leaves two tips,
+   * and "the tip" is what every derived view sums. Decision 0021: count
+   * neither. Before it, both branches passed the `not superseded` filter and
+   * the disputed delivery was counted twice at once.
+   */
+  test('a delivery corrected two ways at once is counted neither way', async () => {
+    const id = await agreement(10_000);
+    const first = await deliver(id, 1416);
+    await deliver(id, 1380, { supersedes: first });
+    await deliver(id, 1416, { supersedes: first });
+
+    const view = await read.get(id, readingAs(seller));
+
+    assert.equal(view?.fulfilment?.delivered_kg, 0);
+    assert.equal(view?.fulfilment?.deliveries, 0);
+    assert.equal(view?.fulfilment?.forked, 2);
+    assert.equal(view?.fulfilment?.incomplete, true);
+    assert.equal(view?.fulfilment?.outstanding_kg, 10_000);
+  });
+
+  test('a fork upstream leaves everything below it uncountable', async () => {
+    const id = await agreement(10_000);
+    const first = await deliver(id, 1416);
+    const branch = await deliver(id, 1380, { supersedes: first });
+    await deliver(id, 1416, { supersedes: first });
+    // Correcting one branch does not resolve the fork it hangs off.
+    await deliver(id, 1400, { supersedes: branch });
+
+    const view = await read.get(id, readingAs(seller));
+
+    assert.equal(view?.fulfilment?.delivered_kg, 0);
+    assert.equal(view?.fulfilment?.forked, 2);
+  });
+
+  test('an unforked delivery alongside a forked one still counts', async () => {
+    const id = await agreement(10_000);
+    const first = await deliver(id, 1000);
+    await deliver(id, 900, { supersedes: first });
+    await deliver(id, 800, { supersedes: first });
+    await deliver(id, 2000);
+
+    const view = await read.get(id, readingAs(seller));
+
+    assert.equal(view?.fulfilment?.deliveries, 1);
+    assert.equal(view?.fulfilment?.delivered_kg, 2000);
+    assert.equal(view?.fulfilment?.forked, 2);
+    assert.equal(
+      view?.fulfilment?.incomplete,
+      true,
+      'the sound arithmetic survives; the reader is told it is partial',
+    );
+  });
+
+  test('withdrawing one of two competing corrections resolves the fork', async () => {
+    const id = await agreement(10_000);
+    const first = await deliver(id, 1416);
+    await deliver(id, 1380, { supersedes: first });
+    const mistaken = await deliver(id, 1416, { supersedes: first });
+
+    await ingest.ingest(retractionDocument(mistaken, { asserted_by: seller }));
+
+    const view = await read.get(id, readingAs(seller));
+
+    assert.equal(view?.fulfilment?.forked, 0);
+    assert.equal(view?.fulfilment?.deliveries, 1);
+    assert.equal(view?.fulfilment?.delivered_kg, 1380);
+    assert.equal(view?.fulfilment?.incomplete, false);
   });
 
   test('confirmation is counted separately from arrival', async () => {

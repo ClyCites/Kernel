@@ -11,6 +11,8 @@ import type {
 } from '../../src/records/ingest.service.js';
 import { RecordRepository } from '../../src/records/record.repository.js';
 import { RegistryRepository } from '../../src/registry/registry.repository.js';
+import { DEFAULT_SUPERSESSION_MAX_DEPTH } from '../../src/records/lineage.js';
+import type { KernelConfig } from '../../src/config.js';
 import type { Reader } from '../../src/records/read.service.js';
 import type { Dataset } from '../../src/records/record.js';
 
@@ -35,12 +37,16 @@ import type { Dataset } from '../../src/records/record.js';
 export const ingestServiceFor = (
   pool: Pool,
   defaults: IngestContext = { lawfulBasis: 'special_data_consent' },
+  config: Pick<KernelConfig, 'SUPERSESSION_MAX_DEPTH'> = {
+    SUPERSESSION_MAX_DEPTH: DEFAULT_SUPERSESSION_MAX_DEPTH,
+  },
 ): { ingest: TestIngest; service: IngestService; repository: RecordRepository } => {
   const repository = new RecordRepository(pool);
   const service = new IngestService(
     repository,
     new DelegationService(repository),
     new ConversionService(new RegistryRepository(pool)),
+    config,
   );
   const ingest: TestIngest = {
     ingest: (payload, context = {}) =>

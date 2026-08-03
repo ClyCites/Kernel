@@ -27,6 +27,8 @@ export interface WeighedTransfer {
   occurred_at: string;
   /** Null when the transfer's quantity never reached kilograms. */
   weighed_kg: number | null;
+  /** Under an unresolved correction, so neither weight may be used. See 0021. */
+  forked: boolean;
 }
 
 /** A `loss.declared` Observation against the lot. */
@@ -40,6 +42,8 @@ export interface DeclaredLoss {
    * zero would flatter the lot, so the balance is marked incomplete instead.
    */
   kg: number | null;
+  /** Under an unresolved correction, so neither figure may be used. See 0021. */
+  forked: boolean;
 }
 
 export interface BalanceLeg {
@@ -66,8 +70,9 @@ export interface MassBalance {
   /** The whole-lot ratio breached, or any single leg did. */
   breached: boolean;
   /**
-   * A weighing or a loss could not be read in kilograms, so the arithmetic is
-   * partial. A clean-looking balance on an incomplete ledger means nothing.
+   * A weighing or a loss could not be read in kilograms, or one of them is
+   * under an unresolved correction, so the arithmetic is partial. A
+   * clean-looking balance on an incomplete ledger means nothing.
    */
   incomplete: boolean;
   legs: BalanceLeg[];
@@ -75,15 +80,23 @@ export interface MassBalance {
 
 export function resolveMassBalance(
   openingKg: number | null,
-  transfers: readonly WeighedTransfer[],
-  losses: readonly DeclaredLoss[],
+  allTransfers: readonly WeighedTransfer[],
+  allLosses: readonly DeclaredLoss[],
   tolerance = DEFAULT_MASS_BALANCE_TOLERANCE,
 ): MassBalance {
+  // A forked record has two tips and the kernel will not choose between them.
+  // Dropping it leaves a hole in the sequence, which is what `incomplete` says.
+  const transfers = allTransfers.filter((t) => !t.forked);
+  const losses = allLosses.filter((l) => !l.forked);
+  const forked =
+    transfers.length !== allTransfers.length || losses.length !== allLosses.length;
+
   const ordered = [...losses].sort((a, b) =>
     a.occurred_at < b.occurred_at ? -1 : a.occurred_at > b.occurred_at ? 1 : 0,
   );
 
-  let incomplete = openingKg === null || ordered.some((l) => l.kg === null);
+  let incomplete =
+    forked || openingKg === null || ordered.some((l) => l.kg === null);
   let holding = openingKg;
   let cursor = 0;
   let anyLegBreached = false;

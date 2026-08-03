@@ -35,12 +35,14 @@ const group = (
   amount: number,
   records = 1,
   currency = 'UGX',
+  forked = false,
 ) => ({
   obligation: 'o',
   currency,
   verification_status: status,
   records,
   amount_minor: amount,
+  forked,
 });
 
 const owed = { amount_minor: 1_000_000, currency: 'UGX' };

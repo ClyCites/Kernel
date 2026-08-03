@@ -29,12 +29,18 @@ after(async () => {
   await db.stop();
 });
 
-const link = (from: string, to: string, occurredAt: string) => ({
+const link = (
+  from: string,
+  to: string,
+  occurredAt: string,
+  forked = false,
+) => ({
   id: uuidv7(),
   lot: 'lot',
   from_party: from,
   to_party: to,
   occurred_at: occurredAt,
+  forked,
 });
 
 describe('the custody walk', () => {

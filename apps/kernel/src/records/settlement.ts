@@ -19,6 +19,8 @@ export interface SettlementGroup {
   verification_status: string;
   records: number;
   amount_minor: number;
+  /** Under an unresolved correction, so the amount is added to nothing. */
+  forked: boolean;
 }
 
 export interface SettlementSummary {
@@ -43,6 +45,10 @@ export interface SettlementSummary {
   unreferenced_minor: number;
   /** Settlements denominated in some other currency. Counted, never converted. */
   currency_mismatch: number;
+  /** Settlements corrected two ways at once. Counted, never summed. See 0021. */
+  forked: number;
+  /** A settlement was left out, so `unreferenced_minor` is an upper bound. */
+  incomplete: boolean;
   disputed: boolean;
 }
 
@@ -54,9 +60,15 @@ export function summariseSettlements(
   let references = 0;
   let matched = 0;
   let mismatch = 0;
+  let forked = 0;
   let disputed = false;
 
   for (const group of groups) {
+    if (group.forked) {
+      forked += group.records;
+      continue;
+    }
+
     if (group.currency !== amount.currency) {
       mismatch += group.records;
       continue;
@@ -76,6 +88,8 @@ export function summariseSettlements(
     referenced_minor: referenced,
     unreferenced_minor: amount.amount_minor - matched,
     currency_mismatch: mismatch,
+    forked,
+    incomplete: forked > 0,
     disputed,
   };
 }

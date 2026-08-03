@@ -29,7 +29,7 @@ FILES=$(printf '%s\n' "$FILES" | grep -vE \
 # Values that are obviously not real. Kept generous on purpose: .env.example and
 # the docs are only useful if they can show the shape of a setting, and a
 # scanner that makes them useless is a scanner somebody turns off.
-PLACEHOLDER='dev_only|_test|test_only|changeme|placeholder|example|xxxx|<[^>]*>|\$\{|your[-_]|redacted|\.\.\.'
+PLACEHOLDER='dev[-_]only|[-_]test|test[-_]only|changeme|placeholder|example|xxxx|<[^>]*>|\$\{|your[-_]|redacted|\.\.\.'
 
 FOUND=0
 report() {

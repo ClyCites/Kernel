@@ -33,13 +33,23 @@ const transfer = (
   weighed: number | null,
   from = 'a',
   to = 'b',
-) => ({ id: at, lot: 'lot', from_party: from, to_party: to, occurred_at: at, weighed_kg: weighed });
+  forked = false,
+) => ({
+  id: at,
+  lot: 'lot',
+  from_party: from,
+  to_party: to,
+  occurred_at: at,
+  weighed_kg: weighed,
+  forked,
+});
 
-const loss = (at: string, kg: number | null) => ({
+const loss = (at: string, kg: number | null, forked = false) => ({
   id: `loss-${at}`,
   lot: 'lot',
   occurred_at: at,
   kg,
+  forked,
 });
 
 describe('mass balance arithmetic', () => {

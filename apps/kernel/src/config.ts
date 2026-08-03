@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { DEFAULT_MASS_BALANCE_TOLERANCE } from './records/mass-balance.js';
+import { DEFAULT_SUPERSESSION_MAX_DEPTH } from './records/lineage.js';
 
 /**
  * Environment configuration. Validated with the same library the records are
@@ -27,6 +28,23 @@ const Env = z.object({
     .min(0)
     .max(1)
     .default(DEFAULT_MASS_BALANCE_TOLERANCE),
+  /**
+   * Spec §8 rule 3. How many corrections one record may accumulate before the
+   * chain is refused.
+   *
+   * A bound is needed because every default read resolves chains to their tip,
+   * so an unbounded chain is a denial of service against reads of every other
+   * record too. 64 is well past any plausible correction history — a delivery
+   * corrected sixty-four times is a dispute, not a record — and it is a
+   * parameter rather than a constant so an instance that meets a legitimate
+   * long chain can raise it without a deploy, and so the read-side walks and
+   * the ingest-side check cannot drift apart.
+   */
+  SUPERSESSION_MAX_DEPTH: z.coerce
+    .number()
+    .int()
+    .min(2)
+    .default(DEFAULT_SUPERSESSION_MAX_DEPTH),
   /**
    * Whether this instance will accept writes marked `dataset: 'seed'`.
    *

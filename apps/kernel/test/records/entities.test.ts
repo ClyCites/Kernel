@@ -13,6 +13,7 @@ import {
   readingAs,
   retractionDocument,
   consentServiceFor,
+  objectionServiceFor,
 } from '../helpers/fixtures.js';
 import { ReadService } from '../../src/records/read.service.js';
 import { registeredTypes } from '../../src/records/entity-registry.js';
@@ -26,7 +27,7 @@ before(async () => {
   db = await startTestDatabase();
   const { ingest: service, repository } = ingestServiceFor(db.app);
   ingest = service;
-  read = new ReadService(repository, consentServiceFor(db.app), auditServiceFor(db.app));
+  read = new ReadService(repository, consentServiceFor(db.app), objectionServiceFor(db.app), auditServiceFor(db.app));
 });
 
 after(async () => {

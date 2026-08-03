@@ -5,6 +5,7 @@ import { uuidv7 } from 'uuidv7';
 import { startTestDatabase, type TestDatabase } from '../helpers/database.js';
 import { deliveryDocument, ingestServiceFor } from '../helpers/fixtures.js';
 import { OperationsController } from '../../src/api/operations.controller.js';
+import { ObjectionRepository } from '../../src/consent/objection.repository.js';
 import { RegistryRepository } from '../../src/registry/registry.repository.js';
 import { RecordRepository } from '../../src/records/record.repository.js';
 
@@ -17,6 +18,7 @@ before(async () => {
     db.app,
     new RegistryRepository(db.app),
     new RecordRepository(db.app),
+    new ObjectionRepository(db.app),
   );
 });
 

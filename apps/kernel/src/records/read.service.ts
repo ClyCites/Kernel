@@ -6,6 +6,7 @@ import {
   ConsentService,
   type ConsentPurpose,
 } from '../consent/consent.service.js';
+import { ObjectionService } from '../consent/objection.service.js';
 import { schemaFor } from './entity-registry.js';
 import { QueryRejected } from './errors.js';
 import { resolveCustody, type Custody } from './custody.js';
@@ -124,6 +125,7 @@ export class ReadService {
   constructor(
     @Inject(RecordRepository) private readonly repository: RecordRepository,
     @Inject(ConsentService) private readonly consent: ConsentService,
+    @Inject(ObjectionService) private readonly objections: ObjectionService,
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(KERNEL_CONFIG)
     private readonly config: Pick<KernelConfig, 'MASS_BALANCE_TOLERANCE'> = {
@@ -135,6 +137,9 @@ export class ReadService {
   async get(id: string, reader: Reader): Promise<RecordView | null> {
     const found = await this.repository.findByIdWithDerived(id);
     if (found === null || found.dataset !== datasetOf(reader)) return null;
+
+    const [kept] = await this.unobjected([found], reader, { by: 'id' });
+    if (kept === undefined) return null;
 
     const view = recordView(found);
     await this.guard([found], reader, { by: 'id' });
@@ -150,6 +155,9 @@ export class ReadService {
   async getInference(id: string, reader: Reader): Promise<RecordView | null> {
     const found = await this.repository.findInferenceById(id);
     if (found === null || found.dataset !== datasetOf(reader)) return null;
+
+    const [kept] = await this.unobjected([found], reader, { by: 'inference_id' });
+    if (kept === undefined) return null;
 
     const view = recordView({ ...found, superseded_by: [], retracted: false });
     await this.guard([found], reader, { by: 'inference_id' });
@@ -206,13 +214,17 @@ export class ReadService {
       cursor: options.cursor === undefined ? undefined : decodeCursor(options.cursor),
     });
 
+    // The cursor comes from the unfiltered page: an objected record still
+    // occupies its place in the ordering, and skipping it here would make the
+    // next page start after a record the caller never saw.
     const page = rows.slice(0, limit);
     const last = page.at(-1);
-    const views = page.map(recordView);
+    const disclosable = await this.unobjected(page, reader, { by: 'list' });
+    const views = disclosable.map(recordView);
     // Filter names and values, never field values out of a record body: `type`
     // and `subject` are the caller's own query, which is what an access record
     // is supposed to describe.
-    await this.guard(page, reader, {
+    await this.guard(disclosable, reader, {
       by: 'list',
       type: options.type ?? null,
       asserted_by: options.assertedBy ?? null,
@@ -242,7 +254,11 @@ export class ReadService {
 
     const chain = await this.repository.findSupersessionChain(origin);
     const dataset = datasetOf(reader);
-    const scoped = chain.filter((record) => record.dataset === dataset);
+    const scoped = await this.unobjected(
+      chain.filter((record) => record.dataset === dataset),
+      reader,
+      { by: 'chain' },
+    );
     if (scoped.length === 0) return [];
 
     const retracted = new Set(
@@ -429,6 +445,39 @@ export class ReadService {
    * is one it does not make. DPPA s.24(1)(c) is answered from the `subjects`
    * column this writes, and s.16(4) from the `records` column.
    */
+  /**
+   * s.7(3). Records the subject has objected to, on a ground the objection
+   * reaches, are gone from every read — not refused, absent, the same
+   * treatment retraction gets. Kernel integrity operations do not come through
+   * here, which is what keeps mass balance and supersession honest.
+   */
+  private async unobjected<T extends StoredRecord>(
+    records: readonly T[],
+    reader: Reader,
+    descriptor: AuditDescriptor,
+  ): Promise<T[]> {
+    const withheld = await this.objections.withheld(
+      records,
+      reader.requester,
+      datasetOf(reader),
+    );
+    if (withheld.size === 0) return [...records];
+
+    await this.audit.record({
+      action: 'record.read',
+      outcome: 'denied',
+      dataset: datasetOf(reader),
+      reason: 'objection_upheld',
+      actor: reader.requester,
+      purpose: reader.purpose ?? null,
+      records: [...withheld],
+      detail: { withheld: withheld.size, ...descriptor },
+      correlationId: reader.correlationId ?? null,
+    });
+
+    return records.filter((record) => !withheld.has(record.id));
+  }
+
   private async guard(
     records: readonly StoredRecord[],
     reader: Reader,

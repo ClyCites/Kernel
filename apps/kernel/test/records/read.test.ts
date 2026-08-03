@@ -11,6 +11,7 @@ import {
   type TestIngest,
   readingAs,
   consentServiceFor,
+  objectionServiceFor,
 } from '../helpers/fixtures.js';
 import { ReadService } from '../../src/records/read.service.js';
 import { RecordRepository } from '../../src/records/record.repository.js';
@@ -24,7 +25,7 @@ let read: ReadService;
 before(async () => {
   db = await startTestDatabase();
   ({ ingest, repository } = ingestServiceFor(db.app));
-  read = new ReadService(repository, consentServiceFor(db.app), auditServiceFor(db.app));
+  read = new ReadService(repository, consentServiceFor(db.app), objectionServiceFor(db.app), auditServiceFor(db.app));
 });
 
 after(async () => {

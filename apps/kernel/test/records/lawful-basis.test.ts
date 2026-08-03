@@ -10,6 +10,7 @@ import {
   type TestIngest,
 } from '../helpers/fixtures.js';
 import { OperationsController } from '../../src/api/operations.controller.js';
+import { ObjectionRepository } from '../../src/consent/objection.repository.js';
 import { RegistryRepository } from '../../src/registry/registry.repository.js';
 import { RecordRepository } from '../../src/records/record.repository.js';
 import { declaredLawfulBasis } from '../../src/api/dataset.js';
@@ -38,6 +39,7 @@ before(async () => {
     db.app,
     new RegistryRepository(db.app),
     repository,
+    new ObjectionRepository(db.app),
   );
 });
 

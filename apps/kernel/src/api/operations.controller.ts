@@ -9,6 +9,7 @@ import { SCHEMA_VERSION } from '@clycites/schema';
 import type { Pool } from 'pg';
 
 import { KERNEL_POOL } from '../storage/pool.js';
+import { ObjectionRepository } from '../consent/objection.repository.js';
 import { RegistryRepository } from '../registry/registry.repository.js';
 import { RecordRepository } from '../records/record.repository.js';
 
@@ -21,6 +22,7 @@ export class OperationsController {
     @Inject(KERNEL_POOL) private readonly pool: Pool,
     @Inject(RegistryRepository) private readonly registry: RegistryRepository,
     @Inject(RecordRepository) private readonly records: RecordRepository,
+    @Inject(ObjectionRepository) private readonly objections: ObjectionRepository,
   ) {}
 
   @Get('health')
@@ -51,11 +53,12 @@ export class OperationsController {
   @Get('metrics')
   @Header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
   async metrics(): Promise<string> {
-    const [byBasis, thinKg, census, delegations] = await Promise.all([
+    const [byBasis, thinKg, census, delegations, objections] = await Promise.all([
       this.registry.tonnageByConversionBasis(),
       this.registry.tonnageOnThinSample(THIN_SAMPLE),
       this.records.lawfulBasisCensus(),
       this.records.delegationBasisCensus(),
+      this.objections.standingCensus(),
     ]);
 
     const total = [...byBasis.values()].reduce((sum, kg) => sum + kg, 0);
@@ -119,6 +122,18 @@ export class OperationsController {
       lines.push(
         `kernel_delegated_records_total{granted_via="${row.basis}"} ${row.records}`,
       );
+    }
+
+    // Worth more than most of what is on this endpoint. A rising objection
+    // rate is the earliest signal that farmers do not trust what the platform
+    // is doing with their records, and it arrives long before anyone
+    // complains to the regulator.
+    lines.push(
+      '# HELP kernel_standing_objections Live objections under s.7(3) that have not been withdrawn, by scope.',
+      '# TYPE kernel_standing_objections gauge',
+    );
+    for (const row of objections) {
+      lines.push(`kernel_standing_objections{scope="${row.scope}"} ${row.objections}`);
     }
 
     return `${lines.join('\n')}\n`;

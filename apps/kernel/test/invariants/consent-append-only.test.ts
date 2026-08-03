@@ -9,7 +9,10 @@ import {
   startTestDatabase,
   type TestDatabase,
 } from '../helpers/database.js';
-import { consentGrantServiceFor } from '../helpers/fixtures.js';
+import {
+  consentGrantServiceFor,
+  objectionServiceFor,
+} from '../helpers/fixtures.js';
 
 let db: TestDatabase;
 let id: string;
@@ -96,5 +99,79 @@ describe('the consent store is append-only', () => {
       [id],
     );
     assert.equal(rows[0]?.count, '1');
+  });
+});
+
+/**
+ * The same reasoning, and one addition: an objection that could be edited is
+ * a protection somebody else can quietly remove.
+ */
+describe('the objection store is append-only', () => {
+  let objection: string;
+
+  before(async () => {
+    const outcome = await objectionServiceFor(db.app).lodge({
+      subject: SUBJECT,
+      scope: null,
+      lodgedVia: 'in_person',
+      lodgedBy: SUBJECT,
+      delegation: null,
+      evidence: [],
+      dataset: 'live',
+    });
+    objection = outcome.objection.id;
+  });
+
+  test('the application role cannot delete an objection', async () => {
+    const error = await db.app
+      .query('delete from kernel.objection where id = $1', [objection])
+      .then(() => null, (caught: unknown) => caught);
+
+    assert.notEqual(error, null);
+    assert.ok(
+      [INSUFFICIENT_PRIVILEGE, RESTRICT_VIOLATION].includes(sqlState(error) ?? ''),
+      `expected a refusal, got ${sqlState(error)}`,
+    );
+  });
+
+  test('even the owner cannot narrow its scope after the fact', async () => {
+    const error = await db.owner
+      .query(`update kernel.objection set scope = '{delivery}' where id = $1`, [
+        objection,
+      ])
+      .then(() => null, (caught: unknown) => caught);
+
+    assert.equal(sqlState(error), RESTRICT_VIOLATION);
+  });
+
+  test('a withdrawal cannot itself be withdrawn', async () => {
+    await objectionServiceFor(db.app).withdraw(
+      objection,
+      SUBJECT,
+      'in_person',
+      null,
+      'live',
+    );
+
+    const error = await db.owner
+      .query('delete from kernel.objection_withdrawal where objection_id = $1', [
+        objection,
+      ])
+      .then(() => null, (caught: unknown) => caught);
+
+    assert.equal(sqlState(error), RESTRICT_VIOLATION);
+  });
+
+  test('ussd is not evidence enough to withdraw one', async () => {
+    const error = await db.owner
+      .query(
+        `insert into kernel.objection_withdrawal
+           (id, objection_id, withdrawn_at, withdrawn_by, withdrawn_via)
+         values ($1, $2, now(), $3, 'ussd_confirmation')`,
+        [uuidv7(), objection, SUBJECT],
+      )
+      .then(() => null, (caught: unknown) => caught);
+
+    assert.notEqual(error, null);
   });
 });

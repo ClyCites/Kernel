@@ -8,6 +8,8 @@ import { AuditService } from '../../src/audit/audit.service.js';
 import { AuditShipper } from '../../src/audit/audit.shipper.js';
 import { ConsentGrantService } from '../../src/consent/consent-grant.service.js';
 import { ConsentRepository } from '../../src/consent/consent.repository.js';
+import { ObjectionRepository } from '../../src/consent/objection.repository.js';
+import { ObjectionService } from '../../src/consent/objection.service.js';
 import { ConsentService } from '../../src/consent/consent.service.js';
 import { DelegationService } from '../../src/records/delegation.service.js';
 import { IngestService } from '../../src/records/ingest.service.js';
@@ -77,6 +79,13 @@ export const consentServiceFor = (
 
 export const consentGrantServiceFor = (pool: Pool): ConsentGrantService =>
   new ConsentGrantService(new ConsentRepository(pool), auditServiceFor(pool));
+
+export const objectionServiceFor = (pool: Pool): ObjectionService =>
+  new ObjectionService(
+    new ObjectionRepository(pool),
+    new ConsentRepository(pool),
+    auditServiceFor(pool),
+  );
 
 export const ingestServiceFor = (
   pool: Pool,

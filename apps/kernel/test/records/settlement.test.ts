@@ -11,6 +11,7 @@ import {
   readingAs,
   retractionDocument,
   consentServiceFor,
+  objectionServiceFor,
 } from '../helpers/fixtures.js';
 import { ReadService } from '../../src/records/read.service.js';
 import { RecordRepository } from '../../src/records/record.repository.js';
@@ -24,7 +25,7 @@ before(async () => {
   db = await startTestDatabase();
   const assembled = ingestServiceFor(db.app);
   ingest = assembled.ingest;
-  read = new ReadService(assembled.repository, consentServiceFor(db.app), auditServiceFor(db.app));
+  read = new ReadService(assembled.repository, consentServiceFor(db.app), objectionServiceFor(db.app), auditServiceFor(db.app));
 });
 
 after(async () => {

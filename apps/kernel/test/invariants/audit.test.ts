@@ -17,6 +17,7 @@ import {
   readingAs,
   type TestIngest,
   consentServiceFor,
+  objectionServiceFor,
 } from '../helpers/fixtures.js';
 import { AuditService } from '../../src/audit/audit.service.js';
 import { AuditShipper } from '../../src/audit/audit.shipper.js';
@@ -34,7 +35,7 @@ before(async () => {
   db = await startTestDatabase();
   ({ ingest, repository } = ingestServiceFor(db.app));
   audit = auditServiceFor(db.app);
-  read = new ReadService(repository, consentServiceFor(db.app), audit);
+  read = new ReadService(repository, consentServiceFor(db.app), objectionServiceFor(db.app), audit);
 });
 
 after(async () => {

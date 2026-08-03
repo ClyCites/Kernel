@@ -2,6 +2,10 @@ import { z } from 'zod';
 
 import { ConversionBasis } from '@clycites/schema';
 import { CONSENT_CHANNELS, CONSENT_PURPOSES } from '../consent/consent.service.js';
+import {
+  OBJECTION_CHANNELS,
+  WITHDRAWAL_CHANNELS,
+} from '../consent/objection.service.js';
 import { ENTITY_SCHEMAS } from '../records/entity-registry.js';
 import { SUBJECT_HEADER } from './subject.js';
 import { DATASET_HEADER, LAWFUL_BASIS_HEADER } from './dataset.js';
@@ -847,6 +851,67 @@ export function buildOpenApiDocument(): OpenApiDocument {
     },
   };
 
+  schemas['Objection'] = {
+    type: 'object',
+    required: ['id', 'subject', 'lodged_at', 'lodged_via', 'lodged_by'],
+    description:
+      'An objection to processing under s.7(3). Not the same thing as withdrawing a grant: withdrawal names one grantee and one purpose, an objection is against the processing itself and stops it only where the record’s lawful basis is not one of the s.7(2) grounds.',
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      subject: { type: 'string', format: 'uuid' },
+      scope: {
+        type: ['array', 'null'],
+        items: { type: 'string' },
+        description:
+          'Record types covered, or null for all of them. A farmer objecting to observations about their plot has not objected to the delivery receipts they need for a loan.',
+      },
+      lodged_at: { type: 'string', format: 'date-time' },
+      lodged_via: { type: 'string', enum: [...OBJECTION_CHANNELS] },
+      lodged_by: {
+        type: 'string',
+        format: 'uuid',
+        description:
+          'Not always the subject. An officer may lodge under delegation, because a farmer with no smartphone must still be able to object.',
+      },
+      delegation: { type: ['string', 'null'], format: 'uuid' },
+      evidence: { type: 'array', items: {} },
+      dataset: { type: 'string', enum: [...DATASETS] },
+      withdrawn_at: { type: ['string', 'null'], format: 'date-time' },
+    },
+  };
+
+  schemas['ObjectionOutcome'] = {
+    type: 'object',
+    required: ['objection', 'stopped', 'continuing', 'notice'],
+    description:
+      'Both sets, enumerated. Never a boolean: a subject told “done” while a cooperative carries on under contract_performance has been misled, which is worse than a refusal.',
+    properties: {
+      objection: ref('Objection'),
+      stopped: { type: 'array', items: ref('BasisOutcome') },
+      continuing: { type: 'array', items: ref('BasisOutcome') },
+      notice: {
+        type: 'array',
+        items: { type: 'string' },
+        description:
+          'What an objection does not do. Erasure, notifying prior recipients, and the audit log are all outside it, as is another party’s own record of a transaction it was part of.',
+      },
+    },
+  };
+
+  schemas['BasisOutcome'] = {
+    type: 'object',
+    required: ['record_type', 'lawful_basis', 'records'],
+    properties: {
+      record_type: { type: 'string' },
+      lawful_basis: { type: 'string' },
+      records: { type: 'integer' },
+      ground: {
+        type: 'string',
+        description: 'Present only where processing continues. Why it continues.',
+      },
+    },
+  };
+
   schemas['PartyLinkResolution'] = {
     type: 'object',
     required: ['identities', 'links', 'collapsed'],
@@ -896,7 +961,7 @@ export function buildOpenApiDocument(): OpenApiDocument {
       {
         name: 'consent',
         description:
-          'Grants, and their withdrawal. Written by the subject and read by the subject; nothing here is a grantee’s to manage.',
+          'Grants, and their withdrawal. Written by the subject and read by the subject; nothing here is a grantee’s to manage. Objections live here too, and are a different right: a grant is withdrawn one grantee at a time, an objection is against the processing itself.',
       },
       { name: 'operations', description: 'Liveness and readiness.' },
     ],
@@ -1717,6 +1782,107 @@ export function buildOpenApiDocument(): OpenApiDocument {
             },
             '403': problemResponse('No verified subject.'),
             '404': problemResponse('No grant of yours with that id.'),
+          },
+        },
+      },
+      '/objections': {
+        get: {
+          tags: ['consent'],
+          operationId: 'listOwnObjections',
+          summary: 'What this subject has objected to',
+          responses: {
+            '200': {
+              description: 'The subject’s own objections, withdrawn ones included.',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    required: ['objections'],
+                    properties: {
+                      objections: { type: 'array', items: ref('Objection') },
+                    },
+                  },
+                },
+              },
+            },
+            '403': problemResponse('No verified subject.'),
+          },
+        },
+        post: {
+          tags: ['consent'],
+          operationId: 'lodgeObjection',
+          summary: 'Object to processing',
+          description:
+            'May be lodged for another party under a delegation — `on_behalf_of` with `delegation` — because a farmer with no smartphone must still be able to object. The response enumerates what stopped and what continues, with the ground named for each.',
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['lodged_via'],
+                  properties: {
+                    on_behalf_of: { type: 'string', format: 'uuid' },
+                    delegation: { type: 'string', format: 'uuid' },
+                    scope: {
+                      type: ['array', 'null'],
+                      items: { type: 'string' },
+                      minItems: 1,
+                    },
+                    lodged_via: { type: 'string', enum: [...OBJECTION_CHANNELS] },
+                    evidence: { type: 'array', items: {} },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '201': {
+              description: 'Lodged, with both sets enumerated.',
+              content: {
+                'application/json': { schema: ref('ObjectionOutcome') },
+              },
+            },
+            '400': problemResponse(
+              'Lodging for another party without naming the delegation it rests on.',
+            ),
+            '403': problemResponse('No verified subject.'),
+          },
+        },
+      },
+      '/objections/{id}': {
+        delete: {
+          tags: ['consent'],
+          operationId: 'withdrawObjection',
+          summary: 'Re-consent',
+          description:
+            'The subject only, and never under a delegation. Lodging an objection protects the subject and may be delegated; withdrawing one removes the protection, and the party best placed to want it removed is the one whose access it restricts. `ussd_confirmation` is not accepted here for the same reason.',
+          parameters: [
+            { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['withdrawn_via'],
+                  properties: {
+                    withdrawn_via: { type: 'string', enum: [...WITHDRAWAL_CHANNELS] },
+                    reason: { type: ['string', 'null'] },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': {
+              description: 'Withdrawn.',
+              content: { 'application/json': { schema: ref('Objection') } },
+            },
+            '400': problemResponse('Evidence too weak to remove a protection.'),
+            '403': problemResponse('No verified subject.'),
+            '404': problemResponse('No objection of yours with that id.'),
           },
         },
       },

@@ -78,3 +78,5 @@ export function sqlState(error: unknown): string | undefined {
 export const CHECK_VIOLATION = '23514';
 /** Postgres SQLSTATE for not_null_violation. */
 export const NOT_NULL_VIOLATION = '23502';
+/** Postgres SQLSTATE the kernel's own refusal triggers raise. */
+export const RESTRICT_VIOLATION = '23001';

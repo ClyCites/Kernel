@@ -3,6 +3,9 @@ import { uuidv7 } from 'uuidv7';
 import type { Pool } from 'pg';
 
 import { ConversionService } from '../../src/registry/conversion.service.js';
+import { AuditRepository } from '../../src/audit/audit.repository.js';
+import { AuditService } from '../../src/audit/audit.service.js';
+import { AuditShipper } from '../../src/audit/audit.shipper.js';
 import { DelegationService } from '../../src/records/delegation.service.js';
 import { IngestService } from '../../src/records/ingest.service.js';
 import type {
@@ -34,6 +37,25 @@ import type { Dataset } from '../../src/records/record.js';
  * `special_data_consent` is the default because `deliveryDocument` carries an
  * `agreed_price`, which makes it s.9(1) special data.
  */
+/**
+ * The audit log, wired to the real table with shipping switched off.
+ *
+ * Not a stub. Every read and every write goes through this, and a stub here
+ * would mean the whole suite exercises a code path that does not write to the
+ * column a data subject's s.24(1)(c) request is answered from. An empty ship
+ * URL is the production default anyway — see audit.shipper.ts.
+ */
+export const auditServiceFor = (pool: Pool): AuditService =>
+  new AuditService(
+    new AuditRepository(pool),
+    new AuditShipper({
+      AUDIT_SHIP_URL: '',
+      AUDIT_SHIP_TOKEN: '',
+      AUDIT_SHIP_INTERVAL_SECONDS: 10,
+      AUDIT_SHIP_BATCH: 200,
+    }),
+  );
+
 export const ingestServiceFor = (
   pool: Pool,
   defaults: IngestContext = { lawfulBasis: 'special_data_consent' },
@@ -46,6 +68,7 @@ export const ingestServiceFor = (
     repository,
     new DelegationService(repository),
     new ConversionService(new RegistryRepository(pool)),
+    auditServiceFor(pool),
     config,
   );
   const ingest: TestIngest = {

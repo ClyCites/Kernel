@@ -6,6 +6,7 @@ import {
   CHECK_VIOLATION,
   INSUFFICIENT_PRIVILEGE,
   NOT_NULL_VIOLATION,
+  RESTRICT_VIOLATION,
   sqlState,
   startTestDatabase,
   type TestDatabase,
@@ -140,6 +141,89 @@ describe('invariant 1 — append-only (brief §4.1)', () => {
     );
     const granted = new Set(rows.map((r) => r.privilege_type));
     assert.deepEqual([...granted].sort(), ['INSERT', 'SELECT']);
+  });
+});
+
+/* ── the limit of the grant, and what covers it ───────────────────────── */
+
+describe('the owner is not bound by the grant, and is bound by a trigger', () => {
+  test('FINDING: the schema owner still holds DELETE', async () => {
+    // The uncomfortable half of 0001, asserted so nobody can claim the system
+    // makes records undeletable. It does not. It makes them undeletable *by the
+    // application*, which is a smaller and true claim. Postgres offers no way
+    // to durably revoke a right from a table's owner — they can re-grant it —
+    // so this is a limit to be disclosed, not a bug to be fixed here.
+    const { rows } = await db.owner.query<{ has: boolean }>(
+      "select has_table_privilege('clycites_owner', 'facts.record', 'DELETE') as has",
+    );
+    assert.equal(rows[0]?.has, true);
+  });
+
+  test('the owner cannot delete a live record', async () => {
+    const id = await insertFact();
+
+    const error = await db.owner
+      .query('delete from facts.record where id = $1', [id])
+      .then(
+        () => null,
+        (e: unknown) => e,
+      );
+
+    assert.notEqual(error, null, 'a live record must survive an owner DELETE');
+    assert.equal(sqlState(error), RESTRICT_VIOLATION);
+    assert.match(String(error), /refusing to delete live record/);
+
+    const { rows } = await db.owner.query('select 1 from facts.record where id = $1', [id]);
+    assert.equal(rows.length, 1, 'the row is still there');
+  });
+
+  test('the owner can clear a seed record, because that is the point', async () => {
+    // Regenerating the corpus after a fixture change requires this. A blanket
+    // refusal would push somebody toward `drop schema ... cascade`, which is
+    // strictly worse than the operation it prevented.
+    const id = uuidv7();
+    await db.owner.query(
+      `insert into facts.record (
+         id, type, record_class, schema_version, occurred_at,
+         occurred_at_precision, recorded_at, asserted_by, body, lawful_basis, dataset
+       ) values ($1, 'delivery', 'observation', '0.2.0', now(), 'day', now(), $2,
+                 '{}', 'special_data_consent', 'seed')`,
+      [id, uuidv7()],
+    );
+
+    await db.owner.query('delete from facts.record where id = $1', [id]);
+
+    const { rows } = await db.owner.query('select 1 from facts.record where id = $1', [id]);
+    assert.equal(rows.length, 0);
+  });
+
+  test('a mixed delete takes the whole statement down with it', async () => {
+    // Row-level, so `delete from facts.record` with no predicate hits a live
+    // row and aborts — the seed rows are not quietly removed on the way past.
+    const live = await insertFact();
+    const error = await db.owner.query('delete from facts.record').then(
+      () => null,
+      (e: unknown) => e,
+    );
+
+    assert.equal(sqlState(error), RESTRICT_VIOLATION);
+    const { rows } = await db.owner.query('select 1 from facts.record where id = $1', [live]);
+    assert.equal(rows.length, 1);
+  });
+
+  test('the guard covers the inference namespace and the key registry too', async () => {
+    const triggers = await db.owner.query<{ n: string }>(
+      `select count(*)::text n
+         from pg_trigger t
+         join pg_class c on c.oid = t.tgrelid
+         join pg_namespace ns on ns.oid = c.relnamespace
+        where not t.tgisinternal
+          and t.tgfoid = 'kernel.refuse_live_deletion'::regproc
+          and not c.relispartition
+          and format('%s.%s', ns.nspname, c.relname) in
+              ('facts.record', 'inference.record', 'kernel.record_key')`,
+    );
+    assert.equal(triggers.rows[0]?.n, '3');
   });
 });
 

@@ -115,6 +115,13 @@ begin
 end
 $fn$;
 
+-- Note the absence of `audit` here, which is deliberate and is not an
+-- oversight. Restoring a database is itself a long sequence of DDL, and the
+-- audit log records DDL — so audit.entry has more rows after a restore than it
+-- had at backup, by construction. Fingerprinting it would make this check fail
+-- every time it was run correctly. The audit schema is verified below instead,
+-- on the two properties that actually carry the guarantee: its constraints and
+-- its grants.
 select 'table ' || t.sch || '.' || t.tbl || ' ' || f.n || ' ' || f.digest
   from (
     select n.nspname as sch, c.relname as tbl
@@ -131,13 +138,17 @@ select 'constraint ' || n.nspname || ' ' || c.conname
        || ' valid=' || c.convalidated
   from pg_constraint c
   join pg_namespace n on n.oid = c.connamespace
- where n.nspname in ('facts', 'inference', 'registry', 'kernel')
+ where n.nspname in ('facts', 'inference', 'registry', 'kernel', 'audit')
  order by 1;
 
+-- Grants are where append-only actually lives (0006, 0017), so a restore that
+-- quietly widened one is the failure this whole section exists to catch. The
+-- audit schema is included because `kernel_app` holding SELECT on audit.entry
+-- would be a serious regression and would show up nowhere else.
 select 'privilege ' || g.table_schema || '.' || g.table_name || ' '
        || g.grantee || ' ' || g.privilege_type
   from information_schema.role_table_grants g
- where g.table_schema in ('facts', 'inference', 'registry', 'kernel')
+ where g.table_schema in ('facts', 'inference', 'registry', 'kernel', 'audit')
  order by 1;
 SQL
 )

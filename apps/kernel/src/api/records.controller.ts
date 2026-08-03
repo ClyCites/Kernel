@@ -22,6 +22,7 @@ import {
   type Reader,
 } from '../records/read.service.js';
 import { verifiedSubject } from './subject.js';
+import { correlationOf } from './correlation.middleware.js';
 import { requestedDataset, declaredLawfulBasis } from './dataset.js';import { KERNEL_CONFIG, type KernelConfig } from '../config.js';
 
 /**
@@ -60,6 +61,7 @@ export class RecordsController {
     const result = await this.ingest.ingest(body, {
       dataset: requestedDataset(request, this.config.SEED_INGEST_ENABLED),
       lawfulBasis: declaredLawfulBasis(request),
+      correlationId: correlationOf(request),
     });
 
     response.status(result.replayed ? 200 : 201);
@@ -72,6 +74,7 @@ export class RecordsController {
     return this.read.get(result.record.id, {
       requester: result.record.asserted_by,
       dataset: result.record.dataset,
+      correlationId: correlationOf(request),
     });
   }
 
@@ -139,6 +142,7 @@ export class RecordsController {
       requester: verifiedSubject(request),
       purpose: purpose ?? null,
       dataset: requestedDataset(request, this.config.SEED_INGEST_ENABLED),
+      correlationId: correlationOf(request),
     };
   }
 

@@ -17,6 +17,11 @@ export class CorrelationMiddleware implements NestMiddleware {
     const correlationId =
       supplied !== undefined && ACCEPTABLE.test(supplied) ? supplied : uuidv7();
 
+    // Written back onto the request as well as the response, so the audit log
+    // and the http log agree on one identifier without a request-scoped
+    // provider or async-local storage. Sanitised above, so nothing forgeable
+    // reaches either.
+    request.headers[CORRELATION_HEADER] = correlationId;
     response.setHeader(CORRELATION_HEADER, correlationId);
 
     const started = process.hrtime.bigint();
@@ -29,4 +34,15 @@ export class CorrelationMiddleware implements NestMiddleware {
 
     next();
   }
+}
+
+/**
+ * Null when the middleware has not run — a controller reached directly in a
+ * unit test, for instance. Never invented here: an id minted at the point of
+ * use correlates with nothing and only looks as though it does.
+ */
+export function correlationOf(request: Request): string | null {
+  const value = request.headers[CORRELATION_HEADER];
+  const id = Array.isArray(value) ? value[0] : value;
+  return id !== undefined && ACCEPTABLE.test(id) ? id : null;
 }

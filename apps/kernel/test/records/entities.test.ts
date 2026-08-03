@@ -6,6 +6,7 @@ import { uuidv7 } from 'uuidv7';
 import { startTestDatabase, type TestDatabase } from '../helpers/database.js';
 import {
   ENTITY_BODIES,
+  auditServiceFor,
   entityDocument,
   ingestServiceFor,
   type TestIngest,
@@ -25,7 +26,7 @@ before(async () => {
   db = await startTestDatabase();
   const { ingest: service, repository } = ingestServiceFor(db.app);
   ingest = service;
-  read = new ReadService(repository, new ConsentService());
+  read = new ReadService(repository, new ConsentService(), auditServiceFor(db.app));
 });
 
 after(async () => {

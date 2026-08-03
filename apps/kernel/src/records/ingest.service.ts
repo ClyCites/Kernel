@@ -6,9 +6,10 @@ import { qualityFlags } from './quality.js';
 import { chainDepth, DEFAULT_SUPERSESSION_MAX_DEPTH } from './lineage.js';
 import { DelegationService } from './delegation.service.js';
 import { ConversionService } from '../registry/conversion.service.js';
+import { AuditService } from '../audit/audit.service.js';
 import { KERNEL_CONFIG, type KernelConfig } from '../config.js';
 import { RecordRepository } from './record.repository.js';
-import { subjectTypeMismatched } from './subjects.js';
+import { subjectsOf, subjectTypeMismatched } from './subjects.js';
 import {
   splitEnvelope,
   type Dataset,
@@ -39,6 +40,8 @@ import {
 export interface IngestContext {
   dataset?: Dataset | undefined;
   lawfulBasis?: LawfulBasis | undefined;
+  /** Ties the audit entry to the http log line. Null outside a request. */
+  correlationId?: string | null | undefined;
 }
 
 export interface IngestResult {
@@ -64,6 +67,7 @@ export class IngestService {
     @Inject(RecordRepository) private readonly repository: RecordRepository,
     @Inject(DelegationService) private readonly delegations: DelegationService,
     @Inject(ConversionService) private readonly conversions: ConversionService,
+    @Inject(AuditService) private readonly audit: AuditService,
     @Inject(KERNEL_CONFIG)
     private readonly config: Pick<KernelConfig, 'SUPERSESSION_MAX_DEPTH'> = {
       SUPERSESSION_MAX_DEPTH: DEFAULT_SUPERSESSION_MAX_DEPTH,
@@ -71,6 +75,53 @@ export class IngestService {
   ) {}
 
   async ingest(
+    payload: unknown,
+    context: IngestContext = {},
+  ): Promise<IngestResult> {
+    try {
+      const result = await this.append(payload, context);
+      await this.audit.record({
+        action: 'record.write',
+        outcome: 'allowed',
+        dataset: result.record.dataset,
+        reason: result.replayed ? 'replayed' : 'appended',
+        actor: result.record.asserted_by,
+        // The record is about somebody, and s.16(4) asks who received the
+        // version before a correction — which is a question about this id.
+        subjects: subjectsOf({ ...result.record.body, type: result.record.type }),
+        records: [result.record.id],
+        recordTypes: [result.record.type],
+        detail: {
+          replayed: result.replayed,
+          supersedes: result.record.supersedes,
+          on_behalf_of: result.record.on_behalf_of,
+          flags: result.record.quality_flags.join(',').slice(0, 200),
+        },
+        correlationId: context.correlationId ?? null,
+      });
+      return result;
+    } catch (error) {
+      // Refusals are the interesting half. A device whose records suddenly stop
+      // being accepted is invisible in a log that only records what worked, and
+      // this is an append-time signal that no read path would ever produce.
+      if (error instanceof RecordRejected) {
+        await this.audit.record({
+          action: 'write.refused',
+          outcome: 'denied',
+          dataset: context.dataset ?? 'live',
+          reason: error.code,
+          // Ids only — and only if the payload actually offered one. Nothing
+          // else from a rejected body goes anywhere near this log.
+          records: submittedId(payload),
+          detail: { by: 'ingest' },
+          correlationId: context.correlationId ?? null,
+        });
+      }
+      throw error;
+    }
+  }
+
+  private async append(
     payload: unknown,
     context: IngestContext = {},
   ): Promise<IngestResult> {
@@ -435,6 +486,23 @@ export class IngestService {
 
 function asNullableString(value: unknown): string | null {
   return typeof value === 'string' ? value : null;
+}
+
+/**
+ * The id a rejected payload claimed, if it claimed one that is plausibly an id.
+ *
+ * Validated against the uuid shape rather than taken as given: the column is
+ * `uuid[]`, so an arbitrary string would fail the insert and cost us the whole
+ * audit entry — and a rejected payload is by definition one whose contents have
+ * not been checked by anything.
+ */
+const UUID_SHAPE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function submittedId(payload: unknown): string[] {
+  if (typeof payload !== 'object' || payload === null) return [];
+  const id = (payload as Record<string, unknown>)['id'];
+  return typeof id === 'string' && UUID_SHAPE.test(id) ? [id] : [];
 }
 
 /**

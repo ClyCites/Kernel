@@ -6,6 +6,7 @@ import {
 import compression from 'compression';
 
 import { ApiModule } from './api/api.module.js';
+import { AuditModule } from './audit/audit.module.js';
 import { ConsentModule } from './consent/consent.module.js';
 import { RecordsModule } from './records/records.module.js';
 import { RegistryModule } from './registry/registry.module.js';
@@ -21,6 +22,7 @@ const COMPRESSION_THRESHOLD_BYTES = 256;
 @Module({
   imports: [
     StorageModule,
+    AuditModule,
     ConsentModule,
     RegistryModule,
     RecordsModule,

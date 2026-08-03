@@ -215,13 +215,16 @@ Run on the first working day of each month.
 | 7 | OS security updates applied | `unattended-upgrades` log |
 | 8 | Access list still correct | Who holds DB, host, and secret-store access — remove departures |
 | 9 | §1 contacts still correct | Ring one of them |
-| 10 | Audit log shipping off-box | Once work order F ships |
+| 10 | Audit log shipping off-box | `AUDIT_SHIP_URL` is set, and the collector holds entries dated within the last 24h |
+| 11 | Audit log is still write-only to the app | `select privilege_type from information_schema.role_table_grants where grantee='kernel_app' and table_schema='audit'` returns INSERT and nothing else |
+| 12 | No unexplained DDL | `select occurred_at, reason, detail->>'object', detail->>'role' from audit.entry where action='schema.ddl' and occurred_at > now() - interval '1 month'` — every row should match a deploy in §5 |
+| 13 | Denial rate has not shifted | `select date_trunc('day', occurred_at) d, reason, count(*) from audit.entry where outcome='denied' group by 1,2 order by 1` — a change is a signal, not noise |
 
 ### Verification log
 
-| Date | Who | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | Notes |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| | | | | | | | | | | | | |
+| Date | Who | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| | | | | | | | | | | | | | | | |
 
 ---
 
@@ -244,8 +247,8 @@ decision and a gap nobody wrote down is a surprise.
 | Gap | Blocked on |
 | --- | --- |
 | §1 contact rows are empty | Nothing. Fill them. |
-| Off-box log shipping | Work order F (audit) |
-| Third-party access list for s.24(1)(c) | Work order F (audit) |
+| Answering a s.24(1)(c) request has no tooling | Nothing. The data and the grants are right (0025); a person runs the query as the owner. |
+| Un-shipped audit entries are lost if the process dies | A shipper outside this process, which needs its own role. See 0025 finding 1. |
 | Retention expiry and destruction, s.18(4) | The 2021 Regulations, and counsel |
 | Cross-border transfer position | Counsel |
 | External penetration test | Budget. Before the first real farmer record. |

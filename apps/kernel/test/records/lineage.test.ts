@@ -5,6 +5,7 @@ import { uuidv7 } from 'uuidv7';
 
 import { startTestDatabase, type TestDatabase } from '../helpers/database.js';
 import {
+  auditServiceFor,
   delegationDocument,
   deliveryDocument,
   ingestServiceFor,
@@ -29,7 +30,7 @@ let read: ReadService;
 before(async () => {
   db = await startTestDatabase();
   ({ ingest, repository } = ingestServiceFor(db.app));
-  read = new ReadService(repository, new ConsentService());
+  read = new ReadService(repository, new ConsentService(), auditServiceFor(db.app));
 });
 
 after(async () => {
@@ -234,7 +235,7 @@ describe('an inference is stale when its inputs move (spec §8 rule 5)', () => {
         return (value as (...a: unknown[]) => unknown).bind(target);
       },
     });
-    const counted = new ReadService(counting, new ConsentService());
+    const counted = new ReadService(counting, new ConsentService(), auditServiceFor(db.app));
 
     // getInference reads one at a time, so drive the derivation the way a page
     // would: the method takes the whole set and must not fan out per record.

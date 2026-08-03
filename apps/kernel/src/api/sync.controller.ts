@@ -15,6 +15,7 @@ import { z } from 'zod';
 
 import { MAX_CHANGES, SyncService } from '../sync/sync.service.js';
 import { verifiedSubject } from './subject.js';
+import { correlationOf } from './correlation.middleware.js';
 import { requestedDataset, declaredLawfulBasis } from './dataset.js';
 import { KERNEL_CONFIG, type KernelConfig } from '../config.js';
 
@@ -60,6 +61,7 @@ export class SyncController {
       {
         dataset: requestedDataset(request, this.config.SEED_INGEST_ENABLED),
         lawfulBasis: declaredLawfulBasis(request),
+        correlationId: correlationOf(request),
       },
     );
     return { results: outcomes };
@@ -88,6 +90,7 @@ export class SyncController {
         requester: verifiedSubject(request),
         purpose: null,
         dataset: requestedDataset(request, this.config.SEED_INGEST_ENABLED),
+        correlationId: correlationOf(request),
       },
     );
   }

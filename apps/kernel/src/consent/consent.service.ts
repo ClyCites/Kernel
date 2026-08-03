@@ -161,6 +161,15 @@ export class ConsentService {
    * The guard. A consent failure must never degrade into a partial result, so
    * this throws rather than filtering: half a page of records looks like an
    * answer and is not one.
+   *
+   * NOT THE DISCLOSURE PATH. Nothing that actually returns records to a caller
+   * uses this, and nothing new should: those paths call `decide` and then write
+   * an audit entry — for the denial as well as the allowance — before acting on
+   * it. Disclosing through this method would produce a legally wrong answer to
+   * a subject's DPPA s.24(1)(c) request, because the access would have happened
+   * with nothing recording it. `test/invariants/audit.test.ts` fails if a new
+   * call site appears. Kept because it is the shape the real consent
+   * implementation is written against.
    */
   assertPermitted(request: ConsentRequest): ConsentDecision {
     const decision = this.decide(request);

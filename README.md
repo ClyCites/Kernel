@@ -193,6 +193,15 @@ Six things hold, each with a test that fails when broken.
    There is no UPDATE grant, so there is no privileged path by which a
    correction could overwrite a record — not a code review rule, a missing
    permission. *(`test/invariants/storage.test.ts`)*
+
+   With one honest qualification. That grant binds the application, not the
+   database: `clycites_owner` owns the tables and Postgres offers no way to
+   revoke a right from an owner durably. A trigger refuses deletion of any
+   `live` row for every role, the audit log records the DDL that would be needed
+   to remove it, and anchoring will eventually make a deletion provable. The
+   claim to make is "the running kernel cannot alter a record", not "records
+   cannot be altered" — see
+   [`docs/decisions/0001`](docs/decisions/0001-append-only-enforcement.md).
 2. **Observations and inferences never mix.** Separate Postgres schemas,
    separate tables, separate endpoints. An inference is reachable only by asking
    for it by name. *(`test/records/read.test.ts`)*
@@ -209,6 +218,29 @@ Six things hold, each with a test that fails when broken.
    *(`test/schema-pin.test.ts`)*
 
 ## Operations
+
+### The audit log
+
+Every disclosure, every append, and every refusal is recorded in the `audit`
+schema. It is a statutory record rather than a log: DPPA s.24(1)(c) requires
+telling a data subject who has accessed their data, and s.16(4) requires
+notifying those parties when a record is corrected — neither is answerable from
+anything else.
+
+It holds ids and query descriptors. **Never record bodies**, enforced by a type
+that cannot represent one, a runtime filter, and a size cap in the database.
+`kernel_app` has INSERT and no SELECT: reading the log is a privileged operator
+path, run as the owner. Entries cannot be updated or deleted by anyone, and
+schema changes write their own entry — which is what makes the qualification on
+invariant 1 above bearable.
+
+Set `AUDIT_SHIP_URL` to copy entries off-box. That copy is the tamper evidence,
+so it is worth having somewhere an operator with credentials to this database
+cannot reach. Shipping is asynchronous and best effort and can never fail a
+request; the database write is neither, and will.
+
+See [`docs/decisions/0025`](docs/decisions/0025-audit-log.md), including what it
+does not yet do.
 
 [`docs/runbook.md`](docs/runbook.md) is the procedure for a breach, a restore, a
 secret rotation, and the monthly verification the DPPA requires. Read §1 before

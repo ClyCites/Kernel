@@ -67,6 +67,23 @@ const Env = z.object({
    */
   REGISTRY_RATE_LIMIT: z.coerce.number().int().min(1).default(600),
   REGISTRY_RATE_WINDOW_SECONDS: z.coerce.number().int().min(1).default(60),
+  /**
+   * Where the audit log is copied to, off this box. Empty means it is not.
+   *
+   * The database copy is the statutory record and is written synchronously.
+   * This is the tamper-evidence copy: its value is that it sits somewhere an
+   * operator with credentials to this database cannot reach, so an entry
+   * removed here can still be shown to have existed. Shipping is therefore
+   * best-effort by design and never blocks a request — see audit.shipper.ts.
+   */
+  AUDIT_SHIP_URL: z.string().default(''),
+  /**
+   * Bearer token for that endpoint. Never logged, never echoed, and absent
+   * from .env.example on purpose.
+   */
+  AUDIT_SHIP_TOKEN: z.string().default(''),
+  AUDIT_SHIP_INTERVAL_SECONDS: z.coerce.number().int().min(1).default(10),
+  AUDIT_SHIP_BATCH: z.coerce.number().int().min(1).max(1000).default(200),
   NODE_ENV: z.string().default('development'),
 });
 

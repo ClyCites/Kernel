@@ -1,6 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 
+import { AuditService } from '../audit/audit.service.js';
 import {
+  ConsentDenied,
   ConsentService,
   type ConsentPurpose,
 } from '../consent/consent.service.js';
@@ -13,6 +15,7 @@ import {
   type MassBalance,
 } from './mass-balance.js';
 import { KERNEL_CONFIG, type KernelConfig } from '../config.js';
+import type { AuditDescriptor } from '../audit/audit.entry.js';
 import {
   EMPTY_TALLY,
   resolveFulfilment,
@@ -58,6 +61,11 @@ export interface Reader {
    * fabricated records only by asking for them in as many words.
    */
   dataset?: Dataset | undefined;
+  /**
+   * Ties the audit entry to the http log line. Null when no request context
+   * reached here — a seed run or an integrity job, not a disclosure to anyone.
+   */
+  correlationId?: string | null | undefined;
 }
 
 export interface RecordView {
@@ -113,6 +121,7 @@ export class ReadService {
   constructor(
     @Inject(RecordRepository) private readonly repository: RecordRepository,
     @Inject(ConsentService) private readonly consent: ConsentService,
+    @Inject(AuditService) private readonly audit: AuditService,
     @Inject(KERNEL_CONFIG)
     private readonly config: Pick<KernelConfig, 'MASS_BALANCE_TOLERANCE'> = {
       MASS_BALANCE_TOLERANCE: DEFAULT_MASS_BALANCE_TOLERANCE,
@@ -125,7 +134,7 @@ export class ReadService {
     if (found === null || found.dataset !== datasetOf(reader)) return null;
 
     const view = recordView(found);
-    this.guard([view], reader);
+    await this.guard([view], reader, { by: 'id' });
     await this.derive([view], reader);
     return view;
   }
@@ -140,7 +149,7 @@ export class ReadService {
     if (found === null || found.dataset !== datasetOf(reader)) return null;
 
     const view = recordView({ ...found, superseded_by: [], retracted: false });
-    this.guard([view], reader);
+    await this.guard([view], reader, { by: 'inference_id' });
     await this.deriveStaleness([view], datasetOf(reader));
     return view;
   }
@@ -197,7 +206,17 @@ export class ReadService {
     const page = rows.slice(0, limit);
     const last = page.at(-1);
     const views = page.map(recordView);
-    this.guard(views, reader);
+    // Filter names and values, never field values out of a record body: `type`
+    // and `subject` are the caller's own query, which is what an access record
+    // is supposed to describe.
+    await this.guard(views, reader, {
+      by: 'list',
+      type: options.type ?? null,
+      asserted_by: options.assertedBy ?? null,
+      subject: options.subject ?? null,
+      limit,
+      paged: options.cursor !== undefined,
+    });
     await this.derive(views, reader);
 
     return {
@@ -244,7 +263,7 @@ export class ReadService {
     // Custody is deliberately not derived here. This view answers "what was
     // claimed, and when", and overwriting every historical version with the
     // current holder would erase the thing the caller came for.
-    this.guard(views, reader);
+    await this.guard(views, reader, { by: 'chain', versions: views.length });
     return views;
   }
 
@@ -401,18 +420,45 @@ export class ReadService {
    * The consent decision is built from the records that were actually fetched,
    * so a caller cannot nominate their own subjects. It throws rather than
    * filtering: half a page is not an answer.
+   *
+   * Also the audit point. Both halves of the decision are recorded here, and
+   * the entry is awaited: a disclosure this kernel cannot answer for afterwards
+   * is one it does not make. DPPA s.24(1)(c) is answered from the `subjects`
+   * column this writes, and s.16(4) from the `records` column.
    */
-  private guard(views: RecordView[], reader: Reader): void {
+  private async guard(
+    views: RecordView[],
+    reader: Reader,
+    descriptor?: AuditDescriptor,
+  ): Promise<void> {
     if (views.length === 0) return;
 
-    this.consent.assertPermitted({
+    const request = {
       subjects: views.flatMap((view) => subjectsOf(view.record)),
       asserters: views.map((view) => view.record['asserted_by'] as string),
       requester: reader.requester,
       purpose: reader.purpose ?? null,
       record_types: views.map((view) => view.record['type'] as string),
       at: new Date().toISOString(),
+    };
+
+    const decision = this.consent.decide(request);
+
+    await this.audit.record({
+      action: decision.allowed ? 'record.read' : 'consent.denied',
+      outcome: decision.allowed ? 'allowed' : 'denied',
+      dataset: datasetOf(reader),
+      reason: decision.reason,
+      actor: reader.requester,
+      purpose: reader.purpose ?? null,
+      subjects: request.subjects,
+      records: views.map((view) => view.record['id'] as string),
+      recordTypes: request.record_types,
+      detail: { returned: views.length, ...descriptor },
+      correlationId: reader.correlationId ?? null,
     });
+
+    if (!decision.allowed) throw new ConsentDenied(decision);
   }
 }
 

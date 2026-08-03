@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { z } from 'zod';
 
+import { AuditService } from '../audit/audit.service.js';
 import { ConsentDenied, ConsentService } from '../consent/consent.service.js';
 import { IngestService, type IngestContext } from '../records/ingest.service.js';
 import { QueryRejected, RecordRejected } from '../records/errors.js';
@@ -66,6 +67,7 @@ export class SyncService {
     @Inject(RecordRepository) private readonly repository: RecordRepository,
     @Inject(DeviceRepository) private readonly devices: DeviceRepository,
     @Inject(ConsentService) private readonly consent: ConsentService,
+    @Inject(AuditService) private readonly audit: AuditService,
   ) {}
 
   async register(
@@ -147,16 +149,28 @@ export class SyncService {
     reader: Reader,
   ): Promise<Changes> {
     if (reader.requester === null) {
-      throw new ConsentDenied(
-        this.consent.decide({
-          subjects: [],
-          asserters: [],
-          requester: null,
-          purpose: reader.purpose ?? null,
-          record_types: [],
-          at: new Date().toISOString(),
-        }),
-      );
+      const decision = this.consent.decide({
+        subjects: [],
+        asserters: [],
+        requester: null,
+        purpose: reader.purpose ?? null,
+        record_types: [],
+        at: new Date().toISOString(),
+      });
+      // Recorded before the throw. An unauthenticated pull against the widest
+      // disclosure surface in the kernel is exactly the event that matters, and
+      // it is the one a log written on the success path would never see.
+      await this.audit.record({
+        action: 'consent.denied',
+        outcome: 'denied',
+        dataset: reader.dataset ?? 'live',
+        reason: decision.reason,
+        actor: null,
+        purpose: reader.purpose ?? null,
+        detail: { by: 'sync_changes', paged: options.cursor !== undefined },
+        correlationId: reader.correlationId ?? null,
+      });
+      throw new ConsentDenied(decision);
     }
 
     const limit = Math.min(options.limit ?? DEFAULT_CHANGES, MAX_CHANGES);
@@ -174,14 +188,31 @@ export class SyncService {
     const views = page.map(recordView);
 
     if (views.length > 0) {
-      this.consent.assertPermitted({
+      const request = {
         subjects: views.flatMap((view) => subjectsOf(view.record)),
         asserters: views.map((view) => view.record['asserted_by'] as string),
         requester: reader.requester,
         purpose: reader.purpose ?? null,
         record_types: views.map((view) => view.record['type'] as string),
         at: new Date().toISOString(),
+      };
+      const decision = this.consent.decide(request);
+
+      await this.audit.record({
+        action: decision.allowed ? 'record.read' : 'consent.denied',
+        outcome: decision.allowed ? 'allowed' : 'denied',
+        dataset: reader.dataset ?? 'live',
+        reason: decision.reason,
+        actor: reader.requester,
+        purpose: reader.purpose ?? null,
+        subjects: request.subjects,
+        records: views.map((view) => view.record['id'] as string),
+        recordTypes: request.record_types,
+        detail: { by: 'sync_changes', returned: views.length },
+        correlationId: reader.correlationId ?? null,
       });
+
+      if (!decision.allowed) throw new ConsentDenied(decision);
     }
 
     return {

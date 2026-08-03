@@ -4,6 +4,7 @@ import { uuidv7 } from 'uuidv7';
 
 import { startTestDatabase, type TestDatabase } from '../helpers/database.js';
 import {
+  auditServiceFor,
   deliveryDocument,
   entityDocument,
   ingestServiceFor,
@@ -29,7 +30,7 @@ before(async () => {
   const assembled = ingestServiceFor(db.app);
   ingest = assembled.ingest;
   repository = assembled.repository;
-  read = new ReadService(assembled.repository, new ConsentService());
+  read = new ReadService(assembled.repository, new ConsentService(), auditServiceFor(db.app));
   registry = new RegistryRepository(db.app);
 });
 

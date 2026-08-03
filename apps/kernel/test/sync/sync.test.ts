@@ -4,6 +4,7 @@ import { uuidv7 } from 'uuidv7';
 
 import { startTestDatabase, type TestDatabase } from '../helpers/database.js';
 import {
+  auditServiceFor,
   deliveryDocument,
   entityDocument,
   ingestServiceFor,
@@ -34,6 +35,7 @@ before(async () => {
     repository,
     new DeviceRepository(db.app),
     new ConsentService(),
+    auditServiceFor(db.app),
   );
 });
 

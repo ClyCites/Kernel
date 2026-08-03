@@ -74,8 +74,15 @@ it would place data outside the regime entirely.
 
 A consent failure that returns a partial page is worse than one that fails: the
 caller sees a successful response and cannot tell that anything was withheld.
-`assertPermitted()` throws `ConsentDenied`, which surfaces as a 403 problem
-document carrying the reason.
+`ConsentDenied` surfaces as a 403 problem document carrying the reason.
+
+Note that the disclosure paths no longer call `assertPermitted()`. Since 0025
+they call `decide()`, write an audit entry for the outcome — denial as well as
+allowance — and then throw. The reason is that a refusal nobody recorded is
+invisible, and a shifting denial rate is the earliest signal that something
+upstream has broken. `assertPermitted()` remains as the shape the real consent
+implementation is written against, and a test fails if a disclosure path starts
+using it again.
 
 ## Consequences
 

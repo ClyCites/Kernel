@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { DEFAULT_MASS_BALANCE_TOLERANCE } from './records/mass-balance.js';
+
 /**
  * Environment configuration. Validated with the same library the records are
  * validated with — but note this is process configuration, not a core record,
@@ -12,9 +14,25 @@ const Env = z.object({
   PARTITION_MONTHS_AHEAD: z.coerce.number().int().min(1).default(24),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
+  /**
+   * Spec §9.1. Unexplained shrinkage above this fraction of a lot's opening
+   * weight is surfaced. The default is a guess — roughly the moisture loss a
+   * coop would not remark on — and stays a guess until the field validation in
+   * §13 produces a real number. It is configurable so that number can be
+   * adopted without a deploy of new code, and so different commodities can be
+   * run at different thresholds while that is being worked out.
+   */
+  MASS_BALANCE_TOLERANCE: z.coerce
+    .number()
+    .min(0)
+    .max(1)
+    .default(DEFAULT_MASS_BALANCE_TOLERANCE),
 });
 
 export type KernelConfig = z.infer<typeof Env>;
+
+/** Nest injection token. Tests construct services directly and pass a literal. */
+export const KERNEL_CONFIG = Symbol('KERNEL_CONFIG');
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): KernelConfig {
   const parsed = Env.safeParse(env);

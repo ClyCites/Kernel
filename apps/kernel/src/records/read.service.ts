@@ -8,6 +8,12 @@ import { schemaFor } from './entity-registry.js';
 import { QueryRejected } from './errors.js';
 import { resolveCustody, type Custody } from './custody.js';
 import {
+  DEFAULT_MASS_BALANCE_TOLERANCE,
+  resolveMassBalance,
+  type MassBalance,
+} from './mass-balance.js';
+import { KERNEL_CONFIG, type KernelConfig } from '../config.js';
+import {
   EMPTY_TALLY,
   resolveFulfilment,
   type Fulfilment,
@@ -40,6 +46,8 @@ export interface RecordView {
   retracted: boolean;
   /** Lots only. Where the custody chain says the lot actually is. */
   custody?: Custody;
+  /** Lots only. Where the lot's mass went, across the custody sequence. */
+  balance?: MassBalance;
   /** Agreements only. What the deliveries pointing at it add up to. */
   fulfilment?: Fulfilment;
 }
@@ -75,6 +83,10 @@ export class ReadService {
   constructor(
     @Inject(RecordRepository) private readonly repository: RecordRepository,
     @Inject(ConsentService) private readonly consent: ConsentService,
+    @Inject(KERNEL_CONFIG)
+    private readonly config: Pick<KernelConfig, 'MASS_BALANCE_TOLERANCE'> = {
+      MASS_BALANCE_TOLERANCE: DEFAULT_MASS_BALANCE_TOLERANCE,
+    },
   ) {}
 
   /** By id, regardless of whether it has been superseded or retracted. */
@@ -175,30 +187,48 @@ export class ReadService {
    * computed for records the caller was never entitled to see.
    */
   private async derive(views: RecordView[]): Promise<void> {
-    await Promise.all([this.deriveCustody(views), this.deriveFulfilment(views)]);
+    await Promise.all([this.deriveLot(views), this.deriveFulfilment(views)]);
   }
 
   /**
-   * Replaces the stored `custodian` on every lot in the set with the one the
-   * transfer chain implies, and records the walk on the view. One query for
-   * the whole page, not one per lot.
+   * The two things a lot cannot know about itself: where it actually is, and
+   * where its mass went. Both are read from the custody sequence, both are
+   * computed for the whole page in one pair of queries.
+   *
+   * The stored `custodian` is replaced with the derived one. The balance is
+   * attached alongside rather than merged, because it is kernel opinion and
+   * the record body must read back as asserted.
    */
-  private async deriveCustody(views: RecordView[]): Promise<void> {
+  private async deriveLot(views: RecordView[]): Promise<void> {
     const lots = views.filter((view) => view.record['type'] === 'lot');
     if (lots.length === 0) return;
 
-    const transfers = await this.repository.custodyTransfersFor(
-      lots.map((view) => view.record['id'] as string),
-    );
+    const ids = lots.map((view) => view.record['id'] as string);
+    const [transfers, losses] = await Promise.all([
+      this.repository.custodyTransfersFor(ids),
+      this.repository.declaredLossesFor(ids),
+    ]);
 
     for (const view of lots) {
       const id = view.record['id'] as string;
+      const mine = transfers.filter((transfer) => transfer.lot === id);
+
       const custody = resolveCustody(
         view.record['custodian'] as string,
-        transfers.filter((transfer) => transfer.lot === id),
+        mine,
       );
       view.custody = custody;
       view.record['custodian'] = custody.custodian;
+
+      const quantity = view.record['quantity'] as
+        | { normalized_kg?: number | null }
+        | undefined;
+      view.balance = resolveMassBalance(
+        quantity?.normalized_kg ?? null,
+        mine,
+        losses.filter((loss) => loss.lot === id),
+        this.config.MASS_BALANCE_TOLERANCE,
+      );
     }
   }
 

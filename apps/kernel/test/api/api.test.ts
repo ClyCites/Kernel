@@ -10,6 +10,8 @@ import { uuidv7 } from 'uuidv7';
 import 'reflect-metadata';
 import { AppModule } from '../../src/app.module.js';
 import { KERNEL_POOL } from '../../src/storage/pool.js';
+import { KERNEL_CONFIG } from '../../src/config.js';
+import { DEFAULT_MASS_BALANCE_TOLERANCE } from '../../src/records/mass-balance.js';
 import { buildOpenApiDocument } from '../../src/api/openapi.js';
 import { SUBJECT_HEADER } from '../../src/api/subject.js';
 import { startTestDatabase, type TestDatabase } from '../helpers/database.js';
@@ -27,6 +29,10 @@ before(async () => {
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(KERNEL_POOL)
     .useValue(db.app)
+    // The real provider reads and validates the process environment, which the
+    // test harness does not set. The pool is overridden for the same reason.
+    .overrideProvider(KERNEL_CONFIG)
+    .useValue({ MASS_BALANCE_TOLERANCE: DEFAULT_MASS_BALANCE_TOLERANCE })
     .compile();
 
   app = moduleRef.createNestApplication();

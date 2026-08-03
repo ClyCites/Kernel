@@ -11277,6 +11277,122 @@
           }
         }
       },
+      "BalanceLeg": {
+        "type": "object",
+        "required": [
+          "transfer",
+          "from_party",
+          "to_party",
+          "at",
+          "expected_kg",
+          "weighed_kg",
+          "declared_loss_kg",
+          "discrepancy_kg",
+          "breached"
+        ],
+        "description": "One hand-over, and what the lot weighed when it happened.",
+        "properties": {
+          "transfer": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "from_party": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "to_party": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expected_kg": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "What it weighed at the previous hand-over, less losses declared since."
+          },
+          "weighed_kg": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "declared_loss_kg": {
+            "type": "number"
+          },
+          "discrepancy_kg": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Positive means mass went missing. Negative means mass appeared, which is no less interesting."
+          },
+          "breached": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Balance": {
+        "type": "object",
+        "required": [
+          "opening_kg",
+          "closing_kg",
+          "declared_loss_kg",
+          "unexplained_kg",
+          "tolerance",
+          "breached",
+          "incomplete",
+          "legs"
+        ],
+        "description": "Spec §9.1. Where the lot's mass went, reconciled across the custody sequence — every transfer re-weighs the lot, so the sequence is a series of independent measurements of the same produce. Present on lots only. A discrepancy is always stored and served, never a reason to refuse a record.",
+        "properties": {
+          "opening_kg": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "closing_kg": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "declared_loss_kg": {
+            "type": "number",
+            "description": "Sum of `loss.declared` Observations against this lot. Losses are events with an author and a time, not fields on the lot."
+          },
+          "unexplained_kg": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Shrinkage nobody accounted for."
+          },
+          "tolerance": {
+            "type": "number",
+            "description": "The fraction of the opening weight in force when this was computed. Configurable; the default is a placeholder pending field validation."
+          },
+          "breached": {
+            "type": "boolean",
+            "description": "The whole-lot ratio was exceeded, or any single leg was. A lot that loses 8% and gains it back nets to zero and is still not clean."
+          },
+          "incomplete": {
+            "type": "boolean",
+            "description": "A weighing or a loss could not be read in kilograms, so the arithmetic is partial. A clean-looking balance on an incomplete ledger means nothing."
+          },
+          "legs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BalanceLeg"
+            }
+          }
+        }
+      },
       "Fulfilment": {
         "type": "object",
         "required": [
@@ -11364,6 +11480,9 @@
           },
           "custody": {
             "$ref": "#/components/schemas/Custody"
+          },
+          "balance": {
+            "$ref": "#/components/schemas/Balance"
           },
           "fulfilment": {
             "$ref": "#/components/schemas/Fulfilment"

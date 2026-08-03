@@ -3,8 +3,8 @@ import type { Pool, PoolClient } from 'pg';
 
 import { KERNEL_POOL } from '../storage/pool.js';
 import { containment } from './subjects.js';
-import type { CustodyTransferLink } from './custody.js';
 import type { DeliveryTally } from './fulfilment.js';
+import type { DeclaredLoss, WeighedTransfer } from './mass-balance.js';
 import type { RecordClass, StoredRecord } from './record.js';
 
 /**
@@ -398,18 +398,50 @@ export class RecordRepository {
    */
   async custodyTransfersFor(
     lotIds: readonly string[],
-  ): Promise<CustodyTransferLink[]> {
+  ): Promise<WeighedTransfer[]> {
     if (lotIds.length === 0) return [];
-    const { rows } = await this.pool.query<CustodyTransferLink>(
+    const { rows } = await this.pool.query<WeighedTransfer>(
       `select r.id,
               r.body ->> 'lot'         as lot,
               r.body ->> 'from_party'  as from_party,
               r.body ->> 'to_party'    as to_party,
+              (r.body -> 'quantity' ->> 'normalized_kg')::float8 as weighed_kg,
               to_char(r.occurred_at at time zone 'UTC',
                       'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as occurred_at
          from facts.record r
         where r.type = 'custody_transfer'
           and r.body ->> 'lot' = any($1::text[])
+          and not ${SUPERSEDED}
+          and not ${RETRACTED}
+        order by r.occurred_at, r.recorded_at, r.id`,
+      [[...new Set(lotIds)]],
+    );
+    return rows;
+  }
+
+  /**
+   * `loss.declared` Observations against these lots. Spec §9.1 — a loss is an
+   * event with an author and a time, not a field on the lot. See decision 0011.
+   *
+   * Only the `quantity` kind counts, and only once it has been normalized. A
+   * loss whose `normalized_kg` is null yields null here rather than a converted
+   * guess: the kernel does not invent the factor it was not given.
+   */
+  async declaredLossesFor(lotIds: readonly string[]): Promise<DeclaredLoss[]> {
+    if (lotIds.length === 0) return [];
+    const { rows } = await this.pool.query<DeclaredLoss>(
+      `select r.id,
+              r.body ->> 'subject_ref' as lot,
+              case when r.body -> 'value' ->> 'kind' = 'quantity'
+                   then (r.body -> 'value' -> 'value' ->> 'normalized_kg')::float8
+              end as kg,
+              to_char(r.occurred_at at time zone 'UTC',
+                      'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as occurred_at
+         from facts.record r
+        where r.type = 'observation'
+          and r.body ->> 'observation_type' = 'loss.declared'
+          and r.body ->> 'subject_type' = 'lot'
+          and r.body ->> 'subject_ref' = any($1::text[])
           and not ${SUPERSEDED}
           and not ${RETRACTED}
         order by r.occurred_at, r.recorded_at, r.id`,

@@ -8,6 +8,7 @@ import { IngestService } from '../../src/records/ingest.service.js';
 import { RecordRepository } from '../../src/records/record.repository.js';
 import { RegistryRepository } from '../../src/registry/registry.repository.js';
 import type { Reader } from '../../src/records/read.service.js';
+import type { Dataset } from '../../src/records/record.js';
 
 /**
  * Fixtures modelled on Appendix A of the specification — a farmer delivering
@@ -35,7 +36,10 @@ export const ingestServiceFor = (
  * Reads as a given party. Consent denies everything else, so a test that reads
  * records must name someone entitled to see them — the subject or the asserter.
  */
-export const readingAs = (requester: string | null): Reader => ({ requester });
+export const readingAs = (
+  requester: string | null,
+  dataset: Dataset = 'live',
+): Reader => ({ requester, dataset });
 
 export const party = () => uuidv7();
 

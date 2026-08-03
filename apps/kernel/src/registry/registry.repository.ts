@@ -138,6 +138,11 @@ export class RegistryRepository {
    *
    * Superseded and retracted records are excluded — the question is how much of
    * the tonnage *in use* rests on a guess, not how much was ever appended.
+   *
+   * Live records only, and no parameter to say otherwise. Seed tonnage is
+   * fabricated by construction; letting it into an operational gauge would mean
+   * the number an operator watches to decide whether the conversion registry is
+   * trustworthy is partly made up.
    */
   async tonnageByConversionBasis(): Promise<Map<string, number>> {
     const { rows } = await this.pool.query<{ basis: string; kg: number }>(
@@ -150,13 +155,16 @@ export class RegistryRepository {
         where jsonb_typeof(q) = 'object'
           and q ? 'raw_value'
           and jsonb_typeof(q -> 'normalized_kg') = 'number'
+          and r.dataset = 'live'
           and not exists (
                 select 1 from facts.record s
-                 where s.supersedes = r.id)
+                 where s.supersedes = r.id
+                   and s.dataset = r.dataset)
           and not exists (
                 select 1 from facts.record t
                  where t.type = 'retraction'
-                   and t.body ->> 'target' = r.id::text)
+                   and t.body ->> 'target' = r.id::text
+                   and t.dataset = r.dataset)
         group by 1`,
     );
     return new Map(rows.map((row) => [row.basis, row.kg]));

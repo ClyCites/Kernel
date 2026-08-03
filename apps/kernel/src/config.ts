@@ -27,6 +27,19 @@ const Env = z.object({
     .min(0)
     .max(1)
     .default(DEFAULT_MASS_BALANCE_TOLERANCE),
+  /**
+   * Whether this instance will accept writes marked `dataset: 'seed'`.
+   *
+   * Off means the dataset header is ignored outright, so a production instance
+   * cannot be poisoned with fabricated records however the request is dressed
+   * up. It is deliberately a literal `'true'` rather than anything coercible:
+   * `z.coerce.boolean()` treats every non-empty string as true, which would
+   * turn a stray `SEED_INGEST_ENABLED=no` into a live seeding switch.
+   */
+  SEED_INGEST_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
 });
 
 export type KernelConfig = z.infer<typeof Env>;

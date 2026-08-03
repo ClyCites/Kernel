@@ -22,6 +22,8 @@ import {
   type Reader,
 } from '../records/read.service.js';
 import { verifiedSubject } from './subject.js';
+import { requestedDataset } from './dataset.js';
+import { KERNEL_CONFIG, type KernelConfig } from '../config.js';
 
 /**
  * Query parameters are the kernel's own surface, not record contents, so they
@@ -44,23 +46,32 @@ export class RecordsController {
   constructor(
     @Inject(IngestService) private readonly ingest: IngestService,
     @Inject(ReadService) private readonly read: ReadService,
+    @Inject(KERNEL_CONFIG)
+    private readonly config: Pick<KernelConfig, 'SEED_INGEST_ENABLED'> = {
+      SEED_INGEST_ENABLED: false,
+    },
   ) {}
 
   @Post('records')
   async submit(
     @Body() body: unknown,
+    @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<unknown> {
-    const result = await this.ingest.ingest(body);
+    const result = await this.ingest.ingest(body, {
+      dataset: requestedDataset(request, this.config.SEED_INGEST_ENABLED),
+    });
 
     response.status(result.replayed ? 200 : 201);
     response.setHeader('Location', `/v1/records/${result.record.id}`);
 
     // Echoing the record back is a read and goes through the same guard. The
     // requester is the record's own asserter, taken from the stored record
-    // rather than from the request.
+    // rather than from the request — and so is the corpus, so a seed write
+    // reads back without the header having to be trusted twice.
     return this.read.get(result.record.id, {
       requester: result.record.asserted_by,
+      dataset: result.record.dataset,
     });
   }
 
@@ -124,7 +135,11 @@ export class RecordsController {
     request: Request,
     purpose?: (typeof CONSENT_PURPOSES)[number] | undefined,
   ): Reader {
-    return { requester: verifiedSubject(request), purpose: purpose ?? null };
+    return {
+      requester: verifiedSubject(request),
+      purpose: purpose ?? null,
+      dataset: requestedDataset(request, this.config.SEED_INGEST_ENABLED),
+    };
   }
 
   private id(value: string): string {

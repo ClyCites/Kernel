@@ -12,6 +12,7 @@ import {
   type Reader,
   type RecordView,
 } from '../records/read.service.js';
+import type { Dataset } from '../records/record.js';
 import { subjectsOf } from '../records/subjects.js';
 import { DeviceRepository, type Device } from './device.repository.js';
 
@@ -107,7 +108,7 @@ export class SyncService {
    * Replaying a batch is safe. Ingest is idempotent per id, so a device that
    * loses the response and posts again gets `replayed` rather than a conflict.
    */
-  async drain(payload: unknown): Promise<DrainOutcome[]> {
+  async drain(payload: unknown, dataset: Dataset = 'live'): Promise<DrainOutcome[]> {
     if (!Array.isArray(payload)) {
       throw new RecordRejected(
         'malformed_record',
@@ -123,7 +124,7 @@ export class SyncService {
 
     const outcomes: DrainOutcome[] = [];
     for (const entry of payload) {
-      outcomes.push(await this.one(entry));
+      outcomes.push(await this.one(entry, dataset));
     }
     return outcomes;
   }
@@ -160,7 +161,12 @@ export class SyncService {
     const after =
       options.cursor === undefined ? undefined : decodeCursor(options.cursor);
 
-    const rows = await this.repository.since(after, limit + 1, reader.requester);
+    const rows = await this.repository.since(
+      after,
+      limit + 1,
+      reader.requester,
+      reader.dataset ?? 'live',
+    );
     const page = rows.slice(0, limit);
     const last = page.at(-1);
     const views = page.map(recordView);
@@ -183,10 +189,10 @@ export class SyncService {
     };
   }
 
-  private async one(entry: unknown): Promise<DrainOutcome> {
+  private async one(entry: unknown, dataset: Dataset): Promise<DrainOutcome> {
     const id = idOf(entry);
     try {
-      const result = await this.ingest.ingest(entry);
+      const result = await this.ingest.ingest(entry, { dataset });
       return {
         id: result.record.id,
         outcome: result.replayed ? 'replayed' : 'accepted',

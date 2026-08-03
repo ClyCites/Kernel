@@ -9,9 +9,22 @@ import { RecordRepository } from './record.repository.js';
 import { subjectTypeMismatched } from './subjects.js';
 import {
   splitEnvelope,
+  type Dataset,
   type RecordDocument,
   type StoredRecord,
 } from './record.js';
+
+/**
+ * What the kernel knows about a write that the payload does not say.
+ *
+ * `dataset` is here rather than in the envelope on purpose. @clycites/schema
+ * describes what a record asserts about the world; which corpus a row belongs
+ * to is not a claim anybody is making, and a client that could assert it could
+ * mark its own records `seed` to slip past anchoring.
+ */
+export interface IngestContext {
+  dataset?: Dataset | undefined;
+}
 
 export interface IngestResult {
   record: StoredRecord;
@@ -38,7 +51,11 @@ export class IngestService {
     @Inject(ConversionService) private readonly conversions: ConversionService,
   ) {}
 
-  async ingest(payload: unknown): Promise<IngestResult> {
+  async ingest(
+    payload: unknown,
+    context: IngestContext = {},
+  ): Promise<IngestResult> {
+    const dataset = context.dataset ?? 'live';
     const submitted = this.asObject(payload);
     const type = this.entityType(submitted);
     const schema = schemaFor(type);
@@ -86,9 +103,8 @@ export class IngestService {
             occurredAt: String(envelope['occurred_at']),
           });
 
-    await this.checkSupersession(envelope, type);
-    if (type === 'retraction') await this.checkRetraction(envelope, body);
-
+    await this.checkSupersession(envelope, type, dataset);
+    if (type === 'retraction') await this.checkRetraction(envelope, body, dataset);
     // A client-supplied `normalized_kg` the kernel cannot reproduce is exactly
     // what currently looks trustworthy and isn't. Per P6 this flags, never
     // rejects — the record is still someone's account of what happened.
@@ -99,7 +115,7 @@ export class IngestService {
 
     const derived = [
       ...conversionFlags,
-      ...(await this.subjectFlags(type, body)),
+      ...(await this.subjectFlags(type, body, dataset)),
     ];
 
     const record: StoredRecord = {
@@ -124,6 +140,7 @@ export class IngestService {
         delegationBasis: grant?.basis ?? null,
         precomputed: derived,
       }),
+      dataset,
     };
 
     const result = await this.repository.appendIfAbsent(record);
@@ -149,12 +166,16 @@ export class IngestService {
   private async checkSupersession(
     envelope: RecordDocument,
     type: string,
+    dataset: Dataset,
   ): Promise<void> {
     const supersedes = asNullableString(envelope['supersedes']);
     if (supersedes === null) return;
 
     const target = await this.repository.findById(supersedes);
-    if (!target) {
+    // A record in another corpus is not visible from this one, so it reads as
+    // absent rather than as a cross-corpus error. Saying otherwise would let a
+    // caller probe the live log for ids by watching which message came back.
+    if (!target || target.dataset !== dataset) {
       throw new RecordRejected(
         'supersession_invalid',
         `record ${supersedes} is not in the log`,
@@ -202,12 +223,13 @@ export class IngestService {
   private async subjectFlags(
     type: string,
     body: RecordDocument,
+    dataset: Dataset,
   ): Promise<string[]> {
     if (type !== 'observation') return [];
     const ref = body['subject_ref'];
     if (typeof ref !== 'string') return [];
 
-    const found = await this.repository.recordTypesOf([ref]);
+    const found = await this.repository.recordTypesOf([ref], dataset);
     return subjectTypeMismatched(String(body['subject_type']), found.get(ref))
       ? ['subject_type_mismatch']
       : [];
@@ -220,11 +242,12 @@ export class IngestService {
   private async checkRetraction(
     envelope: RecordDocument,
     body: RecordDocument,
+    dataset: Dataset,
   ): Promise<void> {
     const targetId = String(body['target']);
     const target = await this.repository.findById(targetId);
 
-    if (!target) {
+    if (!target || target.dataset !== dataset) {
       throw new RecordRejected(
         'supersession_invalid',
         `record ${targetId} is not in the log`,

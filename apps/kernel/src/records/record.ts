@@ -4,6 +4,15 @@ import { envelopeShape } from '@clycites/schema';
 export type RecordClass = 'observation' | 'inference';
 
 /**
+ * Which corpus a row belongs to. Storage-layer plumbing, not an envelope field:
+ * @clycites/schema describes what a record asserts about the world, and which
+ * corpus a row belongs to is not a claim anybody is making.
+ */
+export type Dataset = 'live' | 'seed';
+
+export const DATASETS: readonly Dataset[] = ['live', 'seed'];
+
+/**
  * A record as it is held in Postgres: envelope in columns, entity body in
  * `jsonb`, kernel-derived flags alongside rather than inside.
  */
@@ -24,6 +33,7 @@ export interface StoredRecord {
   body: Record<string, unknown>;
   ext: Record<string, unknown>;
   quality_flags: string[];
+  dataset: Dataset;
 }
 
 /**

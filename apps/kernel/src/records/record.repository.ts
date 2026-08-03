@@ -6,7 +6,7 @@ import { containment, type SubjectTarget } from './subjects.js';
 import type { DeliveryTally } from './fulfilment.js';
 import type { DeclaredLoss, WeighedTransfer } from './mass-balance.js';
 import type { SettlementGroup } from './settlement.js';
-import type { RecordClass, StoredRecord } from './record.js';
+import type { Dataset, RecordClass, StoredRecord } from './record.js';
 
 /**
  * Timestamps are rendered as RFC 3339 in UTC (spec §2.2: store UTC, render
@@ -28,6 +28,7 @@ const PLAIN_COLUMNS = [
   'body',
   'ext',
   'quality_flags',
+  'dataset',
 ];
 
 const TIMESTAMP_COLUMNS = ['occurred_at', 'recorded_at'];
@@ -46,11 +47,22 @@ const columnList = (alias = ''): string => {
 
 const COLUMNS = columnList();
 
-/** Correlated existence tests, written once so the read path cannot diverge. */
-const SUPERSEDED = `exists (select 1 from facts.record s where s.supersedes = r.id)`;
+/**
+ * Correlated existence tests, written once so the read path cannot diverge.
+ *
+ * Every one is dataset-local. A fabricated retraction must not hide a real
+ * record, and a fabricated correction must not fork a real chain — putting the
+ * check here means no future query can forget it.
+ */
+const SUPERSEDED = `exists (
+  select 1 from facts.record s
+   where s.supersedes = r.id and s.dataset = r.dataset
+)`;
 const RETRACTED = `exists (
   select 1 from facts.record t
-   where t.type = 'retraction' and t.body ->> 'target' = r.id::text
+   where t.type = 'retraction'
+     and t.body ->> 'target' = r.id::text
+     and t.dataset = r.dataset
 )`;
 
 /**
@@ -59,7 +71,9 @@ const RETRACTED = `exists (
  * than handed a winner the kernel picked.
  */
 const DERIVED = `coalesce(
-    (select array_agg(s.id order by s.recorded_at) from facts.record s where s.supersedes = r.id),
+    (select array_agg(s.id order by s.recorded_at)
+       from facts.record s
+      where s.supersedes = r.id and s.dataset = r.dataset),
     '{}'
   ) as superseded_by,
   ${RETRACTED} as retracted`;
@@ -76,6 +90,7 @@ export interface ListFilter {
   subject?: { id: string; fields: readonly string[] } | undefined;
   includeSuperseded?: boolean | undefined;
   includeRetracted?: boolean | undefined;
+  dataset: Dataset;
   limit: number;
   cursor?: { recordedAt: string; id: string } | undefined;
 }
@@ -108,11 +123,17 @@ export class RecordRepository {
       await client.query('begin');
 
       const claimed = await client.query(
-        `insert into kernel.record_key (id, record_class, type, recorded_at)
-         values ($1, $2, $3, $4)
+        `insert into kernel.record_key (id, record_class, type, recorded_at, dataset)
+         values ($1, $2, $3, $4, $5)
          on conflict (id) do nothing
          returning id`,
-        [record.id, record.record_class, record.type, record.recorded_at],
+        [
+          record.id,
+          record.record_class,
+          record.type,
+          record.recorded_at,
+          record.dataset,
+        ],
       );
 
       if (claimed.rowCount === 0) {
@@ -134,12 +155,12 @@ export class RecordRepository {
            id, type, record_class, schema_version,
            occurred_at, occurred_at_precision, recorded_at,
            asserted_by, authenticated_as, on_behalf_of, delegation,
-           device_id, supersedes, body, ext, quality_flags
+           device_id, supersedes, body, ext, quality_flags, dataset
          ) values (
            $1, $2, $3, $4,
            $5, $6, $7,
            $8, $9, $10, $11,
-           $12, $13, $14, $15, $16
+           $12, $13, $14, $15, $16, $17
          )`,
         [
           record.id,
@@ -158,6 +179,7 @@ export class RecordRepository {
           JSON.stringify(record.body),
           JSON.stringify(record.ext),
           record.quality_flags,
+          record.dataset,
         ],
       );
 
@@ -271,7 +293,7 @@ export class RecordRepository {
       return `$${params.length}`;
     };
 
-    const where: string[] = [];
+    const where: string[] = [`r.dataset = ${bind(filter.dataset)}`];
     if (filter.type !== undefined) where.push(`r.type = ${bind(filter.type)}`);
     if (filter.assertedBy !== undefined) {
       where.push(`r.asserted_by = ${bind(filter.assertedBy)}`);
@@ -320,12 +342,13 @@ export class RecordRepository {
     after: { recordedAt: string; id: string } | undefined,
     limit: number,
     assertedBy: string,
+    dataset: Dataset,
   ): Promise<DerivedRecord[]> {
-    const params: unknown[] = [assertedBy];
-    const where = ['r.asserted_by = $1::uuid'];
+    const params: unknown[] = [assertedBy, dataset];
+    const where = ['r.asserted_by = $1::uuid', 'r.dataset = $2'];
     if (after !== undefined) {
       params.push(after.recordedAt, after.id);
-      where.push(`(r.recorded_at, r.id) > ($2::timestamptz, $3::uuid)`);
+      where.push(`(r.recorded_at, r.id) > ($3::timestamptz, $4::uuid)`);
     }
     params.push(limit);
 
@@ -349,6 +372,7 @@ export class RecordRepository {
    */
   async deliveryTallies(
     agreementIds: readonly string[],
+    dataset: Dataset,
   ): Promise<Map<string, DeliveryTally>> {
     if (agreementIds.length === 0) return new Map();
     const { rows } = await this.pool.query<DeliveryTally & { agreement: string }>(
@@ -366,10 +390,11 @@ export class RecordRepository {
          from facts.record r
         where r.type = 'delivery'
           and r.body ->> 'fulfils' = any($1::text[])
+          and r.dataset = $2
           and not ${SUPERSEDED}
           and not ${RETRACTED}
         group by 1`,
-      [[...new Set(agreementIds)]],
+      [[...new Set(agreementIds)], dataset],
     );
 
     return new Map(
@@ -389,6 +414,7 @@ export class RecordRepository {
    */
   async settlementGroups(
     obligationIds: readonly string[],
+    dataset: Dataset,
   ): Promise<SettlementGroup[]> {
     if (obligationIds.length === 0) return [];
     const { rows } = await this.pool.query<
@@ -404,10 +430,11 @@ export class RecordRepository {
          from facts.record r
         where r.type = 'settlement_reference'
           and r.body ->> 'obligation' = any($1::text[])
+          and r.dataset = $2
           and not ${SUPERSEDED}
           and not ${RETRACTED}
         group by 1, 2, 3`,
-      [[...new Set(obligationIds)]],
+      [[...new Set(obligationIds)], dataset],
     );
 
     return rows.map((row) => ({
@@ -424,13 +451,14 @@ export class RecordRepository {
    */
   async recordTypesOf(
     ids: readonly string[],
+    dataset: Dataset,
   ): Promise<Map<string, SubjectTarget>> {
     if (ids.length === 0) return new Map();
     const { rows } = await this.pool.query<{ id: string } & SubjectTarget>(
       `select r.id, r.type, ${RETRACTED} as retracted
          from facts.record r
-        where r.id = any($1::uuid[])`,
-      [[...new Set(ids)]],
+        where r.id = any($1::uuid[]) and r.dataset = $2`,
+      [[...new Set(ids)], dataset],
     );
     return new Map(rows.map(({ id, ...target }) => [id, target]));
   }
@@ -457,6 +485,7 @@ export class RecordRepository {
    */
   async custodyTransfersFor(
     lotIds: readonly string[],
+    dataset: Dataset,
   ): Promise<WeighedTransfer[]> {
     if (lotIds.length === 0) return [];
     const { rows } = await this.pool.query<WeighedTransfer>(
@@ -470,10 +499,11 @@ export class RecordRepository {
          from facts.record r
         where r.type = 'custody_transfer'
           and r.body ->> 'lot' = any($1::text[])
+          and r.dataset = $2
           and not ${SUPERSEDED}
           and not ${RETRACTED}
         order by r.occurred_at, r.recorded_at, r.id`,
-      [[...new Set(lotIds)]],
+      [[...new Set(lotIds)], dataset],
     );
     return rows;
   }
@@ -486,7 +516,10 @@ export class RecordRepository {
    * loss whose `normalized_kg` is null yields null here rather than a converted
    * guess: the kernel does not invent the factor it was not given.
    */
-  async declaredLossesFor(lotIds: readonly string[]): Promise<DeclaredLoss[]> {
+  async declaredLossesFor(
+    lotIds: readonly string[],
+    dataset: Dataset,
+  ): Promise<DeclaredLoss[]> {
     if (lotIds.length === 0) return [];
     const { rows } = await this.pool.query<DeclaredLoss>(
       `select r.id,
@@ -501,10 +534,11 @@ export class RecordRepository {
           and r.body ->> 'observation_type' = 'loss.declared'
           and r.body ->> 'subject_type' = 'lot'
           and r.body ->> 'subject_ref' = any($1::text[])
+          and r.dataset = $2
           and not ${SUPERSEDED}
           and not ${RETRACTED}
         order by r.occurred_at, r.recorded_at, r.id`,
-      [[...new Set(lotIds)]],
+      [[...new Set(lotIds)], dataset],
     );
     return rows;
   }

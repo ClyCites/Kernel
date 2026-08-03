@@ -15,6 +15,8 @@ import { z } from 'zod';
 
 import { MAX_CHANGES, SyncService } from '../sync/sync.service.js';
 import { verifiedSubject } from './subject.js';
+import { requestedDataset } from './dataset.js';
+import { KERNEL_CONFIG, type KernelConfig } from '../config.js';
 
 const ChangesQuery = z.object({
   cursor: z.string().optional(),
@@ -27,7 +29,13 @@ const ChangesQuery = z.object({
  */
 @Controller('v1')
 export class SyncController {
-  constructor(@Inject(SyncService) private readonly sync: SyncService) {}
+  constructor(
+    @Inject(SyncService) private readonly sync: SyncService,
+    @Inject(KERNEL_CONFIG)
+    private readonly config: Pick<KernelConfig, 'SEED_INGEST_ENABLED'> = {
+      SEED_INGEST_ENABLED: false,
+    },
+  ) {}
 
   @Post('devices')
   async register(
@@ -46,9 +54,10 @@ export class SyncController {
    */
   @Post('sync/outbox')
   @HttpCode(200)
-  async drain(@Body() body: unknown): Promise<unknown> {
+  async drain(@Body() body: unknown, @Req() request: Request): Promise<unknown> {
     const outcomes = await this.sync.drain(
       Array.isArray(body) ? body : (body as { records?: unknown })?.records,
+      requestedDataset(request, this.config.SEED_INGEST_ENABLED),
     );
     return { results: outcomes };
   }
@@ -72,7 +81,11 @@ export class SyncController {
         cursor: parsed.data.cursor,
         limit: parsed.data.limit,
       },
-      { requester: verifiedSubject(request), purpose: null },
+      {
+        requester: verifiedSubject(request),
+        purpose: null,
+        dataset: requestedDataset(request, this.config.SEED_INGEST_ENABLED),
+      },
     );
   }
 }

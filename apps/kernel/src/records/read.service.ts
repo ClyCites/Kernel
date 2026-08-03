@@ -18,7 +18,7 @@ import {
   resolveFulfilment,
   type Fulfilment,
 } from './fulfilment.js';
-import { toDocument, type RecordDocument, type StoredRecord } from './record.js';
+import { toDocument, type Dataset, type RecordDocument, type StoredRecord } from './record.js';
 import { RecordRepository, type DerivedRecord } from './record.repository.js';
 import {
   summariseSettlements,
@@ -34,6 +34,11 @@ import {
 export const DEFAULT_PAGE_SIZE = 50;
 export const MAX_PAGE_SIZE = 200;
 
+/** Reading the live corpus is what happens when nobody says otherwise. */
+function datasetOf(reader: Reader): Dataset {
+  return reader.dataset ?? 'live';
+}
+
 /**
  * Who is asking, and why. Every read carries one — there is no overload that
  * omits it, so a new read path cannot skip the consent guard by accident.
@@ -43,6 +48,11 @@ export interface Reader {
   requester: string | null;
   /** Null means “my own records”. Any purpose is denied by the stub. */
   purpose?: ConsentPurpose | null | undefined;
+  /**
+   * Which corpus to read. Defaults to `live` everywhere, so a caller sees
+   * fabricated records only by asking for them in as many words.
+   */
+  dataset?: Dataset | undefined;
 }
 
 export interface RecordView {
@@ -105,11 +115,11 @@ export class ReadService {
   /** By id, regardless of whether it has been superseded or retracted. */
   async get(id: string, reader: Reader): Promise<RecordView | null> {
     const found = await this.repository.findByIdWithDerived(id);
-    if (found === null) return null;
+    if (found === null || found.dataset !== datasetOf(reader)) return null;
 
     const view = recordView(found);
     this.guard([view], reader);
-    await this.derive([view]);
+    await this.derive([view], reader);
     return view;
   }
 
@@ -120,7 +130,7 @@ export class ReadService {
    */
   async getInference(id: string, reader: Reader): Promise<RecordView | null> {
     const found = await this.repository.findInferenceById(id);
-    if (found === null) return null;
+    if (found === null || found.dataset !== datasetOf(reader)) return null;
 
     const view = recordView({ ...found, superseded_by: [], retracted: false });
     this.guard([view], reader);
@@ -144,6 +154,7 @@ export class ReadService {
           ? undefined
           : { id: options.subject, fields: subjectFields(options.type) },
       limit: limit + 1,
+      dataset: datasetOf(reader),
       cursor: options.cursor === undefined ? undefined : decodeCursor(options.cursor),
     });
 
@@ -151,7 +162,7 @@ export class ReadService {
     const last = page.at(-1);
     const views = page.map(recordView);
     this.guard(views, reader);
-    await this.derive(views);
+    await this.derive(views, reader);
 
     return {
       records: views,
@@ -172,15 +183,19 @@ export class ReadService {
     if (origin === null) return [];
 
     const chain = await this.repository.findSupersessionChain(origin);
+    const dataset = datasetOf(reader);
+    const scoped = chain.filter((record) => record.dataset === dataset);
+    if (scoped.length === 0) return [];
+
     const retracted = new Set(
-      await this.repository.retractedAmong(chain.map((record) => record.id)),
+      await this.repository.retractedAmong(scoped.map((record) => record.id)),
     );
 
-    const views = chain.map((record) =>
+    const views = scoped.map((record) =>
       recordView({
         ...record,
         // Superseders are themselves in the chain, so this needs no extra query.
-        superseded_by: chain
+        superseded_by: scoped
           .filter((other) => other.supersedes === record.id)
           .map((other) => other.id),
         retracted: retracted.has(record.id),
@@ -199,12 +214,13 @@ export class ReadService {
    * rather than serve from the body. Runs after the guard, so nothing is
    * computed for records the caller was never entitled to see.
    */
-  private async derive(views: RecordView[]): Promise<void> {
+  private async derive(views: RecordView[], reader: Reader): Promise<void> {
+    const dataset = datasetOf(reader);
     await Promise.all([
-      this.deriveLot(views),
-      this.deriveFulfilment(views),
-      this.deriveSubject(views),
-      this.deriveSettlement(views),
+      this.deriveLot(views, dataset),
+      this.deriveFulfilment(views, dataset),
+      this.deriveSubject(views, dataset),
+      this.deriveSettlement(views, dataset),
     ]);
   }
 
@@ -215,7 +231,10 @@ export class ReadService {
    * totals what a party is owed across obligations — that number is a balance,
    * and the kernel is non-custodial by construction, not by policy.
    */
-  private async deriveSettlement(views: RecordView[]): Promise<void> {
+  private async deriveSettlement(
+    views: RecordView[],
+    dataset: Dataset,
+  ): Promise<void> {
     const obligations = views.filter(
       (view) => view.record['type'] === 'obligation',
     );
@@ -223,6 +242,7 @@ export class ReadService {
 
     const groups = await this.repository.settlementGroups(
       obligations.map((view) => view.record['id'] as string),
+      dataset,
     );
 
     for (const view of obligations) {
@@ -241,7 +261,10 @@ export class ReadService {
    * subject and later be about something perfectly real, so absence is a fact
    * about now rather than about the record.
    */
-  private async deriveSubject(views: RecordView[]): Promise<void> {
+  private async deriveSubject(
+    views: RecordView[],
+    dataset: Dataset,
+  ): Promise<void> {
     const observations = views.filter(
       (view) => view.record['type'] === 'observation',
     );
@@ -249,6 +272,7 @@ export class ReadService {
 
     const targets = await this.repository.recordTypesOf(
       observations.map((view) => view.record['subject_ref'] as string),
+      dataset,
     );
 
     for (const view of observations) {
@@ -270,14 +294,14 @@ export class ReadService {
    * attached alongside rather than merged, because it is kernel opinion and
    * the record body must read back as asserted.
    */
-  private async deriveLot(views: RecordView[]): Promise<void> {
+  private async deriveLot(views: RecordView[], dataset: Dataset): Promise<void> {
     const lots = views.filter((view) => view.record['type'] === 'lot');
     if (lots.length === 0) return;
 
     const ids = lots.map((view) => view.record['id'] as string);
     const [transfers, losses] = await Promise.all([
-      this.repository.custodyTransfersFor(ids),
-      this.repository.declaredLossesFor(ids),
+      this.repository.custodyTransfersFor(ids, dataset),
+      this.repository.declaredLossesFor(ids, dataset),
     ]);
 
     for (const view of lots) {
@@ -307,7 +331,10 @@ export class ReadService {
    * What has been delivered against each agreement in the set. Summed on every
    * read; the Agreement carries no counter and must not grow one.
    */
-  private async deriveFulfilment(views: RecordView[]): Promise<void> {
+  private async deriveFulfilment(
+    views: RecordView[],
+    dataset: Dataset,
+  ): Promise<void> {
     const agreements = views.filter(
       (view) => view.record['type'] === 'agreement',
     );
@@ -315,6 +342,7 @@ export class ReadService {
 
     const tallies = await this.repository.deliveryTallies(
       agreements.map((view) => view.record['id'] as string),
+      dataset,
     );
 
     for (const view of agreements) {

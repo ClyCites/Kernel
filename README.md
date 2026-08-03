@@ -29,8 +29,9 @@ Requires Node 22+, pnpm, and Docker.
 
 ```bash
 cp .env.example .env          # dev credentials, fine as they are
-docker compose up -d          # PostgreSQL 16 + PostGIS on port 5433
+docker compose up -d          # PostgreSQL 16 + PostGIS on port 5433, loopback only
 pnpm install
+bash scripts/install-hooks.sh # pre-commit secret scan
 pnpm migrate                  # creates roles, schemas, tables, partitions
 pnpm dev                      # http://localhost:3000
 ```
@@ -52,6 +53,7 @@ curl localhost:3000/v1/ready     # also checks the log is reachable
 | `pnpm typecheck` | `tsc --noEmit` across the workspace |
 | `pnpm lint` | ESLint |
 | `pnpm openapi` | Regenerates `apps/kernel/openapi.json` from the schemas |
+| `pnpm check:secrets` | Scans everything git tracks for credentials |
 | `pnpm build` | Compiles to `dist/` |
 
 `pnpm test` starts its own database container and does not use the one from
@@ -154,6 +156,28 @@ Six things hold, each with a test that fails when broken.
    and settlements are referenced; the money moves somewhere else.
    *(`test/schema-pin.test.ts`)*
 
+## Operations
+
+[`docs/runbook.md`](docs/runbook.md) is the procedure for a breach, a restore, a
+secret rotation, and the monthly verification the DPPA requires. Read §1 before
+you need it.
+
+```bash
+BACKUP_PASSPHRASE=... scripts/backup.sh          # encrypted dump + manifest
+BACKUP_PASSPHRASE=... scripts/restore.sh backups/<stamp> <url>
+```
+
+The backup writes a manifest of row counts, primary-key fingerprints, every
+constraint with its validated flag, and every table grant. The restore
+regenerates it and diffs — exit 0 only on an exact match, because append-only
+leaves no reconciliation path if a restore silently drops a constraint. It
+refuses any target database not named `restore`, `test`, or `scratch`.
+
+`test/ops/` runs both scripts for real and asserts the configuration no
+functional test would notice: nothing in the data tier published beyond
+loopback, a complete `.env.example`, production refusing to start with seed
+ingest enabled, and no route resembling a bulk export.
+
 ## Layout
 
 ```
@@ -164,8 +188,11 @@ apps/kernel/
   src/sync/          device registry, outbox drain, change feed
   src/api/           controllers, problem details, OpenAPI generation
   test/              node:test + Testcontainers
+  test/ops/          backup, restore, and configuration exposure
 packages/schema/     @clycites/schema, vendored and read-only
+scripts/            backup, restore, secret scan, hook install
 docs/decisions/      why things are the way they are
+docs/runbook.md      what to do when it goes wrong
 ```
 
 No ORM. SQL is written where it runs, in `src/storage` and

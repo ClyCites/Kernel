@@ -11,8 +11,8 @@ import {
   ingestServiceFor,
   readingAs,
   type TestIngest,
+  consentServiceFor,
 } from '../helpers/fixtures.js';
-import { ConsentService } from '../../src/consent/consent.service.js';
 import { ReadService } from '../../src/records/read.service.js';
 import { RecordRepository } from '../../src/records/record.repository.js';
 import { RecordRejected } from '../../src/records/errors.js';
@@ -30,7 +30,7 @@ let read: ReadService;
 before(async () => {
   db = await startTestDatabase();
   ({ ingest, repository } = ingestServiceFor(db.app));
-  read = new ReadService(repository, new ConsentService(), auditServiceFor(db.app));
+  read = new ReadService(repository, consentServiceFor(db.app), auditServiceFor(db.app));
 });
 
 after(async () => {
@@ -235,7 +235,7 @@ describe('an inference is stale when its inputs move (spec §8 rule 5)', () => {
         return (value as (...a: unknown[]) => unknown).bind(target);
       },
     });
-    const counted = new ReadService(counting, new ConsentService(), auditServiceFor(db.app));
+    const counted = new ReadService(counting, consentServiceFor(db.app), auditServiceFor(db.app));
 
     // getInference reads one at a time, so drive the derivation the way a page
     // would: the method takes the whole set and must not fan out per record.

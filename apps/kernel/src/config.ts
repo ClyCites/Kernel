@@ -84,6 +84,29 @@ const Env = z.object({
   AUDIT_SHIP_TOKEN: z.string().default(''),
   AUDIT_SHIP_INTERVAL_SECONDS: z.coerce.number().int().min(1).default(10),
   AUDIT_SHIP_BATCH: z.coerce.number().int().min(1).max(1000).default(200),
+  /**
+   * The entire s.9 question, isolated to one boolean.
+   *
+   * s.9(1) makes financial information special personal data, prohibited
+   * outside s.9(3). s.9(3)(c) exempts a body relating to individuals who are
+   * its members, provided nothing is disclosed to a third party without
+   * consent — which describes a cooperative and describes this kernel's
+   * architecture. Whether that limb reaches a coop processing its members'
+   * prices and obligations is a question for counsel, not for us.
+   *
+   * True means member-body access to a priced Delivery, an Obligation or a
+   * SettlementReference needs a grant on top of the membership. False means
+   * the membership alone suffices.
+   *
+   * FAIL CLOSED. Default true. Do not flip it without a written answer — the
+   * cost of being wrong in this direction is that coops collect consent at
+   * enrolment, which they should be doing anyway; the cost of being wrong in
+   * the other direction is unlawful processing of special data.
+   */
+  S9_CONSENT_REQUIRED_FOR_MEMBER_BODY: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
   NODE_ENV: z.string().default('development'),
 });
 

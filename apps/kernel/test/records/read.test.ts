@@ -10,8 +10,8 @@ import {
   ingestServiceFor,
   type TestIngest,
   readingAs,
+  consentServiceFor,
 } from '../helpers/fixtures.js';
-import { ConsentService } from '../../src/consent/consent.service.js';
 import { ReadService } from '../../src/records/read.service.js';
 import { RecordRepository } from '../../src/records/record.repository.js';
 import { QueryRejected } from '../../src/records/errors.js';
@@ -24,7 +24,7 @@ let read: ReadService;
 before(async () => {
   db = await startTestDatabase();
   ({ ingest, repository } = ingestServiceFor(db.app));
-  read = new ReadService(repository, new ConsentService(), auditServiceFor(db.app));
+  read = new ReadService(repository, consentServiceFor(db.app), auditServiceFor(db.app));
 });
 
 after(async () => {

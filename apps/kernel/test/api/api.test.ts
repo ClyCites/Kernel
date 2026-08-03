@@ -38,6 +38,11 @@ before(async () => {
       MASS_BALANCE_TOLERANCE: DEFAULT_MASS_BALANCE_TOLERANCE,
       REGISTRY_RATE_LIMIT: 600,
       REGISTRY_RATE_WINDOW_SECONDS: 60,
+      SEED_INGEST_ENABLED: false,
+      // Set explicitly rather than left undefined. An absent flag is a
+      // falsy flag, and a harness that quietly runs the permissive s.9
+      // reading would be testing a configuration nobody has approved.
+      S9_CONSENT_REQUIRED_FOR_MEMBER_BODY: true,
     })
     .compile();
 
@@ -244,7 +249,7 @@ describe('reads are refused without a lawful basis (spec §10)', () => {
     conforms('Problem', response.body);
     assert.equal(
       (response.body as Record<string, unknown>)['code'],
-      'consent_not_implemented',
+      'no_verified_subject',
     );
   });
 
@@ -259,7 +264,12 @@ describe('reads are refused without a lawful basis (spec §10)', () => {
     assert.equal(response.status, 403);
   });
 
-  test('naming a purpose is refused until the consent spec exists', async () => {
+  /**
+   * The asserter reading back what it wrote. Naming a purpose does not make
+   * that a third-party disclosure, and refusing it would mean the party that
+   * supplied a record could not see it.
+   */
+  test('the asserter may read its own records, purpose or no purpose', async () => {
     const asserter = uuidv7();
     const submission = deliveryDocument({ asserted_by: asserter });
     await call('POST', '/v1/records', submission);
@@ -271,11 +281,77 @@ describe('reads are refused without a lawful basis (spec §10)', () => {
       { as: asserter },
     );
 
-    assert.equal(response.status, 403);
-    assert.equal(
-      (response.body as Record<string, unknown>)['code'],
-      'consent_not_implemented',
+    assert.equal(response.status, 200);
+  });
+});
+
+/* ── grants ─────────────────────────────────────────────────────────── */
+
+describe('a grant is the subject’s to give and the subject’s to withdraw', () => {
+  test('a subject grants, sees it listed, and withdraws it', async () => {
+    const subject = uuidv7();
+    const grantee = uuidv7();
+
+    const granted = await call(
+      'POST',
+      '/v1/consent/grants',
+      {
+        grantee,
+        purpose: 'credit_assessment',
+        record_types: ['delivery'],
+        granted_via: 'in_person_signature',
+      },
+      { as: subject },
     );
+
+    assert.equal(granted.status, 201);
+    conforms('ConsentGrant', granted.body);
+    const id = (granted.body as Record<string, unknown>)['id'] as string;
+
+    // A grant is personal data about the subject, so it turns up in their own
+    // access answer rather than only in the kernel's internals.
+    const held = await call('GET', '/v1/consent/grants', undefined, { as: subject });
+    assert.equal(held.status, 200);
+    assert.equal((held.body as { grants: unknown[] }).grants.length, 1);
+
+    const withdrawn = await call('DELETE', `/v1/consent/grants/${id}`, {}, {
+      as: subject,
+    });
+    assert.equal(withdrawn.status, 200);
+    assert.notEqual((withdrawn.body as Record<string, unknown>)['revoked_at'], null);
+  });
+
+  test('the grantee cannot see the grants it was given', async () => {
+    const subject = uuidv7();
+    const grantee = uuidv7();
+
+    await call(
+      'POST',
+      '/v1/consent/grants',
+      {
+        grantee,
+        purpose: 'advisory',
+        record_types: ['harvest'],
+        granted_via: 'ussd_confirmation',
+      },
+      { as: subject },
+    );
+
+    const held = await call('GET', '/v1/consent/grants', undefined, { as: grantee });
+
+    assert.equal(held.status, 200);
+    assert.equal((held.body as { grants: unknown[] }).grants.length, 0);
+  });
+
+  test('an anonymous caller cannot grant anything to anyone', async () => {
+    const response = await call('POST', '/v1/consent/grants', {
+      grantee: uuidv7(),
+      purpose: 'credit_assessment',
+      record_types: ['delivery'],
+      granted_via: 'witnessed',
+    });
+
+    assert.equal(response.status, 403);
   });
 });
 

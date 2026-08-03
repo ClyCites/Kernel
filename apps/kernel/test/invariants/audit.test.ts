@@ -16,10 +16,11 @@ import {
   ingestServiceFor,
   readingAs,
   type TestIngest,
+  consentServiceFor,
 } from '../helpers/fixtures.js';
 import { AuditService } from '../../src/audit/audit.service.js';
 import { AuditShipper } from '../../src/audit/audit.shipper.js';
-import { ConsentDenied, ConsentService } from '../../src/consent/consent.service.js';
+import { ConsentDenied } from '../../src/consent/consent.service.js';
 import { ReadService } from '../../src/records/read.service.js';
 import { RecordRepository } from '../../src/records/record.repository.js';
 
@@ -33,7 +34,7 @@ before(async () => {
   db = await startTestDatabase();
   ({ ingest, repository } = ingestServiceFor(db.app));
   audit = auditServiceFor(db.app);
-  read = new ReadService(repository, new ConsentService(), audit);
+  read = new ReadService(repository, consentServiceFor(db.app), audit);
 });
 
 after(async () => {
@@ -216,8 +217,10 @@ describe('every refusal is recorded with its reason', () => {
     assert.equal(denials.length, 1);
     assert.equal(denials[0]?.action, 'consent.denied');
     // The reason, not merely the fact. A shifting denial rate is only readable
-    // as a signal if the reasons are distinguishable from one another.
-    assert.equal(denials[0]?.reason, 'consent_not_implemented');
+    // as a signal if the reasons are distinguishable from one another. This
+    // stranger is refused before any grant is looked for: they named no
+    // purpose, and a disclosure with no stated purpose cannot be consented to.
+    assert.equal(denials[0]?.reason, 'purpose_required');
   });
 
   test('a refused write is logged against the id it claimed', async () => {

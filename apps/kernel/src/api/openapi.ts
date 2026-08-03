@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { ConversionBasis } from '@clycites/schema';
-import { CONSENT_PURPOSES } from '../consent/consent.service.js';
+import { CONSENT_CHANNELS, CONSENT_PURPOSES } from '../consent/consent.service.js';
 import { ENTITY_SCHEMAS } from '../records/entity-registry.js';
 import { SUBJECT_HEADER } from './subject.js';
 import { DATASET_HEADER, LAWFUL_BASIS_HEADER } from './dataset.js';
@@ -804,6 +804,49 @@ export function buildOpenApiDocument(): OpenApiDocument {
     },
   };
 
+  schemas['ConsentGrant'] = {
+    type: 'object',
+    required: [
+      'id',
+      'subject',
+      'grantee',
+      'purpose',
+      'record_types',
+      'granted_at',
+      'granted_via',
+    ],
+    description:
+      'One subject permitting one grantee to use records of named types for one named purpose. Purpose-bound and never widened. Withdrawal fills `revoked_at` from a separate row; the grant itself is never edited, because a consent record that could be edited is not evidence of anything.',
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      subject: { type: 'string', format: 'uuid' },
+      grantee: { type: 'string', format: 'uuid' },
+      purpose: { type: 'string', enum: [...CONSENT_PURPOSES] },
+      record_types: {
+        type: 'array',
+        items: { type: 'string' },
+        description:
+          'A grant over deliveries is not a grant over harvests. There is no wildcard.',
+      },
+      granted_at: { type: 'string', format: 'date-time' },
+      expires_at: { type: ['string', 'null'], format: 'date-time' },
+      granted_via: {
+        type: 'string',
+        enum: [...CONSENT_CHANNELS],
+        description:
+          'How the subject actually said yes. A grant nobody can evidence is not one.',
+      },
+      evidence: { type: 'array', items: {} },
+      dataset: { type: 'string', enum: [...DATASETS] },
+      revoked_at: {
+        type: ['string', 'null'],
+        format: 'date-time',
+        description:
+          'Resolved at request time, not at grant time: a grant withdrawn before the read does not authorise it.',
+      },
+    },
+  };
+
   schemas['PartyLinkResolution'] = {
     type: 'object',
     required: ['identities', 'links', 'collapsed'],
@@ -849,6 +892,11 @@ export function buildOpenApiDocument(): OpenApiDocument {
         name: 'identity',
         description:
           'Links between party ids. Assertions, never merges: a wrong link is withdrawn, a wrong merge is archaeology.',
+      },
+      {
+        name: 'consent',
+        description:
+          'Grants, and their withdrawal. Written by the subject and read by the subject; nothing here is a grantee’s to manage.',
       },
       { name: 'operations', description: 'Liveness and readiness.' },
     ],
@@ -1585,6 +1633,90 @@ export function buildOpenApiDocument(): OpenApiDocument {
               content: { 'application/json': { schema: ref('PartyLink') } },
             },
             '404': problemResponse('No live link with that id.'),
+          },
+        },
+      },
+      '/consent/grants': {
+        get: {
+          tags: ['consent'],
+          operationId: 'listOwnGrants',
+          summary: 'What this subject has permitted',
+          description:
+            'Scoped to the verified subject and never widenable. A grant is personal data about the person who gave it, so this is part of their subject-access answer — and a grantee able to list a subject’s grants could enumerate everybody else that subject deals with.',
+          responses: {
+            '200': {
+              description: 'The subject’s own grants, withdrawn ones included.',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    required: ['grants'],
+                    properties: {
+                      grants: { type: 'array', items: ref('ConsentGrant') },
+                    },
+                  },
+                },
+              },
+            },
+            '403': problemResponse('No verified subject.'),
+          },
+        },
+        post: {
+          tags: ['consent'],
+          operationId: 'grantConsent',
+          summary: 'Give consent',
+          description:
+            'The subject is the verified subject, never a body field. Purpose-bound: a grant for credit assessment is not a grant for market intelligence, and the kernel never widens one to cover another.',
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['grantee', 'purpose', 'record_types', 'granted_via'],
+                  properties: {
+                    grantee: { type: 'string', format: 'uuid' },
+                    purpose: { type: 'string', enum: [...CONSENT_PURPOSES] },
+                    record_types: {
+                      type: 'array',
+                      items: { type: 'string' },
+                      minItems: 1,
+                    },
+                    expires_at: { type: ['string', 'null'], format: 'date-time' },
+                    granted_via: { type: 'string', enum: [...CONSENT_CHANNELS] },
+                    evidence: { type: 'array', items: {} },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '201': {
+              description: 'Granted.',
+              content: { 'application/json': { schema: ref('ConsentGrant') } },
+            },
+            '400': problemResponse('The grant is not a shape we accept.'),
+            '403': problemResponse('No verified subject.'),
+          },
+        },
+      },
+      '/consent/grants/{id}': {
+        delete: {
+          tags: ['consent'],
+          operationId: 'revokeConsent',
+          summary: 'Withdraw consent',
+          description:
+            'Nothing is deleted and nothing is updated. A withdrawal is a new row beside the grant, so a subject who withdraws in August can still show they had consented in July.',
+          parameters: [
+            { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          ],
+          responses: {
+            '200': {
+              description: 'Withdrawn.',
+              content: { 'application/json': { schema: ref('ConsentGrant') } },
+            },
+            '403': problemResponse('No verified subject.'),
+            '404': problemResponse('No grant of yours with that id.'),
           },
         },
       },

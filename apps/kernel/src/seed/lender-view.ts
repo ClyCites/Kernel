@@ -26,11 +26,12 @@ import type { SeedPlan } from './generate.js';
  * because any member did anything. A proportional share would be arithmetically
  * defensible and would still cost somebody credit for their neighbour's scale.
  *
- * FINDING: this cannot be run *as* the lender. `ConsentService.decide` allows a
- * self read or an asserter read and nothing else, so a third party gets
- * `consent_not_implemented` on every record. The report below is therefore
- * produced by the cooperative — which is the honest position today, and the
- * deny-all guard working as designed rather than a gap in the seed.
+ * FINDING: this is still produced by the cooperative rather than the lender.
+ * Since 0029 a third party *can* read, but only against a live, purpose-bound
+ * grant from each farmer, and the seed has none — inventing consent to make a
+ * demonstration work is the one thing a consent module must never do. Running
+ * it as the lender means collecting eight grants first, which is the honest
+ * cost and worth seeing.
  */
 
 interface Fetched {

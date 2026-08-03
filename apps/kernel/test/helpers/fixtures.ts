@@ -6,6 +6,9 @@ import { ConversionService } from '../../src/registry/conversion.service.js';
 import { AuditRepository } from '../../src/audit/audit.repository.js';
 import { AuditService } from '../../src/audit/audit.service.js';
 import { AuditShipper } from '../../src/audit/audit.shipper.js';
+import { ConsentGrantService } from '../../src/consent/consent-grant.service.js';
+import { ConsentRepository } from '../../src/consent/consent.repository.js';
+import { ConsentService } from '../../src/consent/consent.service.js';
 import { DelegationService } from '../../src/records/delegation.service.js';
 import { IngestService } from '../../src/records/ingest.service.js';
 import type {
@@ -55,6 +58,25 @@ export const auditServiceFor = (pool: Pool): AuditService =>
       AUDIT_SHIP_BATCH: 200,
     }),
   );
+
+/**
+ * The decision point, wired to the real tables.
+ *
+ * The s.9 flag defaults to `true` here for the same reason it does in
+ * production: a suite that ran with it false would prove the kernel works in a
+ * configuration counsel has not approved. The tests that are about the flag
+ * pass `false` explicitly and say so.
+ */
+export const consentServiceFor = (
+  pool: Pool,
+  s9ConsentRequired = true,
+): ConsentService =>
+  new ConsentService(new ConsentRepository(pool), {
+    S9_CONSENT_REQUIRED_FOR_MEMBER_BODY: s9ConsentRequired,
+  });
+
+export const consentGrantServiceFor = (pool: Pool): ConsentGrantService =>
+  new ConsentGrantService(new ConsentRepository(pool), auditServiceFor(pool));
 
 export const ingestServiceFor = (
   pool: Pool,

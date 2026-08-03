@@ -13,7 +13,9 @@ import {
   type Reader,
   type RecordView,
 } from '../records/read.service.js';
-import { subjectsOf } from '../records/subjects.js';
+import { partiesOf, subjectsOf } from '../records/subjects.js';
+import { toDocument } from '../records/record.js';
+import { carriesFinancialData } from '../records/lawful-basis.js';
 import { DeviceRepository, type Device } from './device.repository.js';
 
 const DEFAULT_BATCH = 100;
@@ -149,12 +151,11 @@ export class SyncService {
     reader: Reader,
   ): Promise<Changes> {
     if (reader.requester === null) {
-      const decision = this.consent.decide({
-        subjects: [],
-        asserters: [],
+      const decision = await this.consent.decide({
+        records: [],
         requester: null,
         purpose: reader.purpose ?? null,
-        record_types: [],
+        dataset: reader.dataset ?? 'live',
         at: new Date().toISOString(),
       });
       // Recorded before the throw. An unauthenticated pull against the widest
@@ -188,15 +189,29 @@ export class SyncService {
     const views = page.map(recordView);
 
     if (views.length > 0) {
-      const request = {
-        subjects: views.flatMap((view) => subjectsOf(view.record)),
-        asserters: views.map((view) => view.record['asserted_by'] as string),
+      // From the stored rows, not the views: `lawful_basis` is kernel metadata
+      // and never appears in the document a caller receives.
+      const records = page.map((record) => {
+        const document = toDocument(record);
+        return {
+          id: record.id,
+          type: record.type,
+          subjects: subjectsOf(document),
+          parties: partiesOf(document),
+          asserted_by: record.asserted_by,
+          occurred_at: record.occurred_at,
+          financial: carriesFinancialData(record.type, record.body),
+          lawful_basis: record.lawful_basis,
+        };
+      });
+
+      const decision = await this.consent.decide({
+        records,
         requester: reader.requester,
         purpose: reader.purpose ?? null,
-        record_types: views.map((view) => view.record['type'] as string),
+        dataset: reader.dataset ?? 'live',
         at: new Date().toISOString(),
-      };
-      const decision = this.consent.decide(request);
+      });
 
       await this.audit.record({
         action: decision.allowed ? 'record.read' : 'consent.denied',
@@ -205,10 +220,15 @@ export class SyncService {
         reason: decision.reason,
         actor: reader.requester,
         purpose: reader.purpose ?? null,
-        subjects: request.subjects,
-        records: views.map((view) => view.record['id'] as string),
-        recordTypes: request.record_types,
-        detail: { by: 'sync_changes', returned: views.length },
+        subjects: records.flatMap((record) => record.subjects),
+        records: records.map((record) => record.id),
+        recordTypes: records.map((record) => record.type),
+        detail: {
+          by: 'sync_changes',
+          returned: views.length,
+          access: decision.access ?? null,
+          grants: decision.grants.length,
+        },
         correlationId: reader.correlationId ?? null,
       });
 

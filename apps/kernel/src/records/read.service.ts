@@ -34,10 +34,12 @@ import {
 } from './staleness.js';
 import {
   resolveSubject,
+  partiesOf,
   subjectFields,
   subjectsOf,
   type SubjectResolution,
 } from './subjects.js';
+import { carriesFinancialData } from './lawful-basis.js';
 
 export const DEFAULT_PAGE_SIZE = 50;
 export const MAX_PAGE_SIZE = 200;
@@ -134,7 +136,7 @@ export class ReadService {
     if (found === null || found.dataset !== datasetOf(reader)) return null;
 
     const view = recordView(found);
-    await this.guard([view], reader, { by: 'id' });
+    await this.guard([found], reader, { by: 'id' });
     await this.derive([view], reader);
     return view;
   }
@@ -149,7 +151,7 @@ export class ReadService {
     if (found === null || found.dataset !== datasetOf(reader)) return null;
 
     const view = recordView({ ...found, superseded_by: [], retracted: false });
-    await this.guard([view], reader, { by: 'inference_id' });
+    await this.guard([found], reader, { by: 'inference_id' });
     await this.deriveStaleness([view], datasetOf(reader));
     return view;
   }
@@ -209,7 +211,7 @@ export class ReadService {
     // Filter names and values, never field values out of a record body: `type`
     // and `subject` are the caller's own query, which is what an access record
     // is supposed to describe.
-    await this.guard(views, reader, {
+    await this.guard(page, reader, {
       by: 'list',
       type: options.type ?? null,
       asserted_by: options.assertedBy ?? null,
@@ -263,7 +265,7 @@ export class ReadService {
     // Custody is deliberately not derived here. This view answers "what was
     // claimed, and when", and overwriting every historical version with the
     // current holder would erase the thing the caller came for.
-    await this.guard(views, reader, { by: 'chain', versions: views.length });
+    await this.guard(scoped, reader, { by: 'chain', versions: views.length });
     return views;
   }
 
@@ -427,22 +429,37 @@ export class ReadService {
    * column this writes, and s.16(4) from the `records` column.
    */
   private async guard(
-    views: RecordView[],
+    records: readonly StoredRecord[],
     reader: Reader,
     descriptor?: AuditDescriptor,
   ): Promise<void> {
-    if (views.length === 0) return;
+    if (records.length === 0) return;
 
-    const request = {
-      subjects: views.flatMap((view) => subjectsOf(view.record)),
-      asserters: views.map((view) => view.record['asserted_by'] as string),
+    // The stored row, not the view. `lawful_basis` is kernel metadata and is
+    // deliberately absent from the document a caller receives, but it is the
+    // ground the record was collected on and the decision point cannot answer
+    // s.9 without it.
+    const facts = records.map((record) => {
+      const document = toDocument(record);
+      return {
+        id: record.id,
+        type: record.type,
+        subjects: subjectsOf(document),
+        parties: partiesOf(document),
+        asserted_by: record.asserted_by,
+        occurred_at: record.occurred_at,
+        financial: carriesFinancialData(record.type, record.body),
+        lawful_basis: record.lawful_basis,
+      };
+    });
+
+    const decision = await this.consent.decide({
+      records: facts,
       requester: reader.requester,
       purpose: reader.purpose ?? null,
-      record_types: views.map((view) => view.record['type'] as string),
+      dataset: datasetOf(reader),
       at: new Date().toISOString(),
-    };
-
-    const decision = this.consent.decide(request);
+    });
 
     await this.audit.record({
       action: decision.allowed ? 'record.read' : 'consent.denied',
@@ -451,10 +468,18 @@ export class ReadService {
       reason: decision.reason,
       actor: reader.requester,
       purpose: reader.purpose ?? null,
-      subjects: request.subjects,
-      records: views.map((view) => view.record['id'] as string),
-      recordTypes: request.record_types,
-      detail: { returned: views.length, ...descriptor },
+      subjects: facts.flatMap((fact) => fact.subjects),
+      records: facts.map((fact) => fact.id),
+      recordTypes: facts.map((fact) => fact.type),
+      detail: {
+        returned: facts.length,
+        // Which permission was leaned on, not just that one was. A s.24(1)(c)
+        // answer that cannot say whether access was consented to or inherent
+        // is not much of an answer.
+        access: decision.access ?? null,
+        grants: decision.grants.length,
+        ...descriptor,
+      },
       correlationId: reader.correlationId ?? null,
     });
 

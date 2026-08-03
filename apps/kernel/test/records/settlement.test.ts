@@ -10,8 +10,8 @@ import {
   type TestIngest,
   readingAs,
   retractionDocument,
+  consentServiceFor,
 } from '../helpers/fixtures.js';
-import { ConsentService } from '../../src/consent/consent.service.js';
 import { ReadService } from '../../src/records/read.service.js';
 import { RecordRepository } from '../../src/records/record.repository.js';
 import { summariseSettlements } from '../../src/records/settlement.js';
@@ -24,7 +24,7 @@ before(async () => {
   db = await startTestDatabase();
   const assembled = ingestServiceFor(db.app);
   ingest = assembled.ingest;
-  read = new ReadService(assembled.repository, new ConsentService(), auditServiceFor(db.app));
+  read = new ReadService(assembled.repository, consentServiceFor(db.app), auditServiceFor(db.app));
 });
 
 after(async () => {

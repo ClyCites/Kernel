@@ -182,19 +182,31 @@ export class PartyLinkService {
     action: 'record.read' | 'record.write',
     detail: Record<string, string | number | boolean | null>,
   ): Promise<void> {
-    const decision = this.consent.decide({
-      subjects: about.subjects,
-      asserters: about.asserters,
+    const dataset = reader.dataset ?? 'live';
+    // A link is presented to the decision point as what it is: a claim about
+    // two parties, asserted by somebody. There is no record id yet on a write,
+    // so the link's own id stands in.
+    const decision = await this.consent.decide({
+      records: about.subjects.map((subject) => ({
+        id: subject,
+        type: 'party_link',
+        subjects: about.subjects,
+        parties: about.subjects,
+        asserted_by: about.asserters[0] ?? (reader.requester ?? subject),
+        occurred_at: new Date().toISOString(),
+        financial: false,
+        lawful_basis: 'contract_performance',
+      })),
       requester: reader.requester,
       purpose: reader.purpose ?? null,
-      record_types: ['party_link'],
+      dataset,
       at: new Date().toISOString(),
     });
 
     await this.audit.record({
       action: decision.allowed ? action : 'consent.denied',
       outcome: decision.allowed ? 'allowed' : 'denied',
-      dataset: reader.dataset ?? 'live',
+      dataset,
       reason: decision.reason,
       actor: reader.requester,
       purpose: reader.purpose ?? null,

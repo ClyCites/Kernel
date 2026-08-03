@@ -11,8 +11,9 @@ import {
   type TestIngest,
   readingAs,
   retractionDocument,
+  consentServiceFor,
 } from '../helpers/fixtures.js';
-import { ConsentDenied, ConsentService } from '../../src/consent/consent.service.js';
+import { ConsentDenied } from '../../src/consent/consent.service.js';
 import { RecordRepository } from '../../src/records/record.repository.js';
 import { RecordRejected } from '../../src/records/errors.js';
 import { DeviceRepository } from '../../src/sync/device.repository.js';
@@ -34,7 +35,7 @@ before(async () => {
     assembled.service,
     repository,
     new DeviceRepository(db.app),
-    new ConsentService(),
+    consentServiceFor(db.app),
     auditServiceFor(db.app),
   );
 });

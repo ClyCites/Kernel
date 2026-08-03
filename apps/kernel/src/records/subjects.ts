@@ -36,6 +36,39 @@ export function subjectFields(type?: string | undefined): readonly string[] {
 }
 
 /**
+ * The subset of `SUBJECT_FIELDS` that names a party rather than an entity.
+ *
+ * Consent needs this and attribution does not. A delivery is *about* a lot and
+ * an agreement as much as about two parties, but only a party can give a grant,
+ * and resolving a grant against a lot id is meaningless.
+ *
+ * Entities absent here — planting, harvest, observation, retraction — have no
+ * party field at all. Their holder is reachable only through the plot, which is
+ * a join this does not do. See docs/decisions/0029-consent.md.
+ */
+export const PARTY_SUBJECT_FIELDS: Record<string, readonly string[]> = {
+  party: ['id'],
+  account: ['primary_party'],
+  delegation: ['delegator', 'delegate'],
+  membership: ['member', 'organisation'],
+  facility: ['operated_by'],
+  plot: ['held_by'],
+  lot: ['custodian'],
+  custody_transfer: ['from_party', 'to_party'],
+  delivery: ['from_party', 'to_party'],
+  agreement: ['parties[].party'],
+  obligation: ['obligor', 'obligee'],
+  settlement_reference: ['confirmed_by'],
+};
+
+/** Which parties a record is about. Never taken from the request. */
+export function partiesOf(record: Record<string, unknown>): string[] {
+  const type = record['type'];
+  if (typeof type !== 'string') return [];
+  return collect(record, PARTY_SUBJECT_FIELDS[type] ?? []);
+}
+
+/**
  * `Observation.subject_type` names a kind of thing; the log stores record
  * types. They line up everywhere except `region`, which has no record — regions
  * live in `registry.admin_region`, keyed by code and vintage, so no uuidv7
@@ -115,9 +148,15 @@ export function containment(field: string, id: string): Record<string, unknown> 
 export function subjectsOf(record: Record<string, unknown>): string[] {
   const type = record['type'];
   if (typeof type !== 'string') return [];
+  return collect(record, subjectFields(type));
+}
 
+function collect(
+  record: Record<string, unknown>,
+  fields: readonly string[],
+): string[] {
   const found = new Set<string>();
-  for (const field of subjectFields(type)) {
+  for (const field of fields) {
     if (field === 'id') {
       const id = record['id'];
       if (typeof id === 'string') found.add(id);

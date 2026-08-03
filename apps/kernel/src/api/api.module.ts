@@ -5,6 +5,7 @@ import { RecordsModule } from '../records/records.module.js';
 import { IdentityModule } from '../identity/identity.module.js';
 import { SyncModule } from '../sync/sync.module.js';
 import { CorrelationMiddleware } from './correlation.middleware.js';
+import { ConsentController } from './consent.controller.js';
 import { OperationsController } from './operations.controller.js';
 import { PartiesController } from './parties.controller.js';
 import { ProblemFilter } from './problem.filter.js';
@@ -24,6 +25,7 @@ import { SyncController } from './sync.controller.js';
     RegistryController,
     SyncController,
     PartiesController,
+    ConsentController,
     OperationsController,
   ],
   providers: [{ provide: APP_FILTER, useClass: ProblemFilter }],

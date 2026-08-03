@@ -256,3 +256,6 @@ decision and a gap nobody wrote down is a surprise.
 | Seed plot area, crop mix and delivery frequency are invented | The UNPS microdata, which is behind a manually approved login. See `docs/data-sources.md`. |
 | `UG.KIRYANDONGO` and `UG.NEBBI` are not in `registry.admin_region` | Nothing. The seed uses both district codes anyway; the season calendar could not be scoped to them. |
 | Three observation types carry no citation | A field request for any of them, or their eventual withdrawal. See 0028. |
+| A farmer cannot read their own Planting, Harvest or Observation | Nothing technical. Those entities carry no party field; the holder is reachable only through the plot's `held_by`, which the decision point does not join. First thing to fix in consent. See 0029. |
+| `S9_CONSENT_REQUIRED_FOR_MEMBER_BODY` is set true on a guess | Counsel. One question: does s.9(3)(c) permit a cooperative to process its members' financial information without separate explicit consent? The answer sets one flag. See 0029. |
+| Aggregate and anonymised access has no rule at all | Counsel, and a de-identification standard. Tangled with s.37 on selling personal data. The next consent question, not part of 0029. |

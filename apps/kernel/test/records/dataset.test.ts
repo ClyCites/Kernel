@@ -10,8 +10,8 @@ import {
   ingestServiceFor,
   type TestIngest,
   readingAs,
+  consentServiceFor,
 } from '../helpers/fixtures.js';
-import { ConsentService } from '../../src/consent/consent.service.js';
 import { ReadService } from '../../src/records/read.service.js';
 import { RegistryRepository } from '../../src/registry/registry.repository.js';
 import { loadConfig } from '../../src/config.js';
@@ -30,7 +30,7 @@ before(async () => {
   const assembled = ingestServiceFor(db.app);
   ingest = assembled.ingest;
   repository = assembled.repository;
-  read = new ReadService(assembled.repository, new ConsentService(), auditServiceFor(db.app));
+  read = new ReadService(assembled.repository, consentServiceFor(db.app), auditServiceFor(db.app));
   registry = new RegistryRepository(db.app);
 });
 

@@ -15,6 +15,7 @@ import { RateLimitMiddleware } from './rate-limit.middleware.js';
 import { RegistryCacheInterceptor } from './registry-cache.interceptor.js';
 import { RecordsController } from './records.controller.js';
 import { RegistryController } from './registry.controller.js';
+import { RetentionController } from './retention.controller.js';
 import { SyncController } from './sync.controller.js';
 
 /**
@@ -30,6 +31,7 @@ import { SyncController } from './sync.controller.js';
     PartiesController,
     ConsentController,
     ObjectionController,
+    RetentionController,
     SubjectAccessController,
     OperationsController,
   ],

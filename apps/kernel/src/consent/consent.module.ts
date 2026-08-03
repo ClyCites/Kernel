@@ -8,6 +8,8 @@ import { DisclosureNotificationRepository } from './disclosure-notification.repo
 import { DisclosureNotificationService } from './disclosure-notification.service.js';
 import { ObjectionRepository } from './objection.repository.js';
 import { ObjectionService } from './objection.service.js';
+import { RetentionNoticeRepository } from './retention-notice.repository.js';
+import { RetentionNoticeService } from './retention-notice.service.js';
 import { SubjectAccessService } from './subject-access.service.js';
 
 /** Global so that no read path can be written without the guard in reach. */
@@ -22,6 +24,8 @@ import { SubjectAccessService } from './subject-access.service.js';
     ConsentGrantService,
     ObjectionRepository,
     ObjectionService,
+    RetentionNoticeRepository,
+    RetentionNoticeService,
     SubjectAccessService,
     DisclosureNotificationRepository,
     DisclosureNotificationService,
@@ -32,6 +36,8 @@ import { SubjectAccessService } from './subject-access.service.js';
     ConsentGrantService,
     ObjectionRepository,
     ObjectionService,
+    RetentionNoticeRepository,
+    RetentionNoticeService,
     SubjectAccessService,
     DisclosureNotificationRepository,
     DisclosureNotificationService,

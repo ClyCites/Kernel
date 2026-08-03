@@ -12,6 +12,8 @@ import { ConsentRepository } from '../../src/consent/consent.repository.js';
 import { DisclosureNotificationRepository } from '../../src/consent/disclosure-notification.repository.js';
 import { DisclosureNotificationService } from '../../src/consent/disclosure-notification.service.js';
 import { ObjectionRepository } from '../../src/consent/objection.repository.js';
+import { RetentionNoticeRepository } from '../../src/consent/retention-notice.repository.js';
+import { RetentionNoticeService } from '../../src/consent/retention-notice.service.js';
 import { ObjectionService } from '../../src/consent/objection.service.js';
 import { SubjectAccessService } from '../../src/consent/subject-access.service.js';
 import { ConsentService } from '../../src/consent/consent.service.js';
@@ -83,6 +85,12 @@ export const consentServiceFor = (
 
 export const consentGrantServiceFor = (pool: Pool): ConsentGrantService =>
   new ConsentGrantService(new ConsentRepository(pool), auditServiceFor(pool));
+
+export const retentionNoticeServiceFor = (pool: Pool): RetentionNoticeService =>
+  new RetentionNoticeService(
+    new RetentionNoticeRepository(pool),
+    auditServiceFor(pool),
+  );
 
 export const objectionServiceFor = (pool: Pool): ObjectionService =>
   new ObjectionService(

@@ -6,6 +6,7 @@ import {
   OBJECTION_CHANNELS,
   WITHDRAWAL_CHANNELS,
 } from '../consent/objection.service.js';
+import { NOTICE_CHANNELS } from '../consent/retention-notice.repository.js';
 import { ENTITY_SCHEMAS } from '../records/entity-registry.js';
 import { SUBJECT_HEADER } from './subject.js';
 import { DATASET_HEADER, LAWFUL_BASIS_HEADER } from './dataset.js';
@@ -877,6 +878,81 @@ export function buildOpenApiDocument(): OpenApiDocument {
       evidence: { type: 'array', items: {} },
       dataset: { type: 'string', enum: [...DATASETS] },
       withdrawn_at: { type: ['string', 'null'], format: 'date-time' },
+    },
+  };
+
+  schemas['RetentionNotice'] = {
+    type: 'object',
+    required: [
+      'id',
+      'party',
+      'notice_text',
+      'period_stated',
+      'lawful_basis',
+      'purposes',
+      'language',
+      'given_via',
+      'given_at',
+    ],
+    description:
+      'The notice given to a subject at enrolment, DPPA s.13(1)(i), recorded as it was given. A farmer enrolled in March was told something; a policy changed in June does not become what they were told.',
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      party: { type: 'string', format: 'uuid' },
+      notice_text: {
+        type: 'string',
+        description:
+          'The notice in full, not a template id. A template can be edited afterwards, which would make the notice unprovable.',
+      },
+      period_stated: {
+        type: 'string',
+        description:
+          'What the subject was told about how long, in the words used. Free text on purpose: “until three years after your last delivery” is a real answer and is not a duration. A machine-readable period would invite a job to act on it, and the lawful period is unresolved.',
+      },
+      lawful_basis: { type: 'string', enum: [...LAWFUL_BASES] },
+      purposes: { type: 'array', items: { type: 'string' } },
+      language: {
+        type: 'string',
+        description:
+          'A notice in a language the subject does not read does not inform them, so the claim is recorded and can be checked.',
+      },
+      given_via: { type: 'string', enum: [...NOTICE_CHANNELS] },
+      given_by: {
+        type: ['string', 'null'],
+        format: 'uuid',
+        description: 'The verified caller who gave it, never a body field.',
+      },
+      given_at: { type: 'string', format: 'date-time' },
+      dataset: { type: 'string', enum: [...DATASETS] },
+    },
+  };
+
+  schemas['RetentionNoticeSubmission'] = {
+    type: 'object',
+    required: [
+      'party',
+      'notice_text',
+      'period_stated',
+      'lawful_basis',
+      'purposes',
+      'language',
+      'given_via',
+      'given_at',
+    ],
+    properties: {
+      party: { type: 'string', format: 'uuid' },
+      notice_text: { type: 'string', minLength: 1, maxLength: 20_000 },
+      period_stated: { type: 'string', minLength: 1, maxLength: 1_000 },
+      lawful_basis: { type: 'string', enum: [...LAWFUL_BASES] },
+      purposes: {
+        type: 'array',
+        items: { type: 'string', minLength: 1 },
+        minItems: 1,
+        maxItems: 16,
+      },
+      language: { type: 'string', minLength: 2, maxLength: 64 },
+      given_via: { type: 'string', enum: [...NOTICE_CHANNELS] },
+      given_at: { type: 'string', format: 'date-time' },
     },
   };
 
@@ -1966,6 +2042,72 @@ export function buildOpenApiDocument(): OpenApiDocument {
             '400': problemResponse('Evidence too weak to remove a protection.'),
             '403': problemResponse('No verified subject.'),
             '404': problemResponse('No objection of yours with that id.'),
+          },
+        },
+      },
+      '/retention/notices': {
+        post: {
+          tags: ['consent'],
+          operationId: 'giveRetentionNotice',
+          summary: 'Record the notice given at enrolment',
+          description:
+            'DPPA s.13(1)(i). Records what a subject was actually told about how long their data will be kept — the wording, the ground, the purposes, the language it was given in and how it reached them. `given_by` is the verified caller and is never taken from the body. Append-only: a changed policy is a new notice, and the earlier one still governs the period before it. Nothing in the kernel acts on `period_stated`; the lawful period is unresolved and no expiry job exists.',
+          parameters: writeHeaders,
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': { schema: ref('RetentionNoticeSubmission') },
+            },
+          },
+          responses: {
+            '201': {
+              description: 'Recorded.',
+              content: { 'application/json': { schema: ref('RetentionNotice') } },
+            },
+            '400': problemResponse('The notice is incomplete.'),
+            '403': problemResponse('No verified party.'),
+          },
+        },
+        get: {
+          tags: ['consent'],
+          operationId: 'retentionNotices',
+          summary: 'What a party was told, and when',
+          description:
+            'The subject sees every notice given to them; anybody else sees only the notices they themselves gave, so a cooperative cannot read what a rival told the same farmer. With `as_at`, returns the single notice in force at that moment — which is the question worth asking, since a notice given later does not retroactively become what somebody was told.',
+          parameters: [
+            {
+              name: 'party',
+              in: 'query',
+              required: true,
+              schema: { type: 'string', format: 'uuid' },
+            },
+            {
+              name: 'as_at',
+              in: 'query',
+              required: false,
+              schema: { type: 'string', format: 'date-time' },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Notices this caller may read.',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    required: ['notices'],
+                    properties: {
+                      notices: {
+                        type: 'array',
+                        items: ref('RetentionNotice'),
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            '400': problemResponse('A party id is required.'),
+            '403': problemResponse('No verified party.'),
           },
         },
       },

@@ -600,3 +600,81 @@ describe('responses compress for narrowband clients', () => {
     conforms('Changes', await response.json());
   });
 });
+
+describe('the retention notice is recorded as it was given (s.13(1)(i))', () => {
+  const FARMER = uuidv7();
+  const COOP = uuidv7();
+  const RIVAL = uuidv7();
+
+  const notice = (party: string, period: string, givenAt: string) => ({
+    party,
+    notice_text: 'We keep your delivery records so the cooperative can pay you.',
+    period_stated: period,
+    lawful_basis: 'consent',
+    purposes: ['membership_administration'],
+    language: 'lug',
+    given_via: 'in_person_reading',
+    given_at: givenAt,
+  });
+
+  test('the collector records it, and given_by is the caller not the body', async () => {
+    const given = await call(
+      'POST',
+      '/v1/retention/notices',
+      { ...notice(FARMER, 'three years after your last delivery', '2026-03-04T09:00:00+03:00'), given_by: RIVAL },
+      { as: COOP },
+    );
+
+    assert.equal(given.status, 201);
+    const body = given.body as Record<string, unknown>;
+    // A notice that can name somebody else as its giver can be fabricated
+    // against them. The body's attempt is ignored, not rejected loudly, because
+    // the field simply is not read.
+    assert.equal(body['given_by'], COOP);
+    conforms('RetentionNotice', body);
+  });
+
+  test('a later notice does not become what the farmer was told in March', async () => {
+    await call(
+      'POST',
+      '/v1/retention/notices',
+      notice(FARMER, 'eighteen months', '2026-06-18T09:00:00+03:00'),
+      { as: COOP },
+    );
+
+    const atEnrolment = await call(
+      'GET',
+      `/v1/retention/notices?party=${FARMER}&as_at=2026-03-04T09:00:00%2B03:00`,
+      undefined,
+      { as: FARMER },
+    );
+    const notices = (atEnrolment.body as { notices: Record<string, unknown>[] }).notices;
+    assert.equal(notices.length, 1);
+    assert.equal(notices[0]!['period_stated'], 'three years after your last delivery');
+  });
+
+  test('a rival cannot read what somebody else told the same farmer', async () => {
+    const theirs = await call(
+      'GET',
+      `/v1/retention/notices?party=${FARMER}`,
+      undefined,
+      { as: RIVAL },
+    );
+    assert.equal(theirs.status, 200);
+    assert.deepEqual((theirs.body as { notices: unknown[] }).notices, []);
+
+    const mine = await call(
+      'GET',
+      `/v1/retention/notices?party=${FARMER}`,
+      undefined,
+      { as: FARMER },
+    );
+    assert.equal((mine.body as { notices: unknown[] }).notices.length, 2);
+  });
+
+  test('there is no way to edit or withdraw a notice through the API', () => {
+    const paths = document['paths'] as Record<string, Record<string, unknown>>;
+    const route = paths['/retention/notices']!;
+    assert.deepEqual(Object.keys(route).sort(), ['get', 'post']);
+  });
+});

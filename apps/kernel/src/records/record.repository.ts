@@ -265,6 +265,50 @@ export class RecordRepository {
     }));
   }
 
+  /**
+   * How authority is actually being granted, and how much gets written under
+   * each kind of grant. Work order M5.
+   *
+   * Open decision D7 asks how narrow delegation scope should be. Nobody can
+   * answer that from a desk. If real usage turns out to be overwhelmingly
+   * `organisational_bylaw` — the weakest ground in the enum, and the one that
+   * means "the coop's rules say I may" rather than "this person signed" — then
+   * the answer to D7 has arrived as data rather than as an opinion.
+   *
+   * Two counts, because they say different things. `grants` is how many
+   * delegations exist on each ground; `records` is how many records were
+   * written under one. A single bylaw delegation covering forty farmers is one
+   * grant and a great many records, and the second number is the one that
+   * matters.
+   */
+  async delegationBasisCensus(): Promise<
+    Array<{ basis: string; grants: number; records: number }>
+  > {
+    const { rows } = await this.pool.query<{
+      basis: string;
+      grants: string;
+      records: string;
+    }>(
+      `with grant_basis as (
+         select id, coalesce(body ->> 'granted_via', 'unstated') as basis
+           from facts.record
+          where type = 'delegation' and dataset = 'live'
+       )
+       select g.basis,
+              count(distinct g.id) as grants,
+              count(r.id)          as records
+         from grant_basis g
+         left join facts.record r
+           on r.delegation = g.id and r.dataset = 'live'
+        group by g.basis`,
+    );
+    return rows.map((row) => ({
+      basis: row.basis,
+      grants: Number(row.grants),
+      records: Number(row.records),
+    }));
+  }
+
   /** Fetch by id from the fact log. Inferences are not reachable from here. */
   async findById(id: string): Promise<StoredRecord | null> {
     const { rows } = await this.pool.query<StoredRecord>(

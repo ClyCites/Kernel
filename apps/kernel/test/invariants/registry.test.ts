@@ -2,6 +2,7 @@ import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  CHECK_VIOLATION,
   INSUFFICIENT_PRIVILEGE,
   sqlState,
   startTestDatabase,
@@ -175,5 +176,134 @@ describe('the seed is honest about what it does not know', () => {
     );
 
     assert.deepEqual(rows, []);
+  });
+});
+
+/**
+ * Work order M6. Every observation type invented at a desk is one somebody has
+ * to deprecate later, and records citing a code are permanent, so a wrong code
+ * is permanent too. Decision 0028.
+ */
+describe('the observation vocabulary stays small and cited (M6, D8)', () => {
+  /**
+   * The three rows seeded in 0010 with no source. They are exactly what the
+   * rule exists to prevent — plausible, unused, and registered because someone
+   * could imagine wanting them — and the registry refuses DELETE, so they
+   * cannot be withdrawn. Naming them here means the day one acquires a real
+   * citation is a deliberate edit rather than a silently shrinking list.
+   */
+  const UNCITED_AT_0020 = ['pest.incidence', 'soil.ph', 'storage.condition'];
+
+  /** Mirrors registry.observation_type_ceiling(). Raising it is a migration. */
+  const CEILING = 12;
+
+  test('nothing new may be added without a citation', async () => {
+    const { rows } = await db.app.query<{ code: string }>(
+      `select code from registry.observation_type
+        where source is null or btrim(source) = ''
+        order by code`,
+    );
+
+    assert.deepEqual(
+      rows.map((row) => row.code),
+      UNCITED_AT_0020,
+      'an uncited observation type appeared that 0020 did not grandfather',
+    );
+  });
+
+  test('the citation rule is enforced by the database, not by review', async () => {
+    const failed = await db.owner
+      .query(
+        `insert into registry.observation_type
+           (code, version, label, value_kind, permitted_methods, subject_types, owner, source)
+         values ('test.uncited', 1, 'Uncited', 'scalar',
+                 array['reported'], array['plot'], 'clycites.kernel', null)`,
+      )
+      .then(() => null, (error: unknown) => error);
+
+    assert.equal(sqlState(failed), CHECK_VIOLATION);
+    assert.match(String((failed as Error).message), /observation_type_cited/);
+  });
+
+  test('the vocabulary stays below a deliberate ceiling', async () => {
+    const { rows } = await db.app.query<{ count: string }>(
+      'select count(distinct code)::text as count from registry.observation_type',
+    );
+
+    const present = Number(rows[0]?.count);
+    assert.ok(
+      present < CEILING,
+      `${present} observation types against a ceiling of ${CEILING}: either ` +
+        'the vocabulary has grown past what anyone asked for, or the ceiling ' +
+        'needs a migration and a written reason',
+    );
+  });
+});
+
+/**
+ * Work order M4. Decision 0027 defers open decision D5 rather than answering
+ * it: the table holds both a national and a coop definition of a season, and
+ * says which is which.
+ */
+describe('the season calendar holds only what it can cite (M4, D5)', () => {
+  test('every row cites a source and is marked published or observed', async () => {
+    const { rows } = await db.app.query<{
+      label: string;
+      basis: string;
+      source: string | null;
+    }>('select label, basis, source from registry.season_calendar');
+
+    assert.ok(rows.length > 0, 'the calendar is empty — nothing is asserted');
+    for (const row of rows) {
+      assert.ok(
+        row.source !== null && row.source.trim().length > 0,
+        `${row.label} has no citation`,
+      );
+      assert.ok(['published', 'observed'].includes(row.basis));
+    }
+  });
+
+  test('nothing claims to be observed while nobody has been to a field', async () => {
+    const { rows } = await db.app.query<{ count: string }>(
+      `select count(*)::text as count from registry.season_calendar
+        where basis = 'observed'`,
+    );
+
+    assert.equal(
+      rows[0]?.count,
+      '0',
+      'an observed season boundary implies field work that has not happened',
+    );
+  });
+
+  test('a season nobody published has no row rather than a guess', async () => {
+    // The GIEWS brief says nothing about the second season, so there is no
+    // 2026B row. An empty answer is the honest one.
+    const { rows } = await db.app.query<{ count: string }>(
+      `select count(*)::text as count from registry.season_calendar
+        where label = '2026B'`,
+    );
+
+    assert.equal(rows[0]?.count, '0');
+  });
+
+  test('a season is scoped to a region that exists at that vintage', async () => {
+    const { rows } = await db.app.query<{ count: string }>(
+      `select count(*)::text as count
+         from registry.season_calendar s
+         left join registry.admin_region r
+           on r.code = s.region_code and r.vintage = s.region_vintage
+        where r.code is null`,
+    );
+
+    assert.equal(rows[0]?.count, '0');
+  });
+
+  test('the calendar is append-only for its owner too', async () => {
+    const update = await db.owner
+      .query("update registry.season_calendar set basis = 'observed'")
+      .then(() => null, (error: unknown) => error);
+
+    assert.equal(sqlState(update), RESTRICT_VIOLATION);
   });
 });

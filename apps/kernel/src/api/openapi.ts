@@ -745,6 +745,85 @@ export function buildOpenApiDocument(): OpenApiDocument {
     },
   };
 
+  schemas['SeasonCalendarEntry'] = {
+    type: 'object',
+    required: ['region_code', 'region_vintage', 'label', 'starts_on', 'ends_on', 'basis', 'source'],
+    description:
+      'What a season label means in one region. Nearly empty on purpose: only what a citation supports is in the table, so a label with no row returns nothing rather than a plausible guess. `basis` distinguishes a published window from one somebody observed in a field. Open decision D5 — whose calendar wins when a cooperative disagrees with the national one — is not answered here.',
+    properties: {
+      region_code: { type: 'string' },
+      region_vintage: { type: 'string' },
+      label: { type: 'string' },
+      starts_on: { type: 'string', format: 'date' },
+      ends_on: { type: 'string', format: 'date' },
+      basis: { type: 'string', enum: ['published', 'observed'] },
+      source: { type: 'string' },
+      note: { type: ['string', 'null'] },
+    },
+  };
+
+  schemas['PartyLink'] = {
+    type: 'object',
+    required: [
+      'id',
+      'relation',
+      'left_party',
+      'right_party',
+      'asserted_by',
+      'confidence',
+      'evidence',
+    ],
+    description:
+      'An assertion that two party ids are the same person. Reversible: a link is withdrawn by retraction, and no record is ever rewritten. Confidence is never a boolean because matching is never a boolean.',
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      relation: { type: 'string', enum: ['same_as'] },
+      left_party: { type: 'string', format: 'uuid' },
+      right_party: { type: 'string', format: 'uuid' },
+      asserted_by: { type: 'string', format: 'uuid' },
+      asserted_at: { type: 'string', format: 'date-time' },
+      confidence: { type: 'number', exclusiveMinimum: 0, maximum: 1 },
+      evidence: {
+        type: 'string',
+        enum: [
+          'national_id_match',
+          'phone_match',
+          'name_and_region_match',
+          'declared_by_subject',
+          'declared_by_organisation',
+          'assumed',
+        ],
+        description:
+          'The weakest three are named explicitly so a consumer can refuse to act on them.',
+      },
+      evidence_note: { type: ['string', 'null'] },
+      lawful_basis: { type: 'string' },
+      retracted_at: { type: ['string', 'null'], format: 'date-time' },
+      retracted_by: { type: ['string', 'null'], format: 'uuid' },
+      retraction_reason: { type: ['string', 'null'] },
+    },
+  };
+
+  schemas['PartyLinkResolution'] = {
+    type: 'object',
+    required: ['identities', 'links', 'collapsed'],
+    description:
+      'Everything reachable from a party, and the links that got you there. There is no canonical id and no route that will give you one: merging is not reversible, and a consumer asking for a farmer’s deliveries gets a set plus the links so it can decide for itself. Open decision D2 is deferred, not answered.',
+    properties: {
+      identities: {
+        type: 'array',
+        items: { type: 'string', format: 'uuid' },
+        description: 'The party asked about first, then everything linked to it.',
+      },
+      links: { type: 'array', items: ref('PartyLink') },
+      collapsed: {
+        const: false,
+        description:
+          'Always false. Present so that no consumer mistakes this for a merged identity.',
+      },
+    },
+  };
+
   schemas['Problem'] = PROBLEM;
 
   return {
@@ -765,6 +844,11 @@ export function buildOpenApiDocument(): OpenApiDocument {
         name: 'registry',
         description:
           'Reference data. Unauthenticated on purpose: a weight you need our permission to verify is a weight you are trusting us for. Immutable, so cache it.',
+      },
+      {
+        name: 'identity',
+        description:
+          'Links between party ids. Assertions, never merges: a wrong link is withdrawn, a wrong merge is archaeology.',
       },
       { name: 'operations', description: 'Liveness and readiness.' },
     ],
@@ -1349,6 +1433,158 @@ export function buildOpenApiDocument(): OpenApiDocument {
             },
             '404': problemResponse('Not registered.'),
             '429': problemResponse('Too many requests from one address.'),
+          },
+        },
+      },
+      '/registry/seasons': {
+        get: {
+          tags: ['registry'],
+          operationId: 'listSeasons',
+          summary: 'What a season label means, where it is known',
+          description:
+            'Nearly empty on purpose. Only windows a published source states are in the table; a label with no row returns nothing rather than a plausible guess.',
+          parameters: [
+            { name: 'label', in: 'query', schema: { type: 'string' } },
+            { name: 'region_code', in: 'query', schema: { type: 'string' } },
+            {
+              name: 'limit',
+              in: 'query',
+              schema: { type: 'integer', minimum: 1, maximum: 500, default: 100 },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Season windows, most recent label first.',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    required: ['seasons'],
+                    properties: {
+                      seasons: {
+                        type: 'array',
+                        items: ref('SeasonCalendarEntry'),
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            '400': problemResponse('A filter is not a shape we accept.'),
+            '429': problemResponse('Too many requests from one address.'),
+          },
+        },
+      },
+      '/registry/seasons/{label}/{code}/{vintage}': {
+        get: {
+          tags: ['registry'],
+          operationId: 'getSeason',
+          summary: 'One season window for one region',
+          description:
+            'Most specific region wins: a district row beats the national one. No match is a 404, not a fallback.',
+          parameters: [
+            { name: 'label', in: 'path', required: true, schema: { type: 'string' } },
+            { name: 'code', in: 'path', required: true, schema: { type: 'string' } },
+            { name: 'vintage', in: 'path', required: true, schema: { type: 'string' } },
+          ],
+          responses: {
+            '200': {
+              description: 'The window, with its citation.',
+              content: {
+                'application/json': { schema: ref('SeasonCalendarEntry') },
+              },
+            },
+            '404': problemResponse('No calendar for that season in that region.'),
+            '429': problemResponse('Too many requests from one address.'),
+          },
+        },
+      },
+      '/parties/{id}/links': {
+        get: {
+          tags: ['identity'],
+          operationId: 'resolvePartyLinks',
+          summary: 'Identities linked to this party',
+          description:
+            'Resolved transitively, capped at eight hops, and never collapsed. A longer chain is a matcher that has joined two unrelated clusters, not a person with many aliases.',
+          parameters: [
+            { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+            { name: 'purpose', in: 'query', schema: { type: 'string' } },
+          ],
+          responses: {
+            '200': {
+              description: 'The set and its links.',
+              content: {
+                'application/json': { schema: ref('PartyLinkResolution') },
+              },
+            },
+            '403': problemResponse('Consent did not permit the disclosure.'),
+          },
+        },
+      },
+      '/parties/links': {
+        post: {
+          tags: ['identity'],
+          operationId: 'assertPartyLink',
+          summary: 'Assert that two parties are the same person',
+          description:
+            'The asserter is the verified subject, never a body field: a caller who can name who asserted a link can attribute their guess to somebody else.',
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['left_party', 'right_party', 'confidence', 'evidence', 'lawful_basis'],
+                  properties: {
+                    left_party: { type: 'string', format: 'uuid' },
+                    right_party: { type: 'string', format: 'uuid' },
+                    confidence: { type: 'number', exclusiveMinimum: 0, maximum: 1 },
+                    evidence: { type: 'string' },
+                    evidence_note: { type: ['string', 'null'] },
+                    lawful_basis: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '201': {
+              description: 'Linked.',
+              content: { 'application/json': { schema: ref('PartyLink') } },
+            },
+            '400': problemResponse('The assertion is not a shape we accept.'),
+            '403': problemResponse('Consent did not permit the assertion.'),
+          },
+        },
+      },
+      '/parties/links/{id}': {
+        delete: {
+          tags: ['identity'],
+          operationId: 'retractPartyLink',
+          summary: 'Withdraw a link',
+          description:
+            'Nothing is deleted. The row keeps who withdrew the link and why, which is what makes linking recoverable where merging is not.',
+          parameters: [
+            { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['reason'],
+                  properties: { reason: { type: 'string', maxLength: 500 } },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': {
+              description: 'Retracted.',
+              content: { 'application/json': { schema: ref('PartyLink') } },
+            },
+            '404': problemResponse('No live link with that id.'),
           },
         },
       },

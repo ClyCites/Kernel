@@ -63,6 +63,12 @@ const AdminRegionQuery = z.object({
 
 const SchemeQuery = z.object({ limit: Limit });
 
+const SeasonQuery = z.object({
+  label: z.string().min(1).optional(),
+  region_code: z.string().min(1).optional(),
+  limit: Limit,
+});
+
 const Id = z.uuid();
 
 /** A day. The rows cannot change; only new ones can appear. */
@@ -190,6 +196,51 @@ export class RegistryController {
     const entry = await this.registry.adminRegion(code, vintage);
     if (entry === null) {
       throw new NotFoundException(`no region ${code} at vintage ${vintage}`);
+    }
+    cacheable(response);
+    return entry;
+  }
+
+  /**
+   * What a season label covers. Work order M4.
+   *
+   * Nearly empty on purpose, and visibly so: only what a citation supports is
+   * in the table, and a label with no row returns nothing rather than a
+   * plausible guess. See docs/data-sources.md.
+   */
+  @Get('seasons')
+  async seasons(
+    @Query() query: unknown,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<unknown> {
+    const filter = parse(SeasonQuery, query);
+    cacheable(response);
+    return {
+      seasons: await this.registry.listSeasonCalendar({
+        label: filter.label,
+        regionCode: filter.region_code,
+        limit: filter.limit,
+      }),
+    };
+  }
+
+  /** Most specific region wins: a district row beats the national one. */
+  @Get('seasons/:label/:code/:vintage')
+  async season(
+    @Param('label') label: string,
+    @Param('code') code: string,
+    @Param('vintage') vintage: string,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<unknown> {
+    const entry = await this.registry.seasonCalendar({
+      label,
+      regionCode: code,
+      regionVintage: vintage,
+    });
+    if (entry === null) {
+      throw new NotFoundException(
+        `no calendar for season ${label} in ${code} at vintage ${vintage}`,
+      );
     }
     cacheable(response);
     return entry;

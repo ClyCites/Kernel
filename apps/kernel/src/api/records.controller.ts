@@ -23,7 +23,8 @@ import {
 } from '../records/read.service.js';
 import { verifiedSubject } from './subject.js';
 import { correlationOf } from './correlation.middleware.js';
-import { requestedDataset, declaredLawfulBasis } from './dataset.js';import { KERNEL_CONFIG, type KernelConfig } from '../config.js';
+import { requestedDataset, declaredLawfulBasis } from './dataset.js';
+import { KERNEL_CONFIG, type KernelConfig } from '../config.js';
 
 /**
  * Query parameters are the kernel's own surface, not record contents, so they

@@ -51,10 +51,11 @@ export class OperationsController {
   @Get('metrics')
   @Header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
   async metrics(): Promise<string> {
-    const [byBasis, thinKg, census] = await Promise.all([
+    const [byBasis, thinKg, census, delegations] = await Promise.all([
       this.registry.tonnageByConversionBasis(),
       this.registry.tonnageOnThinSample(THIN_SAMPLE),
       this.records.lawfulBasisCensus(),
+      this.records.delegationBasisCensus(),
     ]);
 
     const total = [...byBasis.values()].reduce((sum, kg) => sum + kg, 0);
@@ -97,6 +98,28 @@ export class OperationsController {
       '# TYPE kernel_financial_records_without_special_consent gauge',
       `kernel_financial_records_without_special_consent ${unlawfulFinancial}`,
     );
+
+    // Open decision D7 asks how narrow delegation scope should be. These two
+    // series are how the field answers it: if the records written under
+    // authority are overwhelmingly `organisational_bylaw` — the weakest ground
+    // in the enum — that is the answer arriving as data.
+    lines.push(
+      '# HELP kernel_delegations_total Live delegations by how the authority was granted.',
+      '# TYPE kernel_delegations_total gauge',
+    );
+    const byGrant = [...delegations].sort((a, b) => a.basis.localeCompare(b.basis));
+    for (const row of byGrant) {
+      lines.push(`kernel_delegations_total{granted_via="${row.basis}"} ${row.grants}`);
+    }
+    lines.push(
+      '# HELP kernel_delegated_records_total Live records written under a delegation, by how it was granted.',
+      '# TYPE kernel_delegated_records_total gauge',
+    );
+    for (const row of byGrant) {
+      lines.push(
+        `kernel_delegated_records_total{granted_via="${row.basis}"} ${row.records}`,
+      );
+    }
 
     return `${lines.join('\n')}\n`;
   }

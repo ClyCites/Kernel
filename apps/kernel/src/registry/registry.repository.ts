@@ -9,6 +9,7 @@ import type {
   GradingSchemeEntry,
   GradingSchemeValue,
   ObservationTypeEntry,
+  SeasonCalendarEntry,
   UnitConversionRow,
 } from './types.js';
 
@@ -26,6 +27,14 @@ const CONVERSION_COLUMNS = `
   measured_by,
   to_char(measured_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SSZ') as measured_at,
   instrument
+`;
+
+const SEASON_COLUMNS = `
+  select region_code, region_vintage, label,
+         to_char(starts_on, 'YYYY-MM-DD') as starts_on,
+         to_char(ends_on,   'YYYY-MM-DD') as ends_on,
+         basis, source, note
+    from registry.season_calendar
 `;
 
 /**
@@ -271,6 +280,52 @@ export class RegistryRepository {
          from registry.admin_region
         ${where.length > 0 ? `where ${where.join(' and ')}` : ''}
         order by code, vintage desc
+        limit $1`,
+      params,
+    );
+    return rows;
+  }
+
+  /**
+   * What a season label covers, most specific region first. Work order M4.
+   *
+   * A district row beats the national one, and a lookup that finds neither
+   * returns null rather than a plausible guess — an unresolvable season label
+   * is the honest answer while the calendar is nearly empty.
+   */
+  async seasonCalendar(criteria: {
+    label: string;
+    regionCode: string;
+    regionVintage: string;
+  }): Promise<SeasonCalendarEntry | null> {
+    const { rows } = await this.pool.query<SeasonCalendarEntry>(
+      `${SEASON_COLUMNS}
+        where label = $1
+          and region_vintage = $3
+          and $2 like region_code || '%'
+        order by length(region_code) desc
+        limit 1`,
+      [criteria.label, criteria.regionCode, criteria.regionVintage],
+    );
+    return rows[0] ?? null;
+  }
+
+  async listSeasonCalendar(filter: {
+    label?: string | undefined;
+    regionCode?: string | undefined;
+    limit: number;
+  }): Promise<SeasonCalendarEntry[]> {
+    const params: unknown[] = [filter.limit];
+    const where: string[] = [];
+    if (filter.label) where.push(`label = $${params.push(filter.label)}`);
+    if (filter.regionCode) {
+      where.push(`region_code = $${params.push(filter.regionCode)}`);
+    }
+
+    const { rows } = await this.pool.query<SeasonCalendarEntry>(
+      `${SEASON_COLUMNS}
+        ${where.length > 0 ? `where ${where.join(' and ')}` : ''}
+        order by label desc, region_code
         limit $1`,
       params,
     );

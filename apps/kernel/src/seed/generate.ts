@@ -2,11 +2,14 @@ import { SCHEMA_VERSION } from '@clycites/schema';
 import type { LawfulBasis } from '../records/lawful-basis.js';
 import { appendAdversarial } from './adversarial.js';
 import {
+  ACRE_IN_HA,
   COOPS,
   CONVERSIONS,
   COOP_A_SAMPLE,
   FAMILY_NAMES,
   GIVEN_NAMES,
+  HARVEST_YIELD_SPREAD,
+  NATIONAL_YIELD_KG_PER_HA,
   SEASON,
   VARIETIES,
   type CoopFixture,
@@ -154,25 +157,37 @@ export const UNRESOLVED_CONVERSION = '019fc600-0000-7000-8000-0000000009ff';
 /**
  * The season calendar, as day offsets from `EPOCH` (1 January 2026).
  *
- * Every ordinary record sits comfortably in the past, because `occurred_at`
- * later than the server's clock raises `occurred_after_recorded` and a corpus
- * where *every* record carries that flag proves nothing. The deliberate
- * clock-skew cases below are the only ones that cross the line, and they cross
- * it by years so the assertion cannot rot into a false pass.
+ * Work order M2. The agronomic dates are Uganda's 2026 first season as reported
+ * by the FAO GIEWS country brief of 8 May 2026: in the bimodal rainfall areas
+ * that cover most of the country, first-season crops "were planted in February
+ * and March 2026, and will be harvested in June and July". The same statement
+ * seeds `registry.season_calendar` in migration 0018, so the corpus and the
+ * registry cannot drift apart silently.
+ *
+ * The post-harvest chain is compressed against that calendar for a reason that
+ * is not agronomic: `occurred_at` later than the server's clock raises
+ * `occurred_after_recorded`, and a corpus where *every* record carries that flag
+ * proves nothing. So the whole sequence has to close before the corpus is run,
+ * and `settlement` is the last date that fits. The deliberate clock-skew cases
+ * below are the only ones that cross the line, and they cross it by years so the
+ * assertion cannot rot into a false pass.
  */
 export const DAY = {
   registration: 0,
-  planting: 20,
-  harvest: 120,
-  deliveryFirst: 125,
-  deliverySpan: 56,
-  agreement: 25,
-  lot: 185,
-  transferOut: 187,
-  loss: 188,
-  transferIn: 189,
-  obligation: 190,
-  settlement: 195,
+  /** Signed before planting, which is what makes it a forward. */
+  agreement: 30,
+  /** GIEWS: planted February and March. */
+  planting: 45,
+  /** GIEWS: harvested in June and July. */
+  harvest: 165,
+  deliveryFirst: 170,
+  deliverySpan: 30,
+  lot: 202,
+  transferOut: 203,
+  loss: 204,
+  transferIn: 205,
+  obligation: 206,
+  settlement: 208,
   /** A handset whose clock was never set. Deliberately far future. */
   brokenClock: 2000,
 } as const;
@@ -212,6 +227,31 @@ const weighedAgainstTheWrongFactor = (coop: CoopFixture, bags: number) => ({
   conversion_id: coop.conversionId ?? UNRESOLVED_CONVERSION,
   measurement_method: 'calibrated_weighed',
 });
+
+/**
+ * How many containers came off a plot, from the area planted and the published
+ * national yield for the crop. Work order M2.
+ *
+ * The count is in *real* containers — `bagMean`, what the thing actually holds
+ * — not in what the coop's app thinks it holds. That is what keeps coop C's
+ * error an error: its records claim `bags × 100` for containers of 118 kg, and
+ * the difference has to survive the change of source or the corpus stops
+ * proving anything.
+ */
+function harvestBagsFor(coop: CoopFixture, plantedAcres: number, rng: Rng): number {
+  const yieldKgPerHa = NATIONAL_YIELD_KG_PER_HA[coop.commodity];
+  if (yieldKgPerHa === undefined) {
+    throw new Error(`no published yield for ${coop.commodity}`);
+  }
+  const variation = rng.normalWithin(
+    1,
+    HARVEST_YIELD_SPREAD.stddev,
+    HARVEST_YIELD_SPREAD.min,
+    HARVEST_YIELD_SPREAD.max,
+  );
+  const kg = plantedAcres * ACRE_IN_HA * yieldKgPerHa * variation;
+  return Math.max(1, Math.round(kg / coop.bagMean));
+}
 
 /* ── the plan ─────────────────────────────────────────────────────────── */
 
@@ -376,13 +416,16 @@ export function generate(seed: number = DEFAULT_SEED): SeedPlan {
 
       const plotId = ids.next();
       plots[farmerId] = plotId;
+      // Invented. The plot-area distribution is UNPS's to supply and UNPS is
+      // behind a login — see `docs/data-sources.md`.
+      const plotAcres = round(rng.normalWithin(1.2, 0.6, 0.2, 4), 2);
       push(
         envelope({ id: plotId, type: 'plot', occurredAt: at(5), assertedBy: coopId }, {
           held_by: farmerId,
           tenure: rng.pick(['owned', 'customary', 'rented'] as const),
           centroid: geoPoint(rng, centroid.lat, centroid.lon, at(5, 11)),
           area: {
-            value: round(rng.normalWithin(1.2, 0.6, 0.2, 4), 2),
+            value: plotAcres,
             unit: 'acre',
             method: 'declared',
           },
@@ -392,6 +435,10 @@ export function generate(seed: number = DEFAULT_SEED): SeedPlan {
         'contract_performance',
       );
 
+      const plantedAcres = round(
+        Math.min(plotAcres, rng.normalWithin(1, 0.5, 0.2, 3.5)),
+        2,
+      );
       push(
         envelope({ id: ids.next(), type: 'planting', occurredAt: at(DAY.planting), assertedBy: coopId }, {
           plot: plotId,
@@ -399,7 +446,7 @@ export function generate(seed: number = DEFAULT_SEED): SeedPlan {
           variety: rng.pick(VARIETIES),
           season: SEASON,
           area_planted: {
-            value: round(rng.normalWithin(1, 0.5, 0.2, 3.5), 2),
+            value: plantedAcres,
             unit: 'acre',
             method: 'declared',
           },
@@ -409,7 +456,11 @@ export function generate(seed: number = DEFAULT_SEED): SeedPlan {
 
       // The harvest is what the farmer took off the plot. Lots are composed of
       // harvests, so this is the input side of every later mass balance.
-      const harvestBags = rng.int(8, 26);
+      //
+      // Work order M2: the size comes from the area planted and the FAOSTAT
+      // national yield, not from a number somebody picked. The spread around
+      // the national mean is still invented — FAOSTAT publishes a mean.
+      const harvestBags = harvestBagsFor(coop, plantedAcres, rng);
       const harvestId = ids.next();
       harvests[farmerId] = {
         id: harvestId,
@@ -550,6 +601,8 @@ export function generate(seed: number = DEFAULT_SEED): SeedPlan {
     const members = farmers.filter((f) => f.coop === coop.key);
 
     members.forEach((farmer, index) => {
+      // Invented: no source obtained for how often a member delivers, or how
+      // much at a time. See `docs/data-sources.md`.
       const count = rng.int(2, 3);
       for (let d = 0; d < count; d += 1) {
         const day = deliveryDay(index * 3 + d);

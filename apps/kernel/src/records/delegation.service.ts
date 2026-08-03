@@ -102,11 +102,22 @@ export class DelegationService {
       reject('the delegation was granted to a different party');
     }
 
+    // Deny unless listed. Work order M5.
+    //
+    // Anything that is not an array of strings naming this exact record type
+    // is a refusal — a missing scope, an empty one, a scope holding numbers or
+    // objects, or a scope naming something else. There is deliberately no
+    // wildcard and no "covers everything" value: the widening is easy to add
+    // later and impossible to take back once cooperatives depend on it.
+    //
+    // Open decision D7 is whether this should also be per field. It should
+    // not, yet. Per-record-type is the narrower option, and narrowing after
+    // the fact breaks every delegation in the field, where widening breaks
+    // nothing. The metric in `delegationBasisCensus` is what will answer it.
     const scope = Array.isArray(body['scope'])
-      ? body['scope'].map((entry) => String(entry))
+      ? body['scope'].filter((entry): entry is string => typeof entry === 'string')
       : [];
     if (!scope.includes(request.recordType)) {
-      // Open decision D7: scope is per record type, not per field.
       reject(`the delegation does not cover "${request.recordType}"`);
     }
 

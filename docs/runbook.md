@@ -253,3 +253,6 @@ decision and a gap nobody wrote down is a surprise.
 | Cross-border transfer position | Counsel |
 | External penetration test | Budget. Before the first real farmer record. |
 | Restore completeness verified independently | Work order I (anchoring) |
+| Seed plot area, crop mix and delivery frequency are invented | The UNPS microdata, which is behind a manually approved login. See `docs/data-sources.md`. |
+| `UG.KIRYANDONGO` and `UG.NEBBI` are not in `registry.admin_region` | Nothing. The seed uses both district codes anyway; the season calendar could not be scoped to them. |
+| Three observation types carry no citation | A field request for any of them, or their eventual withdrawal. See 0028. |

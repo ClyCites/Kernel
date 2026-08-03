@@ -131,3 +131,26 @@ export const AdminRegionEntry = z.object({
   source: z.string().nullable(),
 });
 export type AdminRegionEntry = z.infer<typeof AdminRegionEntry>;
+
+/**
+ * What a `SeasonLabel` covers, per region. Work order M4.
+ *
+ * `SeasonLabel` stays an opaque string in `@clycites/schema`; resolution
+ * happens here, so a field answer is an INSERT rather than a migration. Open
+ * decision D5 — whose calendar wins when a cooperative disagrees with the
+ * national one — is not closed by this shape, only kept answerable.
+ *
+ * `source` is not nullable. A season nobody can trace back is indistinguishable
+ * from one somebody invented, and the database refuses a blank one.
+ */
+export const SeasonCalendarEntry = z.object({
+  region_code: z.string().min(1),
+  region_vintage: z.string().regex(/^\d{4}$/),
+  label: z.string().min(1),
+  starts_on: z.string(),
+  ends_on: z.string(),
+  basis: z.enum(['published', 'observed']),
+  source: z.string().min(1),
+  note: z.string().nullable(),
+});
+export type SeasonCalendarEntry = z.infer<typeof SeasonCalendarEntry>;

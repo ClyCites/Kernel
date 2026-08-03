@@ -11,6 +11,34 @@ import type { ConversionBasis } from '@clycites/schema';
 
 export const SEASON = '2026A';
 
+/** Hectares in an acre. Plots are declared in acres; yields are published in hectares. */
+export const ACRE_IN_HA = 0.404686;
+
+/**
+ * Yield in kg per hectare, per harvest. Work order M2.
+ *
+ * FAOSTAT QCL, Uganda, 2024, element `Yield`. Retrieved 2026-08-03 from the
+ * bulk download; CC BY 4.0. See `docs/data-sources.md` for the citation, and
+ * for why `Production ÷ Area harvested` is read as a *per-harvest* figure
+ * rather than an annual one — if that reading is wrong every harvest in the
+ * corpus is out by about a factor of two.
+ *
+ * A national mean, so it carries no district variation. The spread applied
+ * around it below is invented, because FAOSTAT publishes a mean and not a
+ * distribution.
+ */
+export const NATIONAL_YIELD_KG_PER_HA: Record<string, number> = {
+  'crop.maize.grain': 2173.9,
+  'crop.beans.dry': 918.8,
+};
+
+/** Invented. The variation a national mean does not carry. */
+export const HARVEST_YIELD_SPREAD = {
+  stddev: 0.35,
+  min: 0.3,
+  max: 2.0,
+} as const;
+
 /** The twelve kaveera behind the `measured` factor in migration 0015. */
 export const COOP_A_SAMPLE = [
   97.4, 101.2, 99.8, 103.6, 96.9, 100.4, 98.2, 102.7, 99.1, 104.3, 95.8, 100.6,

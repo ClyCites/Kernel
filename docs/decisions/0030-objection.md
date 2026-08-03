@@ -93,11 +93,26 @@ supersession chain lose a link.
 "cooperative's own record" bullet above, implemented rather than only written
 down.
 
-One consequence to be aware of, because it reads oddly at first: the subject's
-own read is also stopped. Processing stopped is processing stopped, and if they
-want the record served again they withdraw the objection. This is the
-conservative reading and it is recorded in `docs/runbook.md` §8 as something to
-confirm rather than something settled.
+## The subject keeps their own access
+
+An objection restricts *others* processing your data. It is not an instruction
+to stop showing it to you, so the subject is carved out of their own objection
+and subject access under J3 will be carved out with them.
+
+The alternative fails on the harm. A farmer objects to their cooperative's
+processing and then cannot see their own plot, harvest or delivery history —
+while the cooperative, carved out as asserter, still can. The objection would
+have weakened the subject's position relative to the party they objected
+against, which inverts the point of the right.
+
+It also collides with s.24. The right of access is not conditional on not
+having objected, and a design where exercising one statutory right suppresses
+another is wrong on its face. The only route back would be withdrawing the
+objection, which is a choice no farmer should be made to face: see your records
+or keep your protection.
+
+The response says so in as many words, because that is the line a farmer needs
+to hear.
 
 ## Metrics
 

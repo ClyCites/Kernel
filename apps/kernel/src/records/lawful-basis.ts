@@ -8,6 +8,10 @@ import type { RecordDocument } from './record.js';
  * "except for data collected or processed under subsection (2)". The answer to
  * "can this farmer make us stop" is fixed at collection and cannot be
  * reconstructed later.
+ *
+ * There is deliberately no member-body ground here: that is an access class,
+ * resolved per request, and a basis mirroring it would let a record assert its
+ * own classification. See 0029.
  */
 export const LAWFUL_BASES = [
   'consent',

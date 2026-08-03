@@ -106,6 +106,22 @@ member's harvest under a bylaw-basis delegation. What it excludes is a harvest
 the farmer recorded independently or through another cooperative's app, which
 is a third-party read and needs a grant.
 
+## Why there is no `special_data_member_body` lawful basis
+
+The gap looks real and is not. `lawful_basis` is the ground a record was
+**collected** under, fixed once at collection. Member body is an **access
+class**, resolved per request from membership and nexus. They are different
+axes and must stay that way.
+
+A basis mirroring an access class would let a record assert its own access
+classification — the classifier would be reading a claim written into the
+record instead of deriving the answer from membership rows and the record's
+parties. That is precisely the bypass the nexus work was built to close.
+
+Anyone reading `LAWFUL_BASES` and seeing an omission: it is deliberate. The
+member-body ground is `legitimate_interest` or `contract_performance` like any
+other, and the class comes from `classify`.
+
 ## The flag
 
 `S9_CONSENT_REQUIRED_FOR_MEMBER_BODY`, defaulting to **true**.

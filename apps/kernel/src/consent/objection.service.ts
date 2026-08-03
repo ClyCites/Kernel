@@ -73,6 +73,8 @@ const NOTICE: readonly string[] = [
   'This does not remove another party’s own record of a transaction it was ' +
     'part of. A cooperative that recorded a delivery it made keeps its copy ' +
     'for its own accounting; what stops is disclosure of it to others.',
+  'Your own access is unaffected. You can still see every record about you, ' +
+    'and you never have to withdraw this objection to do so.',
 ];
 
 export class ObjectionRefused extends Error {
@@ -255,13 +257,19 @@ export class ObjectionService {
       .map((candidate) => candidate.via as string);
     const resolved = await this.consent.partiesOfRecords(hops, dataset);
 
-    const effective = candidates.map((candidate) => ({
-      record: candidate.record,
-      parties:
-        candidate.parties.length > 0 || candidate.via === null
-          ? candidate.parties
-          : (resolved.get(candidate.via) ?? []),
-    }));
+    const effective = candidates
+      .map((candidate) => ({
+        record: candidate.record,
+        parties:
+          candidate.parties.length > 0 || candidate.via === null
+            ? candidate.parties
+            : (resolved.get(candidate.via) ?? []),
+      }))
+      // The subject keeps their own access. An objection restricts others
+      // processing your data; it is not an instruction to stop showing it to
+      // you, and s.24 does not condition the right of access on not having
+      // objected. The same carve-out covers subject access when J3 lands.
+      .filter((candidate) => !candidate.parties.includes(requester ?? ''));
 
     const objections = await this.repository.standingFor(
       effective.flatMap((candidate) => candidate.parties),

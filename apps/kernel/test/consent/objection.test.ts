@@ -5,6 +5,7 @@ import { uuidv7 } from 'uuidv7';
 import { startTestDatabase, type TestDatabase } from '../helpers/database.js';
 import {
   auditServiceFor,
+  consentGrantServiceFor,
   consentServiceFor,
   entityDocument,
   ingestServiceFor,
@@ -13,7 +14,7 @@ import {
   type TestIngest,
 } from '../helpers/fixtures.js';
 import { ObjectionService } from '../../src/consent/objection.service.js';
-import { ReadService } from '../../src/records/read.service.js';
+import { ReadService, type Reader } from '../../src/records/read.service.js';
 import { RecordRepository } from '../../src/records/record.repository.js';
 
 let db: TestDatabase;
@@ -125,6 +126,7 @@ describe('an objection resolves against the ground, not the record', () => {
     assert.match(notice, /disclosures already made/);
     assert.match(notice, /audit log/);
     assert.match(notice, /own record of a transaction/);
+    assert.match(notice, /own access is unaffected/);
   });
 });
 
@@ -181,7 +183,15 @@ describe('lodging may be delegated; withdrawing may not', () => {
 
 describe('an objected record is absent from reads', () => {
   const HOLDER = uuidv7();
+  const GRANTEE = uuidv7();
   let objected: string;
+
+  /** Permitted by a live grant, so anything that hides it is the objection. */
+  const grantee = (): Reader => ({
+    requester: GRANTEE,
+    purpose: 'advisory',
+    dataset: 'live',
+  });
 
   before(async () => {
     const { record } = await ingest.ingest(
@@ -190,11 +200,31 @@ describe('an objected record is absent from reads', () => {
     );
     objected = record.id;
 
+    await consentGrantServiceFor(db.app).grant({
+      subject: HOLDER,
+      grantee: GRANTEE,
+      purpose: 'advisory',
+      recordTypes: ['plot'],
+      expiresAt: null,
+      grantedVia: 'in_person_signature',
+      evidence: [],
+      dataset: 'live',
+    });
+
+    assert.notEqual(await read.get(objected, grantee()), null);
     await objections.lodge(lodging({ subject: HOLDER, lodgedBy: HOLDER }));
   });
 
-  test('a default read no longer returns it', async () => {
-    assert.equal(await read.get(objected, readingAs(HOLDER)), null);
+  test('a grantee who could read it a moment ago cannot now', async () => {
+    assert.equal(await read.get(objected, grantee()), null);
+  });
+
+  test('the subject keeps their own access', async () => {
+    // s.24 does not condition the right of access on not having objected, and
+    // a farmer who must re-consent to see their own plot has been given a
+    // choice they should never face.
+    const view = await read.get(objected, readingAs(HOLDER));
+    assert.equal(view?.record['id'], objected);
   });
 
   test('the cooperative that asserted it keeps its own copy', async () => {
@@ -223,7 +253,7 @@ describe('an objected record is absent from reads', () => {
     assert.equal(view?.record['id'], record.id);
   });
 
-  test('withdrawing the objection brings it back', async () => {
+  test('withdrawing the objection brings it back for the grantee', async () => {
     const [standing] = await objections.standing(HOLDER, 'live');
     assert.notEqual(standing, undefined);
     await objections.withdraw(
@@ -234,7 +264,7 @@ describe('an objected record is absent from reads', () => {
       'live',
     );
 
-    const view = await read.get(objected, readingAs(HOLDER));
+    const view = await read.get(objected, grantee());
     assert.equal(view?.record['id'], objected);
   });
 });

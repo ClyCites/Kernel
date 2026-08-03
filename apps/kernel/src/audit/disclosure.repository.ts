@@ -10,10 +10,10 @@ import type { Dataset } from '../records/record.js';
  * That file holds the write path and says there must be no read method in it,
  * which remains true: `kernel_app` has INSERT on `audit.entry` and nothing
  * else, so a `select` added there would still fail at runtime. This file does
- * not select from the table either. It calls one security-definer function
- * (0023) that is scoped to a single subject and to disclosures that were
- * allowed, which is the whole of what s.24(1)(c) requires and none of what
- * reading the log would give away.
+ * not select from the table either. It calls security-definer functions (0023,
+ * 0024), each scoped to one subject or one record and to disclosures that were
+ * allowed, which is the whole of what s.24(1)(c) and s.16(4) require and none
+ * of what reading the log would give away.
  */
 @Injectable()
 export class DisclosureRepository {
@@ -43,6 +43,42 @@ export class DisclosureRepository {
       records: row.records ?? [],
     }));
   }
+
+  /**
+   * s.16(4). The third parties who received one record, for telling them it
+   * has been corrected.
+   *
+   * `exclude` only ever narrows the answer, so passing it from the application
+   * gives nothing away — and the parties who must not appear (the subject, the
+   * asserter, whoever wrote the correction) are readable from the record but
+   * not from the log.
+   */
+  async recipientsOf(
+    record: string,
+    dataset: Dataset,
+    exclude: readonly string[],
+  ): Promise<RecipientRow[]> {
+    const { rows } = await this.pool.query<{
+      recipient: string;
+      first_seen: string;
+      last_seen: string;
+      disclosures: string;
+    }>(
+      `select recipient,
+              to_json(first_seen) #>> '{}' as first_seen,
+              to_json(last_seen) #>> '{}' as last_seen,
+              disclosures
+         from audit.recipients_of($1::uuid, $2::text, $3::uuid[])`,
+      [record, dataset, [...new Set(exclude)]],
+    );
+
+    return rows.map((row) => ({
+      recipient: row.recipient,
+      first_seen: row.first_seen,
+      last_seen: row.last_seen,
+      disclosures: Number(row.disclosures),
+    }));
+  }
 }
 
 export interface DisclosureRow {
@@ -54,4 +90,12 @@ export interface DisclosureRow {
   access: string | null;
   record_types: string[];
   records: string[];
+}
+
+export interface RecipientRow {
+  recipient: string;
+  first_seen: string;
+  last_seen: string;
+  /** How many times they read it. One notification is owed either way. */
+  disclosures: number;
 }

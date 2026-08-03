@@ -4,6 +4,8 @@ import { RecordsModule } from '../records/records.module.js';
 import { ConsentGrantService } from './consent-grant.service.js';
 import { ConsentRepository } from './consent.repository.js';
 import { ConsentService } from './consent.service.js';
+import { DisclosureNotificationRepository } from './disclosure-notification.repository.js';
+import { DisclosureNotificationService } from './disclosure-notification.service.js';
 import { ObjectionRepository } from './objection.repository.js';
 import { ObjectionService } from './objection.service.js';
 import { SubjectAccessService } from './subject-access.service.js';
@@ -21,6 +23,8 @@ import { SubjectAccessService } from './subject-access.service.js';
     ObjectionRepository,
     ObjectionService,
     SubjectAccessService,
+    DisclosureNotificationRepository,
+    DisclosureNotificationService,
   ],
   exports: [
     ConsentRepository,
@@ -29,6 +33,8 @@ import { SubjectAccessService } from './subject-access.service.js';
     ObjectionRepository,
     ObjectionService,
     SubjectAccessService,
+    DisclosureNotificationRepository,
+    DisclosureNotificationService,
   ],
 })
 export class ConsentModule {}

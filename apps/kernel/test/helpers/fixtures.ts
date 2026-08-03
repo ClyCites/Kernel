@@ -9,6 +9,8 @@ import { AuditShipper } from '../../src/audit/audit.shipper.js';
 import { DisclosureRepository } from '../../src/audit/disclosure.repository.js';
 import { ConsentGrantService } from '../../src/consent/consent-grant.service.js';
 import { ConsentRepository } from '../../src/consent/consent.repository.js';
+import { DisclosureNotificationRepository } from '../../src/consent/disclosure-notification.repository.js';
+import { DisclosureNotificationService } from '../../src/consent/disclosure-notification.service.js';
 import { ObjectionRepository } from '../../src/consent/objection.repository.js';
 import { ObjectionService } from '../../src/consent/objection.service.js';
 import { SubjectAccessService } from '../../src/consent/subject-access.service.js';
@@ -98,6 +100,15 @@ export const subjectAccessServiceFor = (pool: Pool): SubjectAccessService =>
     auditServiceFor(pool),
   );
 
+export const disclosureNotificationServiceFor = (
+  pool: Pool,
+): DisclosureNotificationService =>
+  new DisclosureNotificationService(
+    new RecordRepository(pool),
+    new DisclosureRepository(pool),
+    new DisclosureNotificationRepository(pool),
+  );
+
 export const ingestServiceFor = (
   pool: Pool,
   defaults: IngestContext = { lawfulBasis: 'special_data_consent' },
@@ -111,6 +122,7 @@ export const ingestServiceFor = (
     new DelegationService(repository),
     new ConversionService(new RegistryRepository(pool)),
     auditServiceFor(pool),
+    disclosureNotificationServiceFor(pool),
     config,
   );
   const ingest: TestIngest = {

@@ -9,6 +9,7 @@ import { SCHEMA_VERSION } from '@clycites/schema';
 import type { Pool } from 'pg';
 
 import { KERNEL_POOL } from '../storage/pool.js';
+import { DisclosureNotificationRepository } from '../consent/disclosure-notification.repository.js';
 import { ObjectionRepository } from '../consent/objection.repository.js';
 import { SubjectAccessService } from '../consent/subject-access.service.js';
 import { RegistryRepository } from '../registry/registry.repository.js';
@@ -25,6 +26,8 @@ export class OperationsController {
     @Inject(RecordRepository) private readonly records: RecordRepository,
     @Inject(ObjectionRepository) private readonly objections: ObjectionRepository,
     @Inject(SubjectAccessService) private readonly subjectAccess: SubjectAccessService,
+    @Inject(DisclosureNotificationRepository)
+    private readonly notifications: DisclosureNotificationRepository,
   ) {}
 
   @Get('health')
@@ -55,13 +58,15 @@ export class OperationsController {
   @Get('metrics')
   @Header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
   async metrics(): Promise<string> {
-    const [byBasis, thinKg, census, delegations, objections] = await Promise.all([
-      this.registry.tonnageByConversionBasis(),
-      this.registry.tonnageOnThinSample(THIN_SAMPLE),
-      this.records.lawfulBasisCensus(),
-      this.records.delegationBasisCensus(),
-      this.objections.standingCensus(),
-    ]);
+    const [byBasis, thinKg, census, delegations, objections, outstanding] =
+      await Promise.all([
+        this.registry.tonnageByConversionBasis(),
+        this.registry.tonnageOnThinSample(THIN_SAMPLE),
+        this.records.lawfulBasisCensus(),
+        this.records.delegationBasisCensus(),
+        this.objections.standingCensus(),
+        this.notifications.outstanding(),
+      ]);
 
     const total = [...byBasis.values()].reduce((sum, kg) => sum + kg, 0);
     const assumed = byBasis.get('assumed_default') ?? 0;
@@ -152,6 +157,20 @@ export class OperationsController {
       '# HELP kernel_subject_access_seconds_max Slowest subject access response since start.',
       '# TYPE kernel_subject_access_seconds_max gauge',
       `kernel_subject_access_seconds_max ${(latency.slowestMs / 1000).toFixed(3)}`,
+    );
+
+    // s.16(4). Not a backlog. Every one of these is a party still holding a
+    // version of a record we know to be wrong, who we are required to have
+    // told and have not. The age matters more than the count: one notification
+    // outstanding for a month is a worse breach than fifty raised this hour.
+    const live = outstanding.find((row) => row.dataset === 'live');
+    lines.push(
+      '# HELP kernel_disclosure_notifications_outstanding Recipients of a corrected record who have not yet been told, under s.16(4).',
+      '# TYPE kernel_disclosure_notifications_outstanding gauge',
+      `kernel_disclosure_notifications_outstanding ${live?.notifications ?? 0}`,
+      '# HELP kernel_disclosure_notification_oldest_seconds Age of the oldest undischarged s.16(4) obligation.',
+      '# TYPE kernel_disclosure_notification_oldest_seconds gauge',
+      `kernel_disclosure_notification_oldest_seconds ${live?.oldestSeconds ?? 0}`,
     );
 
     return `${lines.join('\n')}\n`;

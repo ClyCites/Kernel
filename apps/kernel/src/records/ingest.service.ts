@@ -7,6 +7,7 @@ import { chainDepth, DEFAULT_SUPERSESSION_MAX_DEPTH } from './lineage.js';
 import { DelegationService } from './delegation.service.js';
 import { ConversionService } from '../registry/conversion.service.js';
 import { AuditService } from '../audit/audit.service.js';
+import { DisclosureNotificationService } from '../consent/disclosure-notification.service.js';
 import { KERNEL_CONFIG, type KernelConfig } from '../config.js';
 import { RecordRepository } from './record.repository.js';
 import { subjectsOf, subjectTypeMismatched } from './subjects.js';
@@ -68,6 +69,8 @@ export class IngestService {
     @Inject(DelegationService) private readonly delegations: DelegationService,
     @Inject(ConversionService) private readonly conversions: ConversionService,
     @Inject(AuditService) private readonly audit: AuditService,
+    @Inject(DisclosureNotificationService)
+    private readonly notifications: DisclosureNotificationService,
     @Inject(KERNEL_CONFIG)
     private readonly config: Pick<KernelConfig, 'SUPERSESSION_MAX_DEPTH'> = {
       SUPERSESSION_MAX_DEPTH: DEFAULT_SUPERSESSION_MAX_DEPTH,
@@ -99,6 +102,13 @@ export class IngestService {
         },
         correlationId: context.correlationId ?? null,
       });
+      // s.16(4), after the audit entry rather than before it: a correction
+      // that landed and was not logged is a hole in the statutory record,
+      // whereas one that landed and could not raise its notifications is a
+      // visible failure the caller can retry. Replays are not skipped — the
+      // uniqueness is in the database, and a phone that never saw the ack is
+      // the likeliest way for a first attempt to have been lost.
+      await this.notifications.raiseFor(result.record);
       return result;
     } catch (error) {
       // Refusals are the interesting half. A device whose records suddenly stop

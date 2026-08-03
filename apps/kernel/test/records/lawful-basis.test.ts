@@ -11,6 +11,7 @@ import {
   type TestIngest,
 } from '../helpers/fixtures.js';
 import { OperationsController } from '../../src/api/operations.controller.js';
+import { DisclosureNotificationRepository } from '../../src/consent/disclosure-notification.repository.js';
 import { ObjectionRepository } from '../../src/consent/objection.repository.js';
 import { RegistryRepository } from '../../src/registry/registry.repository.js';
 import { RecordRepository } from '../../src/records/record.repository.js';
@@ -42,6 +43,7 @@ before(async () => {
     repository,
     new ObjectionRepository(db.app),
     subjectAccessServiceFor(db.app),
+    new DisclosureNotificationRepository(db.app),
   );
 });
 

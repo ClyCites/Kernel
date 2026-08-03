@@ -175,3 +175,99 @@ describe('the objection store is append-only', () => {
     assert.notEqual(error, null);
   });
 });
+
+/**
+ * The one store in this schema with a nullable column that gets filled in.
+ *
+ * Every other change of state here is a second row, and 0024 explains why this
+ * one is not: a delivery receipt with no obligation behind it is not a thing
+ * that can exist. What has to survive that exception is the property the rule
+ * was protecting — that nothing already written can be altered or removed.
+ */
+describe('a disclosure notification is write-once', () => {
+  const RECORD = uuidv7();
+  const CORRECTION = uuidv7();
+  const RECIPIENT = uuidv7();
+  let notification: string;
+
+  before(async () => {
+    const { rows } = await db.app.query<{ id: string }>(
+      `insert into kernel.disclosure_notification
+         (id, record_id, correction_id, recipient)
+       values ($1, $2, $3, $4) returning id`,
+      [uuidv7(), RECORD, CORRECTION, RECIPIENT],
+    );
+    notification = rows[0]?.id ?? '';
+  });
+
+  test('the application role cannot delete one', async () => {
+    const error = await db.app
+      .query('delete from kernel.disclosure_notification where id = $1', [
+        notification,
+      ])
+      .then(() => null, (caught: unknown) => caught);
+
+    assert.notEqual(error, null);
+    assert.ok(
+      [INSUFFICIENT_PRIVILEGE, RESTRICT_VIOLATION].includes(sqlState(error) ?? ''),
+      `expected a refusal, got ${sqlState(error)}`,
+    );
+  });
+
+  test('even the owner cannot delete one', async () => {
+    const error = await db.owner
+      .query('delete from kernel.disclosure_notification where id = $1', [
+        notification,
+      ])
+      .then(() => null, (caught: unknown) => caught);
+
+    assert.equal(sqlState(error), RESTRICT_VIOLATION);
+  });
+
+  test('who was owed what cannot be moved to somebody else', async () => {
+    const error = await db.owner
+      .query('update kernel.disclosure_notification set recipient = $2 where id = $1', [
+        notification,
+        uuidv7(),
+      ])
+      .then(() => null, (caught: unknown) => caught);
+
+    assert.equal(sqlState(error), RESTRICT_VIOLATION);
+  });
+
+  test('delivery is recorded once and cannot be rewritten', async () => {
+    await db.app.query(
+      `update kernel.disclosure_notification
+          set delivered_at = now(), channel = 'sms' where id = $1`,
+      [notification],
+    );
+
+    const error = await db.owner
+      .query(
+        `update kernel.disclosure_notification
+            set delivered_at = now(), channel = 'email' where id = $1`,
+        [notification],
+      )
+      .then(() => null, (caught: unknown) => caught);
+
+    assert.equal(sqlState(error), RESTRICT_VIOLATION);
+  });
+
+  test('a delivery without a channel is not a delivery record', async () => {
+    const { rows } = await db.app.query<{ id: string }>(
+      `insert into kernel.disclosure_notification
+         (id, record_id, correction_id, recipient)
+       values ($1, $2, $3, $4) returning id`,
+      [uuidv7(), RECORD, CORRECTION, uuidv7()],
+    );
+
+    const error = await db.app
+      .query(
+        'update kernel.disclosure_notification set delivered_at = now() where id = $1',
+        [rows[0]?.id],
+      )
+      .then(() => null, (caught: unknown) => caught);
+
+    assert.notEqual(error, null);
+  });
+});

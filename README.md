@@ -49,6 +49,7 @@ curl localhost:3000/v1/ready     # also checks the log is reachable
 |---|---|
 | `pnpm dev` | The kernel, watching for changes |
 | `pnpm migrate` | Applies pending migrations and provisions partitions |
+| `pnpm seed` | Writes the adversarial corpus into a running kernel |
 | `pnpm test` | Everything, against a real PostgreSQL via Testcontainers |
 | `pnpm typecheck` | `tsc --noEmit` across the workspace |
 | `pnpm lint` | ESLint |
@@ -61,6 +62,31 @@ curl localhost:3000/v1/ready     # also checks the log is reachable
 
 CI regenerates the OpenAPI document and fails if it differs from the committed
 one, so `pnpm openapi` is not optional after touching a schema or a route.
+
+### The seed
+
+`pnpm seed` needs a kernel already running with `SEED_INGEST_ENABLED=true`. It
+writes four cooperatives, eighty farmers and around two hundred deliveries
+through `POST /v1/records`, marked `x-clycites-dataset: seed`, and prints a
+lender's-eye report on two farmers at the end. Nothing it writes can reach the
+live corpus; the gate is enforced server-side.
+
+The corpus is deliberately not clean. Two of the four cooperatives cannot
+reconcile their own mass balance, one applies a bag factor that is wrong by
+eighteen percent, and one has no conversion at all. It is a fixture for the
+quality flags, not a demo.
+
+It is deterministic. The same `--seed` produces a byte-identical corpus, so a
+diff of two runs is a real regression test:
+
+```bash
+pnpm seed -- --plan-only --seed 4242 > a.json
+pnpm seed -- --plan-only --seed 4242 > b.json
+diff a.json b.json
+```
+
+`test/seed/seed.test.ts` asserts what the corpus must contain and fails if the
+fixtures drift.
 
 ## Submitting a record
 

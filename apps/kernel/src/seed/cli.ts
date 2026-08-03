@@ -28,7 +28,9 @@ function parse(argv: string[]): Args {
 
   for (let i = 0; i < argv.length; i += 1) {
     const flag = argv[i];
-    if (flag === '--seed') {
+    if (flag === '--') {
+      continue; // pnpm forwards its own separator through to the script
+    } else if (flag === '--seed') {
       const value = Number(argv[i + 1]);
       if (!Number.isFinite(value)) throw new Error('--seed expects a number');
       args.seed = value;

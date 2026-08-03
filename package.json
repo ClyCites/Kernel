@@ -16,6 +16,7 @@
     "check:secrets": "bash scripts/check-secrets.sh",
     "dev": "turbo run dev",
     "migrate": "pnpm --filter @clycites/kernel run migrate",
+    "seed": "pnpm --filter @clycites/kernel run seed",
     "openapi": "pnpm --filter @clycites/kernel run openapi"
   },
   "devDependencies": {

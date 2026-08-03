@@ -9,7 +9,11 @@ services:
       POSTGRES_PASSWORD: clycites_owner_dev_only
       POSTGRES_DB: clycites
     ports:
-      - "5433:5432"
+      # Loopback only. A bare "5433:5432" publishes on every interface the host
+      # has, which on most VPS images means the open internet. Reach it from
+      # elsewhere with an SSH tunnel, never by widening this.
+      # Asserted in apps/kernel/test/ops/exposure.test.ts.
+      - "127.0.0.1:5433:5432"
     volumes:
       - kernel-pgdata:/var/lib/postgresql/data
     healthcheck:

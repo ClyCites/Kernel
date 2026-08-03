@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+#
+# A committed credential is in the history whether or not it is in the tip, so
+# the only cheap moment to catch one is before the commit exists.
+#
+# Enable with: bash scripts/install-hooks.sh
+
+exec bash "$(git rev-parse --show-toplevel)/scripts/check-secrets.sh" --staged

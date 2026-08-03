@@ -10,3 +10,7 @@ dist/
 .DS_Store
 coverage/
 *.log
+
+# Encrypted dumps and their manifests. Retained off this host — see
+# docs/runbook.md §2.
+backups/

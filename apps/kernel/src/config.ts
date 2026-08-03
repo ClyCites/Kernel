@@ -40,6 +40,7 @@ const Env = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((value) => value === 'true'),
+  NODE_ENV: z.string().default('development'),
 });
 
 export type KernelConfig = z.infer<typeof Env>;
@@ -54,6 +55,16 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): KernelConfig {
       .map((i) => `${i.path.join('.')}: ${i.message}`)
       .join('; ');
     throw new Error(`invalid environment configuration — ${detail}`);
+  }
+  // A copied .env is the ordinary way this happens, and nothing downstream
+  // would report it: seeded records are well formed and indistinguishable from
+  // real ones once written, and the log is append-only. Refusing to start is
+  // the last point at which it is still cheap.
+  if (parsed.data.NODE_ENV === 'production' && parsed.data.SEED_INGEST_ENABLED) {
+    throw new Error(
+      'refusing to start: SEED_INGEST_ENABLED is true in production. ' +
+        'Fabricated records cannot be removed from an append-only log.',
+    );
   }
   return parsed.data;
 }

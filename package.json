@@ -13,6 +13,7 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "lint": "eslint .",
+    "check:secrets": "bash scripts/check-secrets.sh",
     "dev": "turbo run dev",
     "migrate": "pnpm --filter @clycites/kernel run migrate",
     "openapi": "pnpm --filter @clycites/kernel run openapi"

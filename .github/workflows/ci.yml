@@ -23,6 +23,10 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Cheap and first: a credential in the tree is worth failing the build
+      # before anything else has had a chance to log it.
+      - run: pnpm check:secrets
+
       - run: pnpm typecheck
 
       - run: pnpm lint
@@ -33,5 +37,7 @@ jobs:
       - run: git diff --exit-code apps/kernel/openapi.json
 
       # Integration tests start their own Postgres via Testcontainers, which
-      # needs the Docker daemon the runner already provides.
+      # needs the Docker daemon the runner already provides. That includes the
+      # restore test, which runs scripts/backup.sh and scripts/restore.sh inside
+      # the container — an untested backup is a belief, not a backup.
       - run: pnpm test

@@ -22,6 +22,11 @@ export interface TestDatabase {
   app: Pool;
   ownerUrl: string;
   appPassword: string;
+  /**
+   * The running container. Exposed so the operational scripts can be executed
+   * where the Postgres client tools actually live — see test/ops/restore.test.ts.
+   */
+  container: StartedPostgreSqlContainer;
   stop: () => Promise<void>;
 }
 
@@ -50,6 +55,7 @@ export async function startTestDatabase(): Promise<TestDatabase> {
     app,
     ownerUrl,
     appPassword: APP_PASSWORD,
+    container,
     stop: async () => {
       // A Nest app under test ends the pool through its shutdown hook first.
       await app.end().catch(() => {});

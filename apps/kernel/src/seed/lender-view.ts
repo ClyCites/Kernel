@@ -26,19 +26,23 @@ import type { SeedPlan } from './generate.js';
  * because any member did anything. A proportional share would be arithmetically
  * defensible and would still cost somebody credit for their neighbour's scale.
  *
- * FINDING: this is still produced by the cooperative rather than the lender.
- * Since 0029 a third party *can* read, but only against a live, purpose-bound
- * grant from each farmer, and the seed has none — inventing consent to make a
- * demonstration work is the one thing a consent module must never do. Running
- * it as the lender means collecting eight grants first, which is the honest
- * cost and worth seeing.
+ * Since P2 it is read **as the lender**, through the real consent path — a
+ * third party holding purpose-bound grants from the subjects, and refused
+ * everything nobody granted. The refusals are the more persuasive half: a
+ * report that shows only what was disclosed is a report from a system that
+ * might have no gate at all.
  */
 
 interface Fetched {
   farmer: RecordView | null;
   deliveries: RecordView[];
   lots: RecordView[];
+  /** What came back empty, and what the report can honestly say about why. */
+  refused: string[];
 }
+
+/** Stated on every read. A grant for one purpose does not authorise another. */
+const PURPOSE = 'credit_assessment';
 
 /** One line each, in the words a credit officer would need. */
 const GLOSSARY: Record<string, string> = {
@@ -90,24 +94,29 @@ export async function lenderView(plan: SeedPlan, baseUrl: string): Promise<strin
     lines.push('  --profile demo before showing this to anyone outside.');
   }
   lines.push('');
-  lines.push('Read as the cooperative, not the lender. A third party is denied every');
-  lines.push('record on this corpus: consent is not implemented, and the kernel says so');
-  lines.push('rather than guessing. See docs/decisions/0023.');
+  lines.push('Read as Rift Valley Agricultural Finance, a third party, through the same');
+  lines.push('consent gate an application would meet. Nothing below was fetched with the');
+  lines.push('cooperative’s credentials. Every line is here because a subject permitted');
+  lines.push('it, and the gaps are here because one did not.');
   lines.push('');
+  lines.push(...grantsRelied(plan));
   lines.push('Every factor cited below is public. GET /v1/registry/conversions/{id} takes');
   lines.push('no credential, so all of this can be checked without asking ClyCites.');
   lines.push('');
 
+  const refusals: string[] = [];
+
   for (const key of ['A', 'C'] as const) {
     const coop = COOPS.find((c) => c.key === key)!;
     const farmerId = key === 'A' ? plan.markers.lenderFarmerA : plan.markers.lenderFarmerC;
-    const data = await load(base, plan.coopParties[key], farmerId);
+    const data = await load(base, plan.lender, farmerId, plan.coopParties[key]);
     const conversions = await resolveConversions(base, data.deliveries, seen);
 
     lines.push(...section(coop.name, coop.key, data, farmerId, conversions, flagsSeen));
     lines.push('');
     context.push(...cooperativeContext(coop.name, coop.key, data, flagsSeen));
     context.push('');
+    refusals.push(...data.refused.map((line) => `  ${coop.name} [${key}]  ${line}`));
   }
 
   lines.push('='.repeat(76));
@@ -120,6 +129,26 @@ export async function lenderView(plan: SeedPlan, baseUrl: string): Promise<strin
   lines.push('measurement, which is a different question from the conduct of a member.');
   lines.push('');
   lines.push(...context);
+
+  lines.push('='.repeat(76));
+  lines.push('WHAT WAS REFUSED');
+  lines.push('='.repeat(76));
+  if (refusals.length === 0) {
+    lines.push('  nothing — every read attempted here was permitted');
+  } else {
+    lines.push(...refusals);
+  }
+  lines.push('');
+  lines.push('  A refused read returns 404, not 403. The kernel will not confirm that a');
+  lines.push('  record exists to somebody who may not read it, because "no such record"');
+  lines.push('  and "you may not see that record" are the same answer to anyone without');
+  lines.push('  a grant. The reasons above are the report’s own reading of the grants it');
+  lines.push('  holds, not something the kernel disclosed.');
+  lines.push('');
+  lines.push('  The subject, by contrast, can see exactly this. GET /v1/subject-access');
+  lines.push('  lists every third-party read of their records, so a farmer can tell that');
+  lines.push('  a lender looked at all.');
+  lines.push('');
 
   const glossary = [...flagsSeen].sort();
   if (glossary.length > 0) {
@@ -144,10 +173,20 @@ export async function lenderView(plan: SeedPlan, baseUrl: string): Promise<strin
   lines.push('cites a factor on every line, the factor is assumed, and it is wrong by');
   lines.push('eighteen percent. Nothing in coop C’s own records reveals that. The');
   lines.push('registry does.');
+  lines.push('');
+  lines.push('And none of it was handed over by the cooperative. Every disclosure above');
+  lines.push('rests on a grant a subject gave and can withdraw, every gap rests on one');
+  lines.push('they did not give, and the whole exchange is in the audit log where the');
+  lines.push('subject can read it back.');
   return lines.join('\n');
 }
 
-async function load(base: string, reader: string, farmerId: string): Promise<Fetched> {
+async function load(
+  base: string,
+  reader: string,
+  farmerId: string,
+  coopId: string,
+): Promise<Fetched> {
   const get = async (path: string): Promise<unknown> => {
     const response = await fetch(`${base}${path}`, {
       headers: { [SUBJECT_HEADER]: reader, [DATASET_HEADER]: 'seed' },
@@ -156,13 +195,38 @@ async function load(base: string, reader: string, farmerId: string): Promise<Fet
     return response.json();
   };
 
-  const farmer = (await get(`/v1/records/${farmerId}`)) as RecordView | null;
-  const page = (await get(`/v1/records?subject=${farmerId}&type=delivery&limit=100`)) as
-    | { records: RecordView[] }
-    | null;
-  const lotPage = (await get(`/v1/records?asserted_by=${reader}&type=lot&limit=10`)) as
-    | { records: RecordView[] }
-    | null;
+  const refused: string[] = [];
+  const farmer = (await get(`/v1/records/${farmerId}?purpose=${PURPOSE}`)) as RecordView | null;
+  if (farmer === null) {
+    refused.push('party record — no grant from this farmer covers type `party`');
+  }
+
+  const page = (await get(
+    `/v1/records?subject=${farmerId}&type=delivery&limit=100&purpose=${PURPOSE}`,
+  )) as { records: RecordView[] } | null;
+  if ((page?.records ?? []).length === 0) {
+    refused.push(
+      'deliveries — a delivery names two parties, and the read needs a grant from both; here one of them gave none',
+    );
+  }
+
+  const lotPage = (await get(
+    `/v1/records?asserted_by=${coopId}&type=lot&limit=10&purpose=${PURPOSE}`,
+  )) as { records: RecordView[] } | null;
+  if ((lotPage?.records ?? []).length === 0) {
+    refused.push('lot and mass balance — no grant from this cooperative covers type `lot`');
+  }
+
+  // Never granted by anyone, so never fetched with any expectation of success.
+  // Named here because a grant enumerates its record types and everything
+  // outside the enumeration is refused by omission, which is the property
+  // worth showing.
+  const harvests = (await get(
+    `/v1/records?subject=${farmerId}&type=harvest&limit=10&purpose=${PURPOSE}`,
+  )) as { records: RecordView[] } | null;
+  if ((harvests?.records ?? []).length === 0) {
+    refused.push('harvests — no grant enumerates type `harvest`, so it is refused by omission');
+  }
 
   return {
     farmer,
@@ -172,7 +236,28 @@ async function load(base: string, reader: string, farmerId: string): Promise<Fet
       ),
     ),
     lots: lotPage?.records ?? [],
+    refused,
   };
+}
+
+/** What the lender is relying on, printed before anything it was allowed to see. */
+function grantsRelied(plan: SeedPlan): string[] {
+  const lines: string[] = ['GRANTS RELIED ON', '-'.repeat(76)];
+  for (const grant of plan.grants) {
+    lines.push(`  ${grant.subject}`);
+    lines.push(
+      `    purpose ${grant.purpose}  ·  covers ${grant.record_types.join(', ')}` +
+        `  ·  via ${grant.granted_via}` +
+        `  ·  expires ${grant.expires_at?.slice(0, 10) ?? 'never'}`,
+    );
+    lines.push(`    ${grant.note}`);
+  }
+  lines.push('');
+  lines.push('  A grant is purpose-bound and type-bound. Nothing outside the list above');
+  lines.push('  is readable by this lender, and any of these can be withdrawn by the');
+  lines.push('  subject without asking anybody.');
+  lines.push('');
+  return lines;
 }
 
 /**
@@ -220,11 +305,16 @@ function section(
   const identifiers = (body['identifiers'] as unknown[] | undefined) ?? [];
 
   lines.push('-'.repeat(76));
-  lines.push(`${String(body['display_name'] ?? '(unreadable)')}  —  ${coopName} [${key}]`);
+  lines.push(
+    `${String(body['display_name'] ?? '(refused — no grant covers type party)')}` +
+      `  —  ${coopName} [${key}]`,
+  );
   lines.push('-'.repeat(76));
   lines.push(`  party            ${farmerId}`);
   lines.push(
-    `  identity         ${identifiers.length > 0 ? 'national ID attested by the cooperative' : 'none on file'}`,
+    data.farmer === null
+      ? '  identity         not readable — the farmer permitted their deliveries and no more'
+      : `  identity         ${identifiers.length > 0 ? 'national ID attested by the cooperative' : 'none on file'}`,
   );
   lines.push('');
 

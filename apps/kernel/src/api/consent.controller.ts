@@ -36,7 +36,10 @@ const NewGrant = z.object({
   grantee: z.uuid(),
   purpose: z.enum(CONSENT_PURPOSES),
   record_types: z.array(z.string().min(1)).min(1).max(32),
-  expires_at: z.iso.datetime().nullable().optional(),
+  // `offset: true` to match `Timestamp` in the schema package. Without it this
+  // was the one endpoint in the kernel that rejected `+03:00`, which is what
+  // every client in the deployment region sends.
+  expires_at: z.iso.datetime({ offset: true }).nullable().optional(),
   granted_via: z.enum(CONSENT_CHANNELS),
   evidence: z.array(z.unknown()).max(10).optional(),
 });

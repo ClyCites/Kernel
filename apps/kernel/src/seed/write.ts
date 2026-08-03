@@ -26,12 +26,21 @@ export interface WriteOutcome {
   note?: string;
 }
 
+export interface GrantOutcome {
+  subject: string;
+  status: number;
+  id: string | null;
+  /** Present when the kernel refused, so a failed grant is not silent. */
+  problem?: string;
+}
+
 export interface WriteReport {
   accepted: number;
   rejected: number;
   /** Writes whose outcome was not the one the fixture asserts. */
   surprises: WriteOutcome[];
   outcomes: WriteOutcome[];
+  grants: GrantOutcome[];
 }
 
 export interface WriteOptions {
@@ -93,10 +102,51 @@ export async function writePlan(
     (o) => (o.status === 200 || o.status === 201) !== (o.expected === 'accepted'),
   );
 
+  const grants = await writeGrants(plan, base);
+
   return {
     accepted: outcomes.filter((o) => o.status === 200 || o.status === 201).length,
     rejected: outcomes.filter((o) => o.status !== 200 && o.status !== 201).length,
     surprises,
     outcomes,
+    grants,
   };
+}
+
+/**
+ * Grants go in last, as the subject, through the same endpoint an application
+ * would use. A grant names a subject and a grantee, so neither can be recorded
+ * before both party records exist.
+ */
+async function writeGrants(plan: SeedPlan, base: string): Promise<GrantOutcome[]> {
+  const outcomes: GrantOutcome[] = [];
+
+  for (const grant of plan.grants) {
+    const response = await fetch(`${base}/v1/consent/grants`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        [SUBJECT_HEADER]: grant.subject,
+        [DATASET_HEADER]: 'seed',
+      },
+      body: JSON.stringify({
+        grantee: grant.grantee,
+        purpose: grant.purpose,
+        record_types: grant.record_types,
+        expires_at: grant.expires_at,
+        granted_via: grant.granted_via,
+      }),
+    });
+
+    const accepted = response.status === 200 || response.status === 201;
+    const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+    outcomes.push({
+      subject: grant.subject,
+      status: response.status,
+      id: accepted && typeof body['id'] === 'string' ? body['id'] : null,
+      ...(accepted ? {} : { problem: String(body['detail'] ?? body['title'] ?? '') }),
+    });
+  }
+
+  return outcomes;
 }

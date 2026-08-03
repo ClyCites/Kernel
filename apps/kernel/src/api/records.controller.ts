@@ -40,6 +40,9 @@ const ListQuery = z.object({
   purpose: z.enum(CONSENT_PURPOSES).optional(),
 });
 
+/** Everything a third party needs to say about why it is reading. */
+const PurposeQuery = z.object({ purpose: z.enum(CONSENT_PURPOSES).optional() });
+
 const Id = z.uuid();
 
 @Controller('v1')
@@ -105,9 +108,17 @@ export class RecordsController {
     );
   }
 
+  // FINDING, fixed here: until P2 only the list endpoint took a purpose, so a
+  // third party holding a valid grant could enumerate records but never
+  // dereference one. Consent is purpose-bound, and a route with no way to
+  // state a purpose is a route no grant can ever satisfy.
   @Get('records/:id')
-  async get(@Param('id') id: string, @Req() request: Request): Promise<unknown> {
-    const view = await this.read.get(this.id(id), this.reader(request));
+  async get(
+    @Param('id') id: string,
+    @Query() query: unknown,
+    @Req() request: Request,
+  ): Promise<unknown> {
+    const view = await this.read.get(this.id(id), this.reader(request, this.purpose(query)));
     if (view === null) throw new NotFoundException(`no record ${id}`);
     return view;
   }
@@ -115,9 +126,13 @@ export class RecordsController {
   @Get('records/:id/chain')
   async chain(
     @Param('id') id: string,
+    @Query() query: unknown,
     @Req() request: Request,
   ): Promise<unknown> {
-    const records = await this.read.chain(this.id(id), this.reader(request));
+    const records = await this.read.chain(
+      this.id(id),
+      this.reader(request, this.purpose(query)),
+    );
     if (records.length === 0) throw new NotFoundException(`no record ${id}`);
     return { records };
   }
@@ -125,14 +140,21 @@ export class RecordsController {
   @Get('inferences/:id')
   async inference(
     @Param('id') id: string,
+    @Query() query: unknown,
     @Req() request: Request,
   ): Promise<unknown> {
     const view = await this.read.getInference(
       this.id(id),
-      this.reader(request),
+      this.reader(request, this.purpose(query)),
     );
     if (view === null) throw new NotFoundException(`no inference ${id}`);
     return view;
+  }
+
+  private purpose(query: unknown): (typeof CONSENT_PURPOSES)[number] | undefined {
+    const parsed = PurposeQuery.safeParse(query);
+    if (!parsed.success) throw new BadRequestException('unknown purpose');
+    return parsed.data.purpose;
   }
 
   private reader(

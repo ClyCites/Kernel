@@ -75,6 +75,25 @@ export interface LotRecord {
   openingKg: number;
 }
 
+/**
+ * A consent grant the seed asks the kernel to record, as the subject.
+ *
+ * Deliberately narrow and deliberately uneven. A corpus where every grant
+ * covers everything demonstrates nothing: the interesting property of the
+ * consent module is what it refuses, and the refusals only appear if some
+ * grants stop short.
+ */
+export interface SeedGrant {
+  subject: string;
+  grantee: string;
+  purpose: string;
+  record_types: string[];
+  expires_at: string | null;
+  granted_via: string;
+  /** Why this grant exists, for the report to print beside it. */
+  note: string;
+}
+
 export interface SeedPlan {
   seed: number;
   /** Which yield table the harvests came from. Printed on every artifact. */
@@ -82,6 +101,13 @@ export interface SeedPlan {
   writes: SeedWrite[];
   farmers: FarmerRef[];
   coopParties: Record<CoopFixture['key'], string>;
+  /** The third party the lender view is rendered as. */
+  lender: string;
+  /**
+   * Grants posted after the records, because a grant names a subject and a
+   * grantee and neither exists until their party record does.
+   */
+  grants: SeedGrant[];
   /** Ids the assertions need to find again. */
   markers: {
     supersededDelivery: string;
@@ -263,6 +289,75 @@ function harvestBagsFor(
 }
 
 /* ── the plan ─────────────────────────────────────────────────────────── */
+
+/**
+ * What the two farmers and their cooperatives actually permitted. Work order P2.
+ *
+ * Four grants and four deliberate holes. The report is only worth showing if
+ * the lender is refused something, and each of these refusals is one a real
+ * subject would plausibly impose:
+ *
+ * - Farmer C permits their deliveries and not their party record. Volumes for
+ *   underwriting, no national ID. That is the commonest shape a farmer would
+ *   choose if anybody asked them, and nobody usually does.
+ * - Coop C permits nothing. Its lot is the record that exposes its own bag
+ *   error, and an organisation declining to hand a lender the evidence against
+ *   itself is not a hypothetical.
+ * - Nobody granted `harvest`, `observation` or `agreement`. A grant enumerates
+ *   record types, so everything not enumerated is refused by omission rather
+ *   than by a rule somebody had to remember to write.
+ * - No grant runs past the season. Consent with no end is consent nobody
+ *   revisits.
+ */
+function lenderGrants(
+  lender: string,
+  farmerA: string,
+  farmerC: string,
+  coopParties: Record<CoopFixture['key'], string>,
+): SeedGrant[] {
+  const expires = at(DAY.harvest + 120);
+  const grant = (
+    subject: string,
+    recordTypes: string[],
+    grantedVia: string,
+    note: string,
+  ): SeedGrant => ({
+    subject,
+    grantee: lender,
+    purpose: 'credit_assessment',
+    record_types: recordTypes,
+    expires_at: expires,
+    granted_via: grantedVia,
+    note,
+  });
+
+  return [
+    grant(
+      farmerA,
+      ['party', 'delivery'],
+      'in_person_signature',
+      'signed at the coop office when the loan application was taken',
+    ),
+    grant(
+      farmerC,
+      ['delivery'],
+      'ussd_confirmation',
+      'confirmed by USSD; declined to include the party record, so no identity',
+    ),
+    grant(
+      coopParties.A,
+      ['lot', 'delivery'],
+      'witnessed',
+      'the cooperative permits its own lot and the deliveries it received; a delivery names two parties and needs both',
+    ),
+    grant(
+      coopParties.C,
+      ['lot', 'delivery'],
+      'witnessed',
+      'permits its own lot and deliveries, which is how its mass balance became checkable by somebody other than itself',
+    ),
+  ];
+}
 
 export function generate(
   seed: number = DEFAULT_SEED,
@@ -888,12 +983,17 @@ export function generate(
     );
   }
 
+  const lenderFarmerA = farmers.find((f) => f.coop === 'A')!.id;
+  const lenderFarmerC = farmers.find((f) => f.coop === 'C')!.id;
+
   const plan: SeedPlan = {
     seed,
     profile,
     writes,
     farmers,
     coopParties,
+    lender,
+    grants: lenderGrants(lender, lenderFarmerA, lenderFarmerC, coopParties),
     markers: {
       supersededDelivery: '',
       supersedingDelivery: '',
@@ -911,8 +1011,8 @@ export function generate(
       partiallySettledObligation: obligations.B,
       unsettledObligation: obligations.C,
       inference: '',
-      lenderFarmerA: farmers.find((f) => f.coop === 'A')!.id,
-      lenderFarmerC: farmers.find((f) => f.coop === 'C')!.id,
+      lenderFarmerA,
+      lenderFarmerC,
     },
   };
 

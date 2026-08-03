@@ -410,4 +410,51 @@ describe('the lender view', () => {
       );
     }
   });
+
+  test('every grant the report relies on was accepted by the kernel', () => {
+    assert.ok(report.grants.length > 0, 'the lender view rests on grants');
+    for (const outcome of report.grants) {
+      assert.equal(
+        outcome.status,
+        201,
+        `grant by ${outcome.subject} refused: ${outcome.problem ?? ''}`,
+      );
+      assert.ok(outcome.id !== null);
+    }
+  });
+
+  test('it is read as the lender, and says which grants let it in', async () => {
+    const rendered = await lenderView(plan, base);
+    assert.match(rendered, /Read as Rift Valley Agricultural Finance/);
+    assert.match(rendered, /GRANTS RELIED ON/);
+    assert.match(rendered, /purpose credit_assessment/);
+    // Nothing was fetched with the cooperative's credentials any more.
+    assert.doesNotMatch(rendered, /read as the cooperative/i);
+  });
+
+  test('what the lender was refused is printed beside what it was given', async () => {
+    const rendered = await lenderView(plan, base);
+    assert.match(rendered, /WHAT WAS REFUSED/);
+    // Harvests are enumerated in no grant, so they are refused by omission —
+    // the property that makes the grant a whitelist rather than a formality.
+    assert.match(rendered, /harvests — no grant enumerates type `harvest`/);
+    assert.match(rendered, /404, not 403/);
+  });
+
+  test('a purpose nobody granted reads nothing, on the same records', async () => {
+    const farmerA = plan.markers.lenderFarmerA;
+    const granted = await fetch(
+      `${base}/v1/records/${farmerA}?purpose=credit_assessment`,
+      { headers: { 'x-clycites-subject': plan.lender, 'x-clycites-dataset': 'seed' } },
+    );
+    assert.equal(granted.status, 200);
+
+    // Same lender, same record, a purpose the grant does not name. A grant
+    // that leaked across purposes would not be consent to anything.
+    const other = await fetch(
+      `${base}/v1/records/${farmerA}?purpose=insurance_underwriting`,
+      { headers: { 'x-clycites-subject': plan.lender, 'x-clycites-dataset': 'seed' } },
+    );
+    assert.notEqual(other.status, 200);
+  });
 });

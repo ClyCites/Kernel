@@ -191,9 +191,17 @@ describe('a production instance refuses to seed', () => {
  * export makes the recipient an independent holder and we owe them a
  * notification for every future correction, indefinitely. "Never add an export"
  * decays as a memory. It holds as a failing build.
+ *
+ * The subject of this guard is personal data, not volume. `/v1/registry`
+ * returns whole collections and is exempt by inspection rather than by
+ * exception: the test below proves it cannot reach a record at all. Reference
+ * data has no data subject, and a conversion factor a lender cannot fetch is a
+ * weight they have to take on faith (0024).
  */
-describe('there is no bulk export', () => {
+describe('there is no bulk export of personal data', () => {
   const API = fileURLToPath(new URL('../../src/api', import.meta.url));
+  const controllers = async (): Promise<string[]> =>
+    (await readdir(API)).filter((f) => f.endsWith('.controller.ts'));
 
   test('no route resembles an export', async () => {
     const files = (await readdir(API)).filter((f) => f.endsWith('.ts'));
@@ -221,14 +229,45 @@ describe('there is no bulk export', () => {
     );
   });
 
-  test('no controller streams a file back', () => {
-    for (const controller of ['records', 'sync', 'operations']) {
-      const source = read(`/apps/kernel/src/api/${controller}.controller.ts`);
+  test('no controller streams a file back', async () => {
+    // Derived, not listed. A hand-kept list silently exempts the next
+    // controller somebody adds, which is the only way this guard can fail.
+    for (const controller of await controllers()) {
+      const source = read(`/apps/kernel/src/api/${controller}`);
       assert.doesNotMatch(
         source,
         /content-disposition|createReadStream|StreamableFile/i,
-        `${controller}.controller.ts looks like it serves a file`,
+        `${controller} looks like it serves a file`,
       );
     }
+  });
+
+  test('the unauthenticated controller cannot reach personal data', () => {
+    // What makes the registry safe to open is not its route names. It is that
+    // the only repository it can inject holds SELECT on `registry` and nothing
+    // else. If this controller ever imports a record service, opening it stops
+    // being defensible and this fails.
+    const source = read('/apps/kernel/src/api/registry.controller.ts');
+    assert.doesNotMatch(
+      source,
+      /ReadService|IngestService|records\/|facts\.|inference\./,
+      'the registry endpoint is unauthenticated because it can only see ' +
+        'reference data. Reaching a record from here would make it a way to ' +
+        'read farmers without a subject.',
+    );
+    assert.doesNotMatch(
+      source,
+      /verifiedSubject|SUBJECT_HEADER/,
+      'the registry endpoint takes no subject by design (0024)',
+    );
+  });
+
+  test('the open surface is rate limited', () => {
+    const module = read('/apps/kernel/src/api/api.module.ts');
+    assert.match(
+      module,
+      /RateLimitMiddleware[\s\S]*forRoutes\('v1\/registry/,
+      'the one route with no authenticated caller has nothing else in front of it',
+    );
   });
 });

@@ -1,0 +1,76 @@
+import { Inject, Injectable, type NestMiddleware } from '@nestjs/common';
+import type { NextFunction, Request, Response } from 'express';
+
+import { KERNEL_CONFIG, type KernelConfig } from '../config.js';
+
+/**
+ * A fixed-window limiter for the one surface that has no authenticated caller.
+ *
+ * Every other route is governed by `x-clycites-subject`, so abuse has a name
+ * attached to it. The registry is deliberately open — see
+ * docs/decisions/0024 — which means the only thing between it and a scraper is
+ * this.
+ *
+ * FINDING, stated rather than hidden: the window is in process memory. It is
+ * per replica, it resets on deploy, and behind N instances the effective limit
+ * is N times the configured one. That is adequate for a single-instance kernel
+ * behind a gateway and is not a substitute for a limit at the edge. When the
+ * gateway grows one, this should become the second line rather than the first.
+ */
+@Injectable()
+export class RateLimitMiddleware implements NestMiddleware {
+  private readonly hits = new Map<string, { count: number; resets: number }>();
+
+  constructor(
+    @Inject(KERNEL_CONFIG)
+    private readonly config: Pick<
+      KernelConfig,
+      'REGISTRY_RATE_LIMIT' | 'REGISTRY_RATE_WINDOW_SECONDS'
+    >,
+  ) {}
+
+  use(request: Request, response: Response, next: NextFunction): void {
+    const limit = this.config.REGISTRY_RATE_LIMIT;
+    const windowMs = this.config.REGISTRY_RATE_WINDOW_SECONDS * 1000;
+    const now = Date.now();
+    const key = request.ip ?? 'unknown';
+
+    if (this.hits.size > 10_000) this.evict(now);
+
+    const entry = this.hits.get(key);
+    const window =
+      entry === undefined || entry.resets <= now
+        ? { count: 0, resets: now + windowMs }
+        : entry;
+
+    window.count += 1;
+    this.hits.set(key, window);
+
+    const remaining = Math.max(0, limit - window.count);
+    const resetsIn = Math.ceil((window.resets - now) / 1000);
+
+    response.setHeader('RateLimit-Limit', String(limit));
+    response.setHeader('RateLimit-Remaining', String(remaining));
+    response.setHeader('RateLimit-Reset', String(resetsIn));
+
+    if (window.count > limit) {
+      response.setHeader('Retry-After', String(resetsIn));
+      response.status(429).type('application/problem+json').json({
+        type: '/problems/429',
+        title: 'Too many requests',
+        status: 429,
+        detail: `The registry accepts ${limit} requests per ${this.config.REGISTRY_RATE_WINDOW_SECONDS}s from one address. It is immutable reference data — cache it rather than polling it.`,
+        instance: request.originalUrl,
+      });
+      return;
+    }
+
+    next();
+  }
+
+  private evict(now: number): void {
+    for (const [key, window] of this.hits) {
+      if (window.resets <= now) this.hits.delete(key);
+    }
+  }
+}

@@ -34,7 +34,11 @@ before(async () => {
     // The real provider reads and validates the process environment, which the
     // test harness does not set. The pool is overridden for the same reason.
     .overrideProvider(KERNEL_CONFIG)
-    .useValue({ MASS_BALANCE_TOLERANCE: DEFAULT_MASS_BALANCE_TOLERANCE })
+    .useValue({
+      MASS_BALANCE_TOLERANCE: DEFAULT_MASS_BALANCE_TOLERANCE,
+      REGISTRY_RATE_LIMIT: 600,
+      REGISTRY_RATE_WINDOW_SECONDS: 60,
+    })
     .compile();
 
   app = moduleRef.createNestApplication();

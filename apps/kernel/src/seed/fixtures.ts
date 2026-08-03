@@ -11,15 +11,15 @@ import type { ConversionBasis } from '@clycites/schema';
 
 export const SEASON = '2026A';
 
-/** The twelve kaveera behind the `measured` factor in migration 0014. */
+/** The twelve kaveera behind the `measured` factor in migration 0015. */
 export const COOP_A_SAMPLE = [
   97.4, 101.2, 99.8, 103.6, 96.9, 100.4, 98.2, 102.7, 99.1, 104.3, 95.8, 100.6,
 ] as const;
 
 /** Conversions the seed cites. Ids are registry rows, not records. */
 export const CONVERSIONS = {
-  /** Migration 0014. Weighed, twelve bags, coop A. */
-  maizeBagMeasured: '019fc600-0000-7000-8000-000000000050',
+  /** Migration 0015. Weighed, twelve bags, coop A, with the weights on file. */
+  maizeBagMeasured: '019fc600-0000-7000-8000-000000000051',
   /** Migration 0010. The commonly quoted 100 kg bag, unverified. */
   maizeBagAssumed: '019fc600-0000-7000-8000-000000000020',
   /** Migration 0010. Region-scoped to Kapchorwa, which no delivery can claim. */
@@ -160,4 +160,8 @@ export const EXPECTED_FLAGS = [
   'delegated_authority',
   'delegated_by_organisational_bylaw',
   'quantity_not_normalized',
+  // The loudest flag in the corpus by an order of magnitude, and the trust
+  // ladder firing. It went unasserted for a version, which is precisely the
+  // drift D6 exists to catch.
+  'measurement_below_underwritable',
 ] as const;

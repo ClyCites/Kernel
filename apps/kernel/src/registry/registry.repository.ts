@@ -3,7 +3,11 @@ import { Pool } from 'pg';
 
 import { KERNEL_POOL } from '../storage/pool.js';
 import type {
+  AdminRegionEntry,
+  ConversionSample,
+  CropCodeEntry,
   GradingSchemeEntry,
+  GradingSchemeValue,
   ObservationTypeEntry,
   UnitConversionRow,
 } from './types.js';
@@ -18,7 +22,10 @@ const CONVERSION_COLUMNS = `
   sample_min::float8    as sample_min,
   sample_max::float8    as sample_max,
   sample_stddev::float8 as sample_stddev,
-  condition, local_label
+  condition, local_label,
+  measured_by,
+  to_char(measured_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SSZ') as measured_at,
+  instrument
 `;
 
 /**
@@ -132,6 +139,162 @@ export class RegistryRepository {
       [code, vintage],
     );
     return rows.length > 0;
+  }
+
+  /* ── the public surface (work order K) ─────────────────────────────── */
+
+  /** The weighings behind a factor, in the order they were taken. */
+  async conversionSample(id: string): Promise<ConversionSample[]> {
+    const { rows } = await this.pool.query<ConversionSample>(
+      `select ordinal, weight_kg::float8 as weight_kg, condition
+         from registry.unit_conversion_sample
+        where conversion = $1
+        order by ordinal`,
+      [id],
+    );
+    return rows;
+  }
+
+  /**
+   * Filtered listing. Newest first, because a corrected factor supersedes an
+   * older one and the reader almost always wants the current statement.
+   */
+  async listConversions(filter: {
+    fromUnit?: string | undefined;
+    toUnit?: string | undefined;
+    commodity?: string | undefined;
+    regionCode?: string | undefined;
+    basis?: string | undefined;
+    limit: number;
+  }): Promise<UnitConversionRow[]> {
+    const params: unknown[] = [];
+    const where: string[] = [];
+    const bind = (value: unknown): string => `$${params.push(value)}`;
+
+    if (filter.fromUnit) where.push(`from_unit = ${bind(filter.fromUnit)}`);
+    if (filter.toUnit) where.push(`to_unit = ${bind(filter.toUnit)}`);
+    if (filter.commodity) where.push(`commodity = ${bind(filter.commodity)}`);
+    if (filter.regionCode) where.push(`region_code = ${bind(filter.regionCode)}`);
+    if (filter.basis) where.push(`basis = ${bind(filter.basis)}`);
+
+    const { rows } = await this.pool.query<UnitConversionRow>(
+      `select ${CONVERSION_COLUMNS}
+         from registry.unit_conversion
+        ${where.length > 0 ? `where ${where.join(' and ')}` : ''}
+        order by created_at desc, id
+        limit ${bind(filter.limit)}`,
+      params,
+    );
+    return rows;
+  }
+
+  async listObservationTypes(filter: {
+    subjectType?: string | undefined;
+    limit: number;
+  }): Promise<ObservationTypeEntry[]> {
+    const params: unknown[] = [filter.limit];
+    const where =
+      filter.subjectType === undefined
+        ? ''
+        : `where $${params.push(filter.subjectType)} = any(subject_types)`;
+
+    const { rows } = await this.pool.query<ObservationTypeEntry>(
+      `select code, version, label, unit, value_kind,
+              permitted_methods, subject_types, owner, source
+         from registry.observation_type
+        ${where}
+        order by code, version desc
+        limit $1`,
+      params,
+    );
+    return rows;
+  }
+
+  async cropCode(code: string): Promise<CropCodeEntry | null> {
+    const { rows } = await this.pool.query<CropCodeEntry>(
+      `select code, label, parent_code, external_scheme, external_code
+         from registry.crop_code where code = $1`,
+      [code],
+    );
+    return rows[0] ?? null;
+  }
+
+  async listCropCodes(filter: {
+    parentCode?: string | undefined;
+    limit: number;
+  }): Promise<CropCodeEntry[]> {
+    const params: unknown[] = [filter.limit];
+    const where =
+      filter.parentCode === undefined
+        ? ''
+        : `where parent_code = $${params.push(filter.parentCode)}`;
+
+    const { rows } = await this.pool.query<CropCodeEntry>(
+      `select code, label, parent_code, external_scheme, external_code
+         from registry.crop_code
+        ${where}
+        order by code
+        limit $1`,
+      params,
+    );
+    return rows;
+  }
+
+  async adminRegion(
+    code: string,
+    vintage: string,
+  ): Promise<AdminRegionEntry | null> {
+    const { rows } = await this.pool.query<AdminRegionEntry>(
+      `select code, vintage, name, level, parent_code, parent_vintage, source
+         from registry.admin_region where code = $1 and vintage = $2`,
+      [code, vintage],
+    );
+    return rows[0] ?? null;
+  }
+
+  async listAdminRegions(filter: {
+    vintage?: string | undefined;
+    level?: string | undefined;
+    parentCode?: string | undefined;
+    limit: number;
+  }): Promise<AdminRegionEntry[]> {
+    const params: unknown[] = [filter.limit];
+    const where: string[] = [];
+    if (filter.vintage) where.push(`vintage = $${params.push(filter.vintage)}`);
+    if (filter.level) where.push(`level = $${params.push(filter.level)}`);
+    if (filter.parentCode) {
+      where.push(`parent_code = $${params.push(filter.parentCode)}`);
+    }
+
+    const { rows } = await this.pool.query<AdminRegionEntry>(
+      `select code, vintage, name, level, parent_code, parent_vintage, source
+         from registry.admin_region
+        ${where.length > 0 ? `where ${where.join(' and ')}` : ''}
+        order by code, vintage desc
+        limit $1`,
+      params,
+    );
+    return rows;
+  }
+
+  async listGradingSchemes(limit: number): Promise<GradingSchemeEntry[]> {
+    const { rows } = await this.pool.query<GradingSchemeEntry>(
+      `select scheme, label, owner, source
+         from registry.grading_scheme order by scheme limit $1`,
+      [limit],
+    );
+    return rows;
+  }
+
+  async gradingSchemeValues(scheme: string): Promise<GradingSchemeValue[]> {
+    const { rows } = await this.pool.query<GradingSchemeValue>(
+      `select scheme, value, label, ordinal
+         from registry.grading_scheme_value
+        where scheme = $1
+        order by ordinal nulls last, value`,
+      [scheme],
+    );
+    return rows;
   }
 
   /**

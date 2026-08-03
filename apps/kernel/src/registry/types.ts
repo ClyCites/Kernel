@@ -69,6 +69,14 @@ export const GradingSchemeEntry = z.object({
 });
 export type GradingSchemeEntry = z.infer<typeof GradingSchemeEntry>;
 
+/** One weighing behind a `measured` factor. */
+export const ConversionSample = z.object({
+  ordinal: z.int().positive(),
+  weight_kg: z.number().positive(),
+  condition: z.string().nullable(),
+});
+export type ConversionSample = z.infer<typeof ConversionSample>;
+
 /** The stored form of `@clycites/schema`'s `UnitConversion`, plus its lineage. */
 export const UnitConversionRow = z.object({
   id: z.uuid(),
@@ -92,5 +100,34 @@ export const UnitConversionRow = z.object({
   condition: z.string().nullable(),
   /** What the container is called locally, e.g. `kaveera`. */
   local_label: z.string().nullable(),
+  /** A name or role, not a party id — the person holding the scale rarely is one. */
+  measured_by: z.string().nullable(),
+  measured_at: z.string().nullable(),
+  instrument: z.string().nullable(),
 });
 export type UnitConversionRow = z.infer<typeof UnitConversionRow>;
+
+/** A conversion with the weighings behind it. What the public endpoint serves. */
+export interface UnitConversionDetail extends UnitConversionRow {
+  sample: ConversionSample[];
+}
+
+export const CropCodeEntry = z.object({
+  code: z.string().min(1),
+  label: z.string().min(1),
+  parent_code: z.string().nullable(),
+  external_scheme: z.string().nullable(),
+  external_code: z.string().nullable(),
+});
+export type CropCodeEntry = z.infer<typeof CropCodeEntry>;
+
+export const AdminRegionEntry = z.object({
+  code: z.string().min(1),
+  vintage: z.string().regex(/^\d{4}$/),
+  name: z.string().min(1),
+  level: z.string().min(1),
+  parent_code: z.string().nullable(),
+  parent_vintage: z.string().nullable(),
+  source: z.string().nullable(),
+});
+export type AdminRegionEntry = z.infer<typeof AdminRegionEntry>;

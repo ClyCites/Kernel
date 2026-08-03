@@ -58,6 +58,15 @@ const Env = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((value) => value === 'true'),
+  /**
+   * Requests per window per address against `/v1/registry`, the only surface
+   * with no authenticated caller behind it. The registry is immutable and
+   * served with a day-long `Cache-Control`, so a well-behaved consumer fetches
+   * a factor once; a limit this generous only catches something that is not
+   * caching. Counted in process memory — see rate-limit.middleware.ts.
+   */
+  REGISTRY_RATE_LIMIT: z.coerce.number().int().min(1).default(600),
+  REGISTRY_RATE_WINDOW_SECONDS: z.coerce.number().int().min(1).default(60),
   NODE_ENV: z.string().default('development'),
 });
 

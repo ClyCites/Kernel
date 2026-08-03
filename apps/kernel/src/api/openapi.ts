@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { ConversionBasis } from '@clycites/schema';
 import { CONSENT_PURPOSES } from '../consent/consent.service.js';
 import { ENTITY_SCHEMAS } from '../records/entity-registry.js';
 import { SUBJECT_HEADER } from './subject.js';
@@ -610,6 +611,140 @@ export function buildOpenApiDocument(): OpenApiDocument {
     },
   };
 
+  schemas['ConversionSample'] = {
+    type: 'object',
+    required: ['ordinal', 'weight_kg', 'condition'],
+    description: 'One weighing. Present only where somebody actually weighed.',
+    properties: {
+      ordinal: { type: 'integer', minimum: 1 },
+      weight_kg: { type: 'number', exclusiveMinimum: 0 },
+      condition: {
+        type: ['string', 'null'],
+        description:
+          'The state of that container, e.g. `damp,tight`. Per sample, because one damp bag among eleven dry ones is the observation that explains the spread.',
+      },
+    },
+  };
+
+  schemas['UnitConversion'] = {
+    type: 'object',
+    required: ['id', 'from_unit', 'to_unit', 'factor', 'basis'],
+    description:
+      'A factor, and the evidence for it. `basis` is the whole point: `measured` means somebody weighed a sample and the sample is below; `assumed_default` means the number is a convention nobody has checked. A quantity resting on the second is not wrong, it is unverified, and a lender is entitled to tell the difference without asking us.',
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      from_unit: { type: 'string' },
+      to_unit: { type: 'string' },
+      factor: { type: 'number', exclusiveMinimum: 0 },
+      commodity: { type: ['string', 'null'] },
+      region_code: { type: ['string', 'null'] },
+      region_vintage: {
+        type: ['string', 'null'],
+        description:
+          'The boundary vintage the region code is read against. A district code without one is ambiguous across time.',
+      },
+      valid_from: { type: ['string', 'null'], format: 'date' },
+      valid_to: { type: ['string', 'null'], format: 'date' },
+      basis: { type: 'string', enum: [...ConversionBasis.options] },
+      source: { type: ['string', 'null'] },
+      supersedes: {
+        type: ['string', 'null'],
+        format: 'uuid',
+        description:
+          'The factor this one corrects. Rows are never edited, so a record citing the older id keeps the meaning it had when it was written.',
+      },
+      sample_size: { type: ['integer', 'null'], minimum: 1 },
+      sample_min: { type: ['number', 'null'] },
+      sample_max: { type: ['number', 'null'] },
+      sample_stddev: { type: ['number', 'null'], minimum: 0 },
+      condition: { type: ['string', 'null'] },
+      local_label: {
+        type: ['string', 'null'],
+        description: 'What the container is called where it was weighed, e.g. `kaveera`.',
+      },
+      measured_by: { type: ['string', 'null'] },
+      measured_at: { type: ['string', 'null'], format: 'date-time' },
+      instrument: { type: ['string', 'null'] },
+      sample: {
+        type: 'array',
+        items: ref('ConversionSample'),
+        description: 'Returned on the single-conversion route only.',
+      },
+    },
+  };
+
+  schemas['ObservationTypeEntry'] = {
+    type: 'object',
+    required: ['code', 'version', 'label', 'value_kind', 'owner'],
+    properties: {
+      code: { type: 'string' },
+      version: { type: 'integer', minimum: 1 },
+      label: { type: 'string' },
+      unit: { type: ['string', 'null'] },
+      value_kind: { type: 'string' },
+      permitted_methods: { type: 'array', items: { type: 'string' } },
+      subject_types: { type: 'array', items: { type: 'string' } },
+      owner: {
+        type: 'string',
+        description: 'The party accountable for the entry. An unowned vocabulary grows entries nobody can retire.',
+      },
+      source: { type: ['string', 'null'] },
+    },
+  };
+
+  schemas['CropCodeEntry'] = {
+    type: 'object',
+    required: ['code', 'label'],
+    properties: {
+      code: { type: 'string' },
+      label: { type: 'string' },
+      parent_code: { type: ['string', 'null'] },
+      external_scheme: { type: ['string', 'null'] },
+      external_code: { type: ['string', 'null'] },
+    },
+  };
+
+  schemas['AdminRegionEntry'] = {
+    type: 'object',
+    required: ['code', 'vintage', 'name', 'level'],
+    properties: {
+      code: { type: 'string' },
+      vintage: { type: 'string' },
+      name: { type: 'string' },
+      level: { type: 'string' },
+      parent_code: { type: ['string', 'null'] },
+      parent_vintage: { type: ['string', 'null'] },
+      source: { type: ['string', 'null'] },
+    },
+  };
+
+  schemas['GradingSchemeEntry'] = {
+    type: 'object',
+    required: ['scheme', 'label', 'owner'],
+    description:
+      'Stored opaquely. `ordinal` orders values inside one scheme and carries no meaning across schemes: UNBS Grade 1 and a buyer’s Grade 1 are different claims and the kernel never ranks one against the other.',
+    properties: {
+      scheme: { type: 'string' },
+      label: { type: 'string' },
+      owner: { type: 'string' },
+      source: { type: ['string', 'null'] },
+      values: {
+        type: 'array',
+        description: 'Returned on the single-scheme route only.',
+        items: {
+          type: 'object',
+          required: ['scheme', 'value'],
+          properties: {
+            scheme: { type: 'string' },
+            value: { type: 'string' },
+            label: { type: ['string', 'null'] },
+            ordinal: { type: ['integer', 'null'] },
+          },
+        },
+      },
+    },
+  };
+
   schemas['Problem'] = PROBLEM;
 
   return {
@@ -626,6 +761,11 @@ export function buildOpenApiDocument(): OpenApiDocument {
       { name: 'records', description: 'The fact log.' },
       { name: 'inference', description: 'Derived records, kept apart.' },
       { name: 'sync', description: 'Offline devices push and pull.' },
+      {
+        name: 'registry',
+        description:
+          'Reference data. Unauthenticated on purpose: a weight you need our permission to verify is a weight you are trusting us for. Immutable, so cache it.',
+      },
       { name: 'operations', description: 'Liveness and readiness.' },
     ],
     paths: {
@@ -877,6 +1017,338 @@ export function buildOpenApiDocument(): OpenApiDocument {
             },
             '400': problemResponse('The cursor is not one we issued.'),
             '403': consentResponse,
+          },
+        },
+      },
+      '/registry/conversions': {
+        get: {
+          tags: ['registry'],
+          operationId: 'listConversions',
+          summary: 'Find conversion factors',
+          description:
+            'Newest first. No subject header: reference data has no data subject, and requiring a credential to check a weight would make verification depend on our permission.',
+          parameters: [
+            { name: 'from_unit', in: 'query', schema: { type: 'string' } },
+            { name: 'to_unit', in: 'query', schema: { type: 'string' } },
+            { name: 'commodity', in: 'query', schema: { type: 'string' } },
+            { name: 'region_code', in: 'query', schema: { type: 'string' } },
+            {
+              name: 'basis',
+              in: 'query',
+              schema: { type: 'string', enum: [...ConversionBasis.options] },
+            },
+            {
+              name: 'limit',
+              in: 'query',
+              schema: { type: 'integer', minimum: 1, maximum: 500, default: 100 },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Matching factors, without their sample rows.',
+              headers: {
+                'Cache-Control': { schema: { type: 'string' } },
+                'RateLimit-Remaining': { schema: { type: 'string' } },
+              },
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    required: ['conversions'],
+                    properties: {
+                      conversions: {
+                        type: 'array',
+                        items: ref('UnitConversion'),
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            '400': problemResponse('A filter is not a shape we accept.'),
+            '429': problemResponse(
+              'Too many requests from one address. The rows are immutable — cache them rather than polling.',
+            ),
+          },
+        },
+      },
+      '/registry/conversions/{id}': {
+        get: {
+          tags: ['registry'],
+          operationId: 'getConversion',
+          summary: 'Fetch one factor and the weighings behind it',
+          description:
+            'The route a lender uses to check a quantity. A delivery states `raw_value`, `raw_unit` and `normalized_kg` and cites a `conversion_id`; this resolves that id to a factor, a basis, and — where the basis is `measured` — the individual weights, who took them, when, and on what instrument.',
+          parameters: [
+            {
+              name: 'id',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', format: 'uuid' },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'The factor, with its sample.',
+              content: {
+                'application/json': { schema: ref('UnitConversion') },
+              },
+            },
+            '404': problemResponse('No such factor.'),
+            '429': problemResponse('Too many requests from one address.'),
+          },
+        },
+      },
+      '/registry/observation-types': {
+        get: {
+          tags: ['registry'],
+          operationId: 'listObservationTypes',
+          summary: 'The observation vocabulary',
+          parameters: [
+            { name: 'subject_type', in: 'query', schema: { type: 'string' } },
+            {
+              name: 'limit',
+              in: 'query',
+              schema: { type: 'integer', minimum: 1, maximum: 500, default: 100 },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Registered types, newest version of each first.',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    required: ['observation_types'],
+                    properties: {
+                      observation_types: {
+                        type: 'array',
+                        items: ref('ObservationTypeEntry'),
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            '400': problemResponse('A filter is not a shape we accept.'),
+            '429': problemResponse('Too many requests from one address.'),
+          },
+        },
+      },
+      '/registry/observation-types/{code}': {
+        get: {
+          tags: ['registry'],
+          operationId: 'getObservationType',
+          summary: 'One observation type, current version',
+          parameters: [
+            {
+              name: 'code',
+              in: 'path',
+              required: true,
+              schema: { type: 'string' },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'The type.',
+              content: {
+                'application/json': { schema: ref('ObservationTypeEntry') },
+              },
+            },
+            '404': problemResponse('Not registered.'),
+            '429': problemResponse('Too many requests from one address.'),
+          },
+        },
+      },
+      '/registry/crop-codes': {
+        get: {
+          tags: ['registry'],
+          operationId: 'listCropCodes',
+          summary: 'The crop vocabulary',
+          description:
+            'An indirection layer, not a taxonomy. Open decision D1 has not chosen an underlying standard; `external_scheme` and `external_code` are where the mapping will land when it does.',
+          parameters: [
+            { name: 'parent_code', in: 'query', schema: { type: 'string' } },
+            {
+              name: 'limit',
+              in: 'query',
+              schema: { type: 'integer', minimum: 1, maximum: 500, default: 100 },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Crop codes.',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    required: ['crop_codes'],
+                    properties: {
+                      crop_codes: {
+                        type: 'array',
+                        items: ref('CropCodeEntry'),
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            '400': problemResponse('A filter is not a shape we accept.'),
+            '429': problemResponse('Too many requests from one address.'),
+          },
+        },
+      },
+      '/registry/crop-codes/{code}': {
+        get: {
+          tags: ['registry'],
+          operationId: 'getCropCode',
+          summary: 'One crop code',
+          parameters: [
+            {
+              name: 'code',
+              in: 'path',
+              required: true,
+              schema: { type: 'string' },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'The code.',
+              content: { 'application/json': { schema: ref('CropCodeEntry') } },
+            },
+            '404': problemResponse('Not registered.'),
+            '429': problemResponse('Too many requests from one address.'),
+          },
+        },
+      },
+      '/registry/admin-regions': {
+        get: {
+          tags: ['registry'],
+          operationId: 'listAdminRegions',
+          summary: 'Administrative boundaries, by vintage',
+          parameters: [
+            { name: 'vintage', in: 'query', schema: { type: 'string' } },
+            { name: 'level', in: 'query', schema: { type: 'string' } },
+            { name: 'parent_code', in: 'query', schema: { type: 'string' } },
+            {
+              name: 'limit',
+              in: 'query',
+              schema: { type: 'integer', minimum: 1, maximum: 500, default: 100 },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Regions.',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    required: ['admin_regions'],
+                    properties: {
+                      admin_regions: {
+                        type: 'array',
+                        items: ref('AdminRegionEntry'),
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            '400': problemResponse('A filter is not a shape we accept.'),
+            '429': problemResponse('Too many requests from one address.'),
+          },
+        },
+      },
+      '/registry/admin-regions/{code}/{vintage}': {
+        get: {
+          tags: ['registry'],
+          operationId: 'getAdminRegion',
+          summary: 'One region at one boundary vintage',
+          description:
+            'Both parts are required. Uganda’s districts have subdivided repeatedly, so a bare district code is ambiguous across time and there is deliberately no route that accepts one.',
+          parameters: [
+            {
+              name: 'code',
+              in: 'path',
+              required: true,
+              schema: { type: 'string' },
+            },
+            {
+              name: 'vintage',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', pattern: '^\\d{4}$' },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'The region.',
+              content: {
+                'application/json': { schema: ref('AdminRegionEntry') },
+              },
+            },
+            '404': problemResponse('No such region at that vintage.'),
+            '429': problemResponse('Too many requests from one address.'),
+          },
+        },
+      },
+      '/registry/grading-schemes': {
+        get: {
+          tags: ['registry'],
+          operationId: 'listGradingSchemes',
+          summary: 'Grading vocabularies',
+          parameters: [
+            {
+              name: 'limit',
+              in: 'query',
+              schema: { type: 'integer', minimum: 1, maximum: 500, default: 100 },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Schemes, without their values.',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    required: ['grading_schemes'],
+                    properties: {
+                      grading_schemes: {
+                        type: 'array',
+                        items: ref('GradingSchemeEntry'),
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            '400': problemResponse('A filter is not a shape we accept.'),
+            '429': problemResponse('Too many requests from one address.'),
+          },
+        },
+      },
+      '/registry/grading-schemes/{scheme}': {
+        get: {
+          tags: ['registry'],
+          operationId: 'getGradingScheme',
+          summary: 'One scheme and its permitted values',
+          parameters: [
+            {
+              name: 'scheme',
+              in: 'path',
+              required: true,
+              schema: { type: 'string' },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'The scheme, with its values.',
+              content: {
+                'application/json': { schema: ref('GradingSchemeEntry') },
+              },
+            },
+            '404': problemResponse('Not registered.'),
+            '429': problemResponse('Too many requests from one address.'),
           },
         },
       },

@@ -299,7 +299,7 @@ describe('determinism', () => {
 });
 
 describe('the measured conversion', () => {
-  test('migration 0014 states exactly what the twelve weights say', async () => {
+  test('the summary statistics restate the twelve weights and add nothing', async () => {
     const stats = coopASampleStats();
     const row = await db.owner.query<{
       sample_size: number;
@@ -322,6 +322,22 @@ describe('the measured conversion', () => {
     // Four decimals: the column is numeric(20,8) and the weights are to 0.1kg.
     assert.equal(Number(stored.sample_stddev).toFixed(4), stats.stddev.toFixed(4));
   });
+
+  test('the weights the seed assumes are the weights on file', async () => {
+    // Until migration 0015 the twelve numbers existed only in this fixture and
+    // in a prose `source` string. The summary could not be checked against
+    // anything, which made "measured" a claim rather than a reference.
+    const rows = await db.owner.query<{ ordinal: number; weight_kg: string }>(
+      'select ordinal, weight_kg from registry.unit_conversion_sample' +
+        ' where conversion = $1 order by ordinal',
+      [CONVERSIONS.maizeBagMeasured],
+    );
+
+    assert.deepEqual(
+      rows.rows.map((row) => Number(row.weight_kg)),
+      [...COOP_A_SAMPLE],
+    );
+  });
 });
 
 describe('the lender view', () => {
@@ -333,5 +349,50 @@ describe('the lender view', () => {
     assert.match(report, /DELIVERIES[\s\S]*DELIVERIES/);
     assert.match(report, /WHERE THE NUMBERS COME FROM/);
     assert.match(report, /conversion_mismatch/);
+  });
+
+  test('the contrast is printed, not left to the reader to look up', async () => {
+    const report = await lenderView(plan, base);
+    // The whole artifact: one line says somebody weighed twelve bags, the
+    // other says a number was assumed. Same factor, different evidence.
+    assert.match(report, /measured \(n=12\)/);
+    assert.match(report, /assumed_default/);
+    assert.match(report, /Calibrated platform scale/);
+    assert.match(report, /97\.4, 101\.2/);
+  });
+
+  test('a cooperative’s mass balance is not filed under a farmer’s name', async () => {
+    const report = await lenderView(plan, base);
+    const context = report.indexOf('COOPERATIVE CONTEXT');
+    assert.ok(context > 0, 'the mass balance needs a section of its own');
+
+    // Denying a farmer credit for their cooperative's scale drift is exactly
+    // the harm a verified-record system is supposed to prevent, so the verdict
+    // must not appear inside the block that carries their name.
+    assert.ok(
+      report.indexOf('BREACHES TOLERANCE') > context,
+      'a breach verdict appears above the section that disclaims attribution',
+    );
+    assert.match(report, /not about any member/);
+    assert.doesNotMatch(report, /share attributable|farmer’s share/);
+  });
+
+  test('a reader can check the verdict and can read the flags', async () => {
+    const report = await lenderView(plan, base);
+    // "BREACHES TOLERANCE" without the number it breached is unauditable, and
+    // the whole-lot number alone is worse than none: coop C's lot is inside the
+    // whole-lot threshold and still breaches, because a single hand-over did.
+    // A reader given only the first figure would conclude the report is wrong.
+    assert.match(report, /tolerance {6}\d+\.\d% — across the whole lot that is \d/);
+    assert.match(report, /hand-overs breached it:/);
+    assert.match(report, /out by -?\d+\.\d kg \(\d+\.\d%, over \d+\.\d%\)/);
+    assert.match(report, /^as at \d{4}-\d{2}-\d{2} /m);
+    assert.match(report, /WHAT THE FLAGS MEAN/);
+    for (const flag of new Set(report.match(/conversion_\w+/g) ?? [])) {
+      assert.ok(
+        report.includes(`  ${flag}\n    `),
+        `${flag} appears in the report with no explanation of what it means`,
+      );
+    }
   });
 });

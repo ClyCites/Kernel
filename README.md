@@ -153,6 +153,32 @@ anything.
 
 Errors are RFC 9457 problem documents and carry a correlation id.
 
+### The registry is public
+
+`GET /v1/registry/**` takes no subject header and passes through no consent
+gate. It serves unit conversions, crop codes, administrative boundaries and
+grading vocabularies — data with no subject.
+
+| | |
+|---|---|
+| `GET /v1/registry/conversions` | Filter by unit, commodity, region, basis |
+| `GET /v1/registry/conversions/{id}` | One factor, with the individual weighings behind it, who took them, when and on what |
+| `GET /v1/registry/observation-types[/{code}]` | The observation vocabulary |
+| `GET /v1/registry/crop-codes[/{code}]` | The crop vocabulary |
+| `GET /v1/registry/admin-regions[/{code}/{vintage}]` | Boundaries. Both parts required — a district code alone is ambiguous across time |
+| `GET /v1/registry/grading-schemes[/{scheme}]` | Grading vocabularies and their permitted values |
+
+This is deliberate. A delivery cites a `conversion_id`; if resolving it needed a
+credential, then verifying a weight would need our permission, and a record you
+need our permission to verify is a record you are trusting us for. See
+[docs/decisions/0024-registry-read-api.md](docs/decisions/0024-registry-read-api.md).
+
+Rows are immutable — corrections supersede — so responses carry
+`Cache-Control: public, max-age=86400, immutable`. **Cache them.** It is the
+only surface without an authenticated caller, so it is rate limited per address
+(`REGISTRY_RATE_LIMIT`); that counter lives in one process, which makes it per
+replica and no substitute for a limit at the gateway.
+
 One thing the generated document cannot express: the schema's cross-field rules
 (`on_behalf_of` requires `delegation`, `normalized_kg` requires
 `conversion_id`) are Zod refinements with no JSON Schema equivalent. The kernel

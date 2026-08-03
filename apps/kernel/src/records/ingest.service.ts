@@ -6,6 +6,7 @@ import { qualityFlags } from './quality.js';
 import { DelegationService } from './delegation.service.js';
 import { ConversionService } from '../registry/conversion.service.js';
 import { RecordRepository } from './record.repository.js';
+import { subjectTypeMismatched } from './subjects.js';
 import {
   splitEnvelope,
   type RecordDocument,
@@ -96,6 +97,11 @@ export class IngestService {
       String(envelope['occurred_at']),
     );
 
+    const derived = [
+      ...conversionFlags,
+      ...(await this.subjectFlags(type, body)),
+    ];
+
     const record: StoredRecord = {
       id: String(envelope['id']),
       type,
@@ -116,7 +122,7 @@ export class IngestService {
         type,
         document,
         delegationBasis: grant?.basis ?? null,
-        precomputed: conversionFlags,
+        precomputed: derived,
       }),
     };
 
@@ -183,6 +189,28 @@ export class IngestService {
         ],
       );
     }
+  }
+
+  /**
+   * An observation whose subject is present but is the wrong kind of thing.
+   *
+   * Only the mismatch is stored. A subject that has not arrived is not flagged:
+   * observations routinely sync ahead of their subjects, so a flag written once
+   * would record the order the phones reconnected in rather than anything about
+   * the record. Existence is answered at read time instead.
+   */
+  private async subjectFlags(
+    type: string,
+    body: RecordDocument,
+  ): Promise<string[]> {
+    if (type !== 'observation') return [];
+    const ref = body['subject_ref'];
+    if (typeof ref !== 'string') return [];
+
+    const found = await this.repository.recordTypesOf([ref]);
+    return subjectTypeMismatched(String(body['subject_type']), found.get(ref))
+      ? ['subject_type_mismatch']
+      : [];
   }
 
   /**

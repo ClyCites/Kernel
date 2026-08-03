@@ -35,6 +35,67 @@ export function subjectFields(type?: string | undefined): readonly string[] {
   return [...new Set(Object.values(SUBJECT_FIELDS).flat())];
 }
 
+/**
+ * `Observation.subject_type` names a kind of thing; the log stores record
+ * types. They line up everywhere except `region`, which has no record — regions
+ * live in `registry.admin_region`, keyed by code and vintage, so no uuidv7
+ * `subject_ref` can name one. A region observation is therefore unresolvable by
+ * construction. Spec §13 finding, not something to paper over here.
+ */
+export const RECORD_TYPE_FOR_SUBJECT: Record<string, string | null> = {
+  plot: 'plot',
+  lot: 'lot',
+  party: 'party',
+  facility: 'facility',
+  planting: 'planting',
+  region: null,
+};
+
+/** What a stored record looks like to a subject lookup. */
+export interface SubjectTarget {
+  type: string;
+  retracted: boolean;
+}
+
+export interface SubjectResolution {
+  ref: string;
+  declared_type: string;
+  exists: boolean;
+  actual_type: string | null;
+  /** Null while unknowable: the subject has not arrived, or names no record. */
+  type_matches: boolean | null;
+  retracted: boolean;
+}
+
+export function resolveSubject(
+  declaredType: string,
+  ref: string,
+  found: SubjectTarget | undefined,
+): SubjectResolution {
+  const expected = RECORD_TYPE_FOR_SUBJECT[declaredType] ?? null;
+
+  return {
+    ref,
+    declared_type: declaredType,
+    exists: found !== undefined,
+    actual_type: found?.type ?? null,
+    type_matches:
+      expected === null || found === undefined ? null : found.type === expected,
+    retracted: found?.retracted ?? false,
+  };
+}
+
+/**
+ * The one thing about a subject that is permanently true the moment it is
+ * knowable. Absence is not: an observation routinely syncs before its subject.
+ */
+export function subjectTypeMismatched(
+  declaredType: string,
+  found: SubjectTarget | undefined,
+): boolean {
+  return resolveSubject(declaredType, '', found).type_matches === false;
+}
+
 /** The value for a `body @> …` test matching `id` in the given field. */
 export function containment(field: string, id: string): Record<string, unknown> {
   const [outer, inner] = field.split('[].');

@@ -174,6 +174,39 @@ export function buildOpenApiDocument(): OpenApiDocument {
     },
   };
 
+  schemas['SubjectResolution'] = {
+    type: 'object',
+    required: [
+      'ref',
+      'declared_type',
+      'exists',
+      'actual_type',
+      'type_matches',
+      'retracted',
+    ],
+    description:
+      'Whether an observation’s `subject_ref` names anything in the log. Present on observations only. Resolved on every read rather than settled at ingest, because an observation can arrive before its subject and later be about something perfectly real.',
+    properties: {
+      ref: { type: 'string', format: 'uuid' },
+      declared_type: { type: 'string' },
+      exists: { type: 'boolean' },
+      actual_type: {
+        type: ['string', 'null'],
+        description: 'The record type actually found. Null if nothing was.',
+      },
+      type_matches: {
+        type: ['boolean', 'null'],
+        description:
+          'Null while unknowable — the subject has not arrived, or the declared type names nothing the log can hold. False is permanent and also carries a `subject_type_mismatch` quality flag.',
+      },
+      retracted: {
+        type: 'boolean',
+        description:
+          'The subject was retracted. Surfaced rather than hiding the observation, which remains someone’s account of what they saw.',
+      },
+    },
+  };
+
   schemas['BalanceLeg'] = {
     type: 'object',
     required: [
@@ -327,6 +360,7 @@ export function buildOpenApiDocument(): OpenApiDocument {
       custody: ref('Custody'),
       balance: ref('Balance'),
       fulfilment: ref('Fulfilment'),
+      subject: ref('SubjectResolution'),
     },
   };
 

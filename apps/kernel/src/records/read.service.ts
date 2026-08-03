@@ -20,7 +20,12 @@ import {
 } from './fulfilment.js';
 import { toDocument, type RecordDocument, type StoredRecord } from './record.js';
 import { RecordRepository, type DerivedRecord } from './record.repository.js';
-import { subjectFields, subjectsOf } from './subjects.js';
+import {
+  resolveSubject,
+  subjectFields,
+  subjectsOf,
+  type SubjectResolution,
+} from './subjects.js';
 
 export const DEFAULT_PAGE_SIZE = 50;
 export const MAX_PAGE_SIZE = 200;
@@ -50,6 +55,8 @@ export interface RecordView {
   balance?: MassBalance;
   /** Agreements only. What the deliveries pointing at it add up to. */
   fulfilment?: Fulfilment;
+  /** Observations only. Whether `subject_ref` names anything, and what. */
+  subject?: SubjectResolution;
 }
 
 export interface Page {
@@ -187,7 +194,38 @@ export class ReadService {
    * computed for records the caller was never entitled to see.
    */
   private async derive(views: RecordView[]): Promise<void> {
-    await Promise.all([this.deriveLot(views), this.deriveFulfilment(views)]);
+    await Promise.all([
+      this.deriveLot(views),
+      this.deriveFulfilment(views),
+      this.deriveSubject(views),
+    ]);
+  }
+
+  /**
+   * Whether an observation's `subject_ref` names anything yet.
+   *
+   * Deliberately not settled at ingest. An observation can arrive before its
+   * subject and later be about something perfectly real, so absence is a fact
+   * about now rather than about the record.
+   */
+  private async deriveSubject(views: RecordView[]): Promise<void> {
+    const observations = views.filter(
+      (view) => view.record['type'] === 'observation',
+    );
+    if (observations.length === 0) return;
+
+    const targets = await this.repository.recordTypesOf(
+      observations.map((view) => view.record['subject_ref'] as string),
+    );
+
+    for (const view of observations) {
+      const ref = view.record['subject_ref'] as string;
+      view.subject = resolveSubject(
+        String(view.record['subject_type']),
+        ref,
+        targets.get(ref),
+      );
+    }
   }
 
   /**

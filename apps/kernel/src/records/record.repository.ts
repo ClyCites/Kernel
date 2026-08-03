@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { Pool, PoolClient } from 'pg';
 
 import { KERNEL_POOL } from '../storage/pool.js';
-import { containment } from './subjects.js';
+import { containment, type SubjectTarget } from './subjects.js';
 import type { DeliveryTally } from './fulfilment.js';
 import type { DeclaredLoss, WeighedTransfer } from './mass-balance.js';
 import type { RecordClass, StoredRecord } from './record.js';
@@ -374,6 +374,25 @@ export class RecordRepository {
     return new Map(
       rows.map(({ agreement, ...tally }) => [agreement, tally]),
     );
+  }
+
+  /**
+   * The type of each of these ids, and whether it has been retracted.
+   *
+   * Superseded records still count as present: a corrected lot is still a lot,
+   * and an observation about it is about something real.
+   */
+  async recordTypesOf(
+    ids: readonly string[],
+  ): Promise<Map<string, SubjectTarget>> {
+    if (ids.length === 0) return new Map();
+    const { rows } = await this.pool.query<{ id: string } & SubjectTarget>(
+      `select r.id, r.type, ${RETRACTED} as retracted
+         from facts.record r
+        where r.id = any($1::uuid[])`,
+      [[...new Set(ids)]],
+    );
+    return new Map(rows.map(({ id, ...target }) => [id, target]));
   }
 
   /** Which of these ids a retraction targets. One query, not one per record. */

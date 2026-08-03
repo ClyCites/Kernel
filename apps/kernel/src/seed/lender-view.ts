@@ -46,9 +46,15 @@ export async function lenderView(plan: SeedPlan, baseUrl: string): Promise<strin
   }
 
   lines.push('-'.repeat(72));
-  lines.push('The two files are the same shape. The difference is that one of them');
-  lines.push('states, on every quantity, which weighing it came from — and the other');
-  lines.push('states that nobody knows.');
+  lines.push('The two files are the same shape, and that is the problem a lender has.');
+  lines.push('Both farmers delivered bags. Only one cooperative can say what a bag');
+  lines.push('weighs. Coop C cites a factor on every line and the factor is wrong by');
+  lines.push('eighteen percent, which is invisible until a scale disagrees with it.');
+  lines.push('');
+  lines.push('FINDING: neither file can be checked. Each quantity cites a conversion');
+  lines.push('id, but the public API exposes no way to read the conversion registry, so');
+  lines.push('a lender cannot learn that A-050 was measured from twelve weighings and');
+  lines.push('C-030 was assumed. Provenance is recorded and is not yet retrievable.');
   return lines.join('\n');
 }
 
@@ -71,7 +77,11 @@ async function load(base: string, reader: string, farmerId: string): Promise<Fet
 
   return {
     farmer,
-    deliveries: page?.records ?? [],
+    deliveries: [...(page?.records ?? [])].sort((a, b) =>
+      String((b.record as Record<string, unknown>)['occurred_at']).localeCompare(
+        String((a.record as Record<string, unknown>)['occurred_at']),
+      ),
+    ),
     lots: lotPage?.records ?? [],
   };
 }
@@ -103,6 +113,7 @@ function section(
   let totalKg = 0;
   let confirmed = 0;
   const flags = new Map<string, number>();
+  const citedConversions = new Set<string>();
 
   lines.push('  DELIVERIES');
   for (const view of data.deliveries) {
@@ -113,11 +124,15 @@ function section(
     const isConfirmed = record['counterparty_confirmed_at'] !== null;
     if (isConfirmed) confirmed += 1;
     for (const flag of view.quality_flags) flags.set(flag, (flags.get(flag) ?? 0) + 1);
+    const conversion = String(quantity['conversion_id'] ?? '');
+    if (conversion !== '') citedConversions.add(conversion);
 
     lines.push(
       `    ${String(record['occurred_at']).slice(0, 10)}  ` +
         `${String(quantity['raw_value']).padStart(4)} ${String(quantity['raw_unit'])}` +
         ` -> ${kg === null ? 'NOT NORMALISED' : `${kg.toFixed(1)} kg`}` +
+        `  via ${conversion === '' ? 'no conversion' : conversion.slice(-4)}` +
+        `/${String(quantity['measurement_method'] ?? 'unstated')}` +
         `  ${isConfirmed ? 'confirmed' : 'unconfirmed'}` +
         (view.quality_flags.length > 0 ? `  [${view.quality_flags.join(', ')}]` : ''),
     );
@@ -131,6 +146,10 @@ function section(
 
   lines.push('');
   lines.push('  WHERE THE NUMBERS COME FROM');
+  lines.push(
+    `    conversions cited   ${citedConversions.size === 0 ? 'none' : [...citedConversions].map((id) => id.slice(-4)).sort().join(', ')}` +
+      ' (not resolvable through the public API)',
+  );
   lines.push(
     flags.size === 0
       ? '    no quality flags raised on any delivery'

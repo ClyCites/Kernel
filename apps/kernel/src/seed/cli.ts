@@ -15,6 +15,7 @@ interface Args {
   baseUrl: string;
   seed: number;
   planOnly: boolean;
+  viewOnly: boolean;
   quiet: boolean;
 }
 
@@ -23,6 +24,7 @@ function parse(argv: string[]): Args {
     baseUrl: process.env['SEED_BASE_URL'] ?? 'http://127.0.0.1:3000',
     seed: DEFAULT_SEED,
     planOnly: false,
+    viewOnly: false,
     quiet: false,
   };
 
@@ -40,6 +42,8 @@ function parse(argv: string[]): Args {
       i += 1;
     } else if (flag === '--plan-only') {
       args.planOnly = true;
+    } else if (flag === '--view-only') {
+      args.viewOnly = true;
     } else if (flag === '--quiet') {
       args.quiet = true;
     } else {
@@ -57,6 +61,13 @@ async function main(): Promise<void> {
     // The determinism check. Same seed in, same bytes out — pipe two runs
     // through `diff` and the claim in D1 is either true or it is not.
     process.stdout.write(JSON.stringify(plan.writes, null, 2));
+    return;
+  }
+
+  if (args.viewOnly) {
+    // Re-render the report against a kernel already carrying this seed. The
+    // plan is regenerated only to recover the ids; nothing is written.
+    process.stdout.write(`${await lenderView(plan, args.baseUrl)}\n`);
     return;
   }
 

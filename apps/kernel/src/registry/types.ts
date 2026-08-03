@@ -83,5 +83,14 @@ export const UnitConversionRow = z.object({
   basis: ConversionBasis,
   source: z.string().nullable(),
   supersedes: z.uuid().nullable(),
+  /** What the factor was established from. Null on definitions and guesses. */
+  sample_size: z.int().positive().nullable(),
+  sample_min: z.number().nullable(),
+  sample_max: z.number().nullable(),
+  sample_stddev: z.number().nonnegative().nullable(),
+  /** The state the commodity was in, e.g. `dried,tight`. */
+  condition: z.string().nullable(),
+  /** What the container is called locally, e.g. `kaveera`. */
+  local_label: z.string().nullable(),
 });
 export type UnitConversionRow = z.infer<typeof UnitConversionRow>;

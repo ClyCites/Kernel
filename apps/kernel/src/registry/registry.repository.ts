@@ -13,7 +13,12 @@ const CONVERSION_COLUMNS = `
   commodity, region_code, region_vintage,
   to_char(valid_from, 'YYYY-MM-DD') as valid_from,
   to_char(valid_to,   'YYYY-MM-DD') as valid_to,
-  basis, source, supersedes
+  basis, source, supersedes,
+  sample_size,
+  sample_min::float8    as sample_min,
+  sample_max::float8    as sample_max,
+  sample_stddev::float8 as sample_stddev,
+  condition, local_label
 `;
 
 /**
@@ -168,5 +173,42 @@ export class RegistryRepository {
         group by 1`,
     );
     return new Map(rows.map((row) => [row.basis, row.kg]));
+  }
+
+  /**
+   * Normalized tonnage resting on a factor that claims measurement but was
+   * established from fewer than `minimumSample` containers.
+   *
+   * `assumed_default` is already visible in the gauge above. This one catches
+   * the subtler case: a factor labelled `measured`, which reads as trustworthy,
+   * that came from one morning in one store. The field exercise will produce
+   * exactly such factors, and they will be believed unless counted.
+   */
+  async tonnageOnThinSample(minimumSample: number): Promise<number> {
+    const { rows } = await this.pool.query<{ kg: number | null }>(
+      `select sum((q ->> 'normalized_kg')::numeric)::float8 as kg
+         from facts.record r
+         cross join lateral jsonb_path_query(r.body, '$.**') q
+         join registry.unit_conversion uc
+           on uc.id = nullif(q ->> 'conversion_id', '')::uuid
+        where jsonb_typeof(q) = 'object'
+          and q ? 'raw_value'
+          and jsonb_typeof(q -> 'normalized_kg') = 'number'
+          and r.dataset = 'live'
+          and uc.basis = 'measured'
+          and uc.sample_size is not null
+          and uc.sample_size < $1
+          and not exists (
+                select 1 from facts.record s
+                 where s.supersedes = r.id
+                   and s.dataset = r.dataset)
+          and not exists (
+                select 1 from facts.record t
+                 where t.type = 'retraction'
+                   and t.body ->> 'target' = r.id::text
+                   and t.dataset = r.dataset)`,
+      [minimumSample],
+    );
+    return rows[0]?.kg ?? 0;
   }
 }

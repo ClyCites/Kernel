@@ -1,5 +1,6 @@
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
+import { get } from 'node:http';
 import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import { validate as validateOpenApi } from '@readme/openapi-parser';
@@ -442,5 +443,72 @@ describe('offline devices reach the log through the same API', () => {
     });
     assert.equal(response.status, 400);
     conforms('Problem', response.body);
+  });
+});
+
+/**
+ * A sync page is the largest thing the kernel ever sends and the thing most
+ * likely to be pulled over 2G. Records are JSON with long repeated key names,
+ * so they compress hard — this is the cheapest bandwidth win available.
+ */
+describe('responses compress for narrowband clients', () => {
+  const raw = async (path: string, as: string, encoding?: string) =>
+    fetch(`${base}${path}`, {
+      headers: {
+        [SUBJECT_HEADER]: as,
+        ...(encoding === undefined ? {} : { 'accept-encoding': encoding }),
+      },
+    });
+
+  // `fetch` decompresses transparently, so the only way to see what actually
+  // crossed the wire is to count the bytes off the socket.
+  const wireBytes = (path: string, as: string, encoding: string) =>
+    new Promise<{ encoding: string | undefined; bytes: number }>(
+      (resolve, reject) => {
+        const request = get(
+          `${base}${path}`,
+          { headers: { [SUBJECT_HEADER]: as, 'accept-encoding': encoding } },
+          (response) => {
+            let bytes = 0;
+            response.on('data', (chunk: Buffer) => {
+              bytes += chunk.byteLength;
+            });
+            response.on('end', () =>
+              resolve({
+                encoding: response.headers['content-encoding'],
+                bytes,
+              }),
+            );
+          },
+        );
+        request.on('error', reject);
+      },
+    );
+
+  test('a sync page comes back gzipped, and much smaller', async () => {
+    const officer = uuidv7();
+    for (let i = 0; i < 8; i += 1) {
+      await call('POST', '/v1/records', deliveryDocument({ asserted_by: officer }));
+    }
+
+    const compressed = await wireBytes('/v1/sync/changes?limit=8', officer, 'gzip');
+    const plain = await wireBytes('/v1/sync/changes?limit=8', officer, 'identity');
+
+    assert.equal(compressed.encoding, 'gzip');
+    assert.equal(plain.encoding, undefined);
+    assert.ok(
+      compressed.bytes * 2 < plain.bytes,
+      `expected at least 2x, got ${plain.bytes} -> ${compressed.bytes} bytes`,
+    );
+  });
+
+  test('a client that cannot decompress still gets its records', async () => {
+    const officer = uuidv7();
+    await call('POST', '/v1/records', deliveryDocument({ asserted_by: officer }));
+
+    const response = await raw('/v1/sync/changes?limit=1', officer, 'identity');
+
+    assert.equal(response.status, 200);
+    conforms('Changes', await response.json());
   });
 });

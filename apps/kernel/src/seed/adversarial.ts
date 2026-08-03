@@ -45,6 +45,7 @@ export interface AdversarialContext {
 
 const COOP_A = COOPS[0]!;
 const COOP_C = COOPS[2]!;
+const COOP_D = COOPS[3]!;
 
 export function appendAdversarial(plan: SeedPlan, ctx: AdversarialContext): void {
   const { rng, ids, push, coopParties, officers, facilities, farmers, deliveries } = ctx;
@@ -299,13 +300,24 @@ export function appendAdversarial(plan: SeedPlan, ctx: AdversarialContext): void
     's.9(1) — a priced delivery about an identifiable person needs s.9(3) consent',
   );
 
-  /* ── 9. A conversion cited outside its scope ────────────────────────────
+  /* ── 9. A conversion whose scope cannot be checked ──────────────────────
      The Kapchorwa factor is region-scoped. A Delivery carries no region, so
-     nothing about it can satisfy the scope, and the kernel must say so rather
-     than quietly applying a factor that may not hold. */
+     nothing about it can satisfy the scope — and, equally, nothing about it
+     can contradict the scope either. This used to raise
+     `conversion_scope_mismatch`, which read as a finding against the record
+     when it was really a finding against the check. It now raises
+     `region_unresolvable`: the factor may well hold here, and we cannot say.
+
+     Worth stating plainly, because it is the more useful half of P1's third
+     item: no record type that carries a quantity also carries an
+     `admin_region`. Plot and Facility have a region and no quantity; Delivery
+     and Harvest have a quantity and no region. So the region limb of the
+     scope check is unreachable in this corpus by construction, and every
+     district-scoped factor in the registry is uncheckable against the records
+     that cite it. */
 
   const scopeVictim = deliveries.find((d) => d.coop === 'C')!;
-  plan.markers.scopeMismatchDelivery = push(
+  plan.markers.regionUnresolvableDelivery = push(
     envelope(
       { id: ids.next(), type: 'delivery', occurredAt: at(scopeVictim.day, 13), assertedBy: coopParties.C },
       {
@@ -324,6 +336,45 @@ export function appendAdversarial(plan: SeedPlan, ctx: AdversarialContext): void
         },
         location: facilities.C,
         agreed_price: { amount_minor: 1150, currency: 'UGX' },
+        counterparty_confirmed_at: null,
+        counterparty_confirmed_by: null,
+      },
+    ),
+    'special_data_consent',
+  );
+
+  /* ── 9b. A conversion cited outside its scope, determinably ─────────────
+     Coop D grows beans. This delivery cites the maize bag factor, which is
+     registered against `crop.maize.grain`. Commodity is stated on every
+     delivery, so unlike the region case above this comparison has an answer,
+     and the answer is no — the factor does not cover this record.
+
+     A clerk picking the wrong row off a list of factors is the ordinary way
+     this happens, and the kilograms that come out are wrong by whatever the
+     two factors differ by. After the split this is the only record in the
+     corpus raising `conversion_scope_mismatch`, which is the point: the flag
+     now appears where something is actually wrong. */
+
+  const wrongFactorFarmer = farmers.find((f) => f.coop === 'D')!;
+  plan.markers.scopeMismatchDelivery = push(
+    envelope(
+      { id: ids.next(), type: 'delivery', occurredAt: at(DAY.harvest + 3, 9), assertedBy: coopParties.D },
+      {
+        from_party: wrongFactorFarmer.id,
+        to_party: coopParties.D,
+        lot: null,
+        fulfils: null,
+        commodity: COOP_D.commodity,
+        quantity: {
+          raw_value: 4,
+          raw_unit: 'bag',
+          raw_unit_label: 'gunia',
+          normalized_kg: 400,
+          conversion_id: CONVERSIONS.maizeBagAssumed,
+          measurement_method: 'coop_counted',
+        },
+        location: facilities.D,
+        agreed_price: null,
         counterparty_confirmed_at: null,
         counterparty_confirmed_by: null,
       },

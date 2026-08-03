@@ -117,15 +117,63 @@ describe('a conversion only counts inside its own scope', () => {
     assert.ok(flags.includes('conversion_scope_mismatch'));
   });
 
-  test('a district factor cited by a record with no district is a scope mismatch', async () => {
+  test('a district factor cited by a record with no district cannot be judged', async () => {
     const flags = await flagsOf(
       delivery({ conversion_id: MAIZE_BAG_KAPCHORWA, normalized_kg: 1440 }),
     );
 
     assert.ok(
-      flags.includes('conversion_scope_mismatch'),
+      flags.includes('region_unresolvable'),
       'a record that never says where it happened cannot claim a local factor',
     );
+    assert.ok(
+      !flags.includes('conversion_scope_mismatch'),
+      'nor can it be shown to have breached one — that is a different claim',
+    );
+  });
+
+  test('a district the registry does not hold is unresolvable, not wrong', async () => {
+    const conversions = new ConversionService(new RegistryRepository(db.app));
+
+    const flags = await conversions.flags(
+      {
+        commodity: 'crop.maize.grain',
+        admin_region: { code: 'UG.ATLANTIS', vintage: '2020' },
+        quantity: {
+          raw_value: 12,
+          raw_unit: 'bag',
+          normalized_kg: 1440,
+          conversion_id: MAIZE_BAG_KAPCHORWA,
+        },
+      },
+      '2026-08-01T00:00:00.000Z',
+    );
+
+    assert.ok(flags.includes('region_unresolvable'));
+    assert.ok(!flags.includes('conversion_scope_mismatch'));
+  });
+
+  test('a district the registry holds, and the wrong one, is a scope mismatch', async () => {
+    const conversions = new ConversionService(new RegistryRepository(db.app));
+
+    const flags = await conversions.flags(
+      {
+        commodity: 'crop.maize.grain',
+        // Seeded by 0025. Known, and not Kapchorwa — so the comparison has an
+        // answer for the first time, and the answer is no.
+        admin_region: { code: 'UG.NEBBI', vintage: '2020' },
+        quantity: {
+          raw_value: 12,
+          raw_unit: 'bag',
+          normalized_kg: 1440,
+          conversion_id: MAIZE_BAG_KAPCHORWA,
+        },
+      },
+      '2026-08-01T00:00:00.000Z',
+    );
+
+    assert.ok(flags.includes('conversion_scope_mismatch'));
+    assert.ok(!flags.includes('region_unresolvable'));
   });
 
   test('scope and arithmetic are separate findings', async () => {
@@ -160,11 +208,17 @@ describe('a conversion only counts inside its own scope', () => {
   test('FINDING: no core entity carries both a commodity and a region', () => {
     // Delivery, Lot and Harvest name a commodity but no boundary. Plot and
     // Facility name a boundary but no commodity. So a region-scoped factor
-    // cannot currently be satisfied by any record the kernel accepts, and the
-    // Kapchorwa row seeded in 0010 will flag wherever it is cited.
+    // cannot currently be satisfied by any record the kernel accepts.
     //
-    // This is a schema-shape question for spec §13, not something to soften
-    // here by letting an unlocated record borrow a district factor.
+    // P1 changed what that costs rather than fixing it. Before the split
+    // every such citation raised `conversion_scope_mismatch`, so the flag was
+    // reporting a schema gap as a data defect. Now it raises
+    // `region_unresolvable`, which is true, and the schema gap stays visible
+    // as an unresolvable count rather than being laundered into a finding
+    // against a farmer's record.
+    //
+    // Still a schema-shape question for spec §13, and not something to soften
+    // by letting an unlocated record borrow a district factor.
     assert.ok(true);
   });
 });

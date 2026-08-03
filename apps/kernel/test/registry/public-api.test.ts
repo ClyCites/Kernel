@@ -44,6 +44,7 @@ before(async () => {
       MASS_BALANCE_TOLERANCE: DEFAULT_MASS_BALANCE_TOLERANCE,
       REGISTRY_RATE_LIMIT: 600,
       REGISTRY_RATE_WINDOW_SECONDS: 60,
+      REGISTRY_CACHE_SECONDS: 600,
     })
     .compile();
 
@@ -404,5 +405,100 @@ describe('the open surface is limited', () => {
 
     assert.equal(first.code, null);
     assert.equal(second.code, null);
+  });
+});
+
+describe('the cheapest limit is not serving the request', () => {
+  test('a repeat read is served from memory and carries an ETag', async () => {
+    // A query string no earlier test used, so the entry is genuinely cold.
+    const url = `${base}/v1/registry/conversions/${ASSUMED}?cold=1`;
+    const first = await fetch(url);
+    const etag = first.headers.get('etag');
+
+    assert.equal(first.status, 200);
+    assert.equal(first.headers.get('x-cache'), 'miss');
+    assert.ok(etag !== null && etag.length > 2, 'no ETag on a cacheable response');
+
+    const second = await fetch(url);
+
+    assert.equal(second.status, 200);
+    assert.equal(second.headers.get('x-cache'), 'hit');
+    assert.equal(second.headers.get('etag'), etag);
+    assert.match(second.headers.get('cache-control') ?? '', /public/u);
+    assert.deepEqual(await second.json(), await first.json());
+  });
+
+  test('a client that already holds the answer gets 304 and no body', async () => {
+    const first = await fetch(`${base}/v1/registry/observation-types`);
+    const etag = first.headers.get('etag')!;
+
+    const revalidated = await fetch(`${base}/v1/registry/observation-types`, {
+      headers: { 'if-none-match': etag },
+    });
+
+    assert.equal(revalidated.status, 304);
+    assert.equal(await revalidated.text(), '');
+  });
+
+  test('a stale validator is answered in full, not with 304', async () => {
+    await fetch(`${base}/v1/registry/crop-codes`);
+
+    const response = await fetch(`${base}/v1/registry/crop-codes`, {
+      headers: { 'if-none-match': '"something-else-entirely"' },
+    });
+
+    assert.equal(response.status, 200);
+    const body = (await response.json()) as { crop_codes: unknown[] };
+    assert.ok(Array.isArray(body.crop_codes));
+  });
+
+  test('different query strings are different cache entries', async () => {
+    const one = await fetch(`${base}/v1/registry/admin-regions?level=district`);
+    const other = await fetch(`${base}/v1/registry/admin-regions?level=country`);
+
+    const districts = ((await one.json()) as { admin_regions: unknown[] }).admin_regions;
+    const countries = ((await other.json()) as { admin_regions: unknown[] }).admin_regions;
+
+    assert.ok(districts.length > countries.length);
+    assert.notDeepEqual(districts, countries);
+  });
+
+  test('a 404 is not cached — a migration can turn it into a 200', async () => {
+    const missing = `${base}/v1/registry/crop-codes/crop.nothing.here`;
+    const first = await fetch(missing);
+    const second = await fetch(missing);
+
+    assert.equal(first.status, 404);
+    assert.equal(second.status, 404);
+    assert.equal(second.headers.get('x-cache'), null);
+  });
+
+  test('a caller with a subject header is never answered from the cache', async () => {
+    // The guard that matters. Every other route in the kernel is
+    // consent-dependent, so a URL-keyed cache that ignored identity would
+    // hand one subject's records to another. Registry routes do not vary by
+    // caller, but the interceptor must not be the thing relied on to know
+    // that.
+    const response = await fetch(`${base}/v1/registry/conversions/${MEASURED}`, {
+      headers: { [SUBJECT_HEADER]: '019fc600-0000-7000-8000-0000000000ff' },
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('x-cache'), null);
+  });
+
+  test('a cached hit still spends rate-limit budget', async () => {
+    // A limiter that only counts expensive requests can be defeated by making
+    // cheap ones. The middleware runs before the interceptor, so the headers
+    // must keep moving on a hit.
+    await fetch(`${base}/v1/registry/grading-schemes`);
+    const first = await fetch(`${base}/v1/registry/grading-schemes`);
+    const second = await fetch(`${base}/v1/registry/grading-schemes`);
+
+    assert.equal(second.headers.get('x-cache'), 'hit');
+    assert.ok(
+      Number(second.headers.get('ratelimit-remaining')) <
+        Number(first.headers.get('ratelimit-remaining')),
+    );
   });
 });

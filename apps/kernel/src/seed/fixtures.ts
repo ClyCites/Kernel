@@ -15,6 +15,25 @@ export const SEASON = '2026A';
 export const ACRE_IN_HA = 0.404686;
 
 /**
+ * Which yield figures a run was built from. Work order P1.
+ *
+ * `faostat` is the real thing and gives the corpus its realism. FAO's terms
+ * for FAOSTAT permit reuse under CC BY 4.0 but bar use "in connection with
+ * promoting a commercial enterprise" — and the lender view is precisely that,
+ * a document put in front of a financier to show what the product can do.
+ * Attribution does not cure that; the restriction is on the purpose.
+ *
+ * So `demo` exists: a second table, invented outright, for anything shown
+ * outside. It is deliberately not a rounding of the FAOSTAT numbers, because
+ * a rounding is still derived from them. It is in the right order of
+ * magnitude and nothing more.
+ *
+ * Every artifact prints which profile produced it. A reader who cannot tell
+ * whether a number came from FAO or from us has been misled either way round.
+ */
+export type YieldProfile = 'faostat' | 'demo';
+
+/**
  * Yield in kg per hectare, per harvest. Work order M2.
  *
  * FAOSTAT QCL, Uganda, 2024, element `Yield`. Retrieved 2026-08-03 from the
@@ -26,10 +45,47 @@ export const ACRE_IN_HA = 0.404686;
  * A national mean, so it carries no district variation. The spread applied
  * around it below is invented, because FAOSTAT publishes a mean and not a
  * distribution.
+ *
+ * Internal use only. See `YieldProfile`.
  */
 export const NATIONAL_YIELD_KG_PER_HA: Record<string, number> = {
   'crop.maize.grain': 2173.9,
   'crop.beans.dry': 918.8,
+};
+
+/**
+ * Invented. Not FAO data, not derived from FAO data, not to be cited as
+ * either. Plausible round numbers for a crop in this region, chosen so that
+ * the demo corpus is the right shape without borrowing anyone's figures.
+ */
+export const DEMO_YIELD_KG_PER_HA: Record<string, number> = {
+  'crop.maize.grain': 1800,
+  'crop.beans.dry': 750,
+};
+
+/**
+ * Smallholder haircut. An assumption, not a source.
+ *
+ * A FAOSTAT national yield is total production over total area harvested, and
+ * that denominator includes commercial estates with irrigation, certified
+ * seed and mechanised handling. Every farmer in this corpus holds between one
+ * and four acres. Applying the national mean to them overstates what they
+ * grow, and every derived figure downstream — mass balance, delivery volume,
+ * what a lender would see as capacity — inherits the overstatement.
+ *
+ * 0.72 is a judgement, sitting inside the range smallholder studies for the
+ * region tend to report, and it is recorded in `docs/data-sources.md` under
+ * assumptions rather than sources because no single publication supports it.
+ * It applies to both profiles: the demo numbers are invented, but they are
+ * invented as national figures and the same reasoning applies to them.
+ */
+export const SMALLHOLDER_YIELD_HAIRCUT = 0.72;
+
+/** The table a run should use, already haircut. */
+export const yieldFor = (profile: YieldProfile, commodity: string): number | undefined => {
+  const table = profile === 'faostat' ? NATIONAL_YIELD_KG_PER_HA : DEMO_YIELD_KG_PER_HA;
+  const national = table[commodity];
+  return national === undefined ? undefined : national * SMALLHOLDER_YIELD_HAIRCUT;
 };
 
 /** Invented. The variation a national mean does not carry. */
@@ -51,8 +107,7 @@ export const CONVERSIONS = {
   /** Migration 0010. The commonly quoted 100 kg bag, unverified. */
   maizeBagAssumed: '019fc600-0000-7000-8000-000000000020',
   /** Migration 0010. Region-scoped to Kapchorwa, which no delivery can claim. */
-  maizeBagKapchorwa: '019fc600-0000-7000-8000-000000000030',
-  /** Migration 0010. SI, for agreements committed in tonnes. */
+  maizeBagKapchorwa: '019fc600-0000-7000-8000-000000000030',  /** Migration 0010. SI, for agreements committed in tonnes. */
   tonne: '019fc600-0000-7000-8000-000000000002',
 } as const;
 
@@ -183,6 +238,10 @@ export const EXPECTED_FLAGS = [
   'conversion_mismatch',
   'conversion_unresolved',
   'conversion_scope_mismatch',
+  // Added by P1, when the region comparison was split. It says the check
+  // could not run, not that the record is wrong, and it exists so that
+  // `conversion_scope_mismatch` can be trusted to mean the latter.
+  'region_unresolvable',
   'occurred_after_recorded',
   'mass_balance_discrepancy',
   'delegated_authority',

@@ -7,12 +7,14 @@ import {
   Param,
   Query,
   Res,
+  UseInterceptors,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { z } from 'zod';
 
 import { RegistryRepository } from '../registry/registry.repository.js';
 import type { UnitConversionDetail } from '../registry/types.js';
+import { RegistryCacheInterceptor, cacheable } from './registry-cache.interceptor.js';
 
 /**
  * Reference data, readable by anyone.
@@ -71,10 +73,8 @@ const SeasonQuery = z.object({
 
 const Id = z.uuid();
 
-/** A day. The rows cannot change; only new ones can appear. */
-const CACHE_SECONDS = 86_400;
-
 @Controller('v1/registry')
+@UseInterceptors(RegistryCacheInterceptor)
 export class RegistryController {
   constructor(
     @Inject(RegistryRepository) private readonly registry: RegistryRepository,
@@ -266,13 +266,6 @@ export class RegistryController {
     cacheable(response);
     return { ...entry, values: await this.registry.gradingSchemeValues(scheme) };
   }
-}
-
-function cacheable(response: Response): void {
-  response.setHeader(
-    'Cache-Control',
-    `public, max-age=${CACHE_SECONDS}, immutable`,
-  );
 }
 
 function parse<T>(schema: z.ZodType<T>, query: unknown): T {

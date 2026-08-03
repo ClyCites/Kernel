@@ -9,10 +9,11 @@ import {
   FAMILY_NAMES,
   GIVEN_NAMES,
   HARVEST_YIELD_SPREAD,
-  NATIONAL_YIELD_KG_PER_HA,
   SEASON,
   VARIETIES,
+  yieldFor,
   type CoopFixture,
+  type YieldProfile,
 } from './fixtures.js';
 import { at, DEFAULT_SEED, IdFactory, Rng, round } from './random.js';
 
@@ -76,6 +77,8 @@ export interface LotRecord {
 
 export interface SeedPlan {
   seed: number;
+  /** Which yield table the harvests came from. Printed on every artifact. */
+  profile: YieldProfile;
   writes: SeedWrite[];
   farmers: FarmerRef[];
   coopParties: Record<CoopFixture['key'], string>;
@@ -89,6 +92,7 @@ export interface SeedPlan {
     retractedDelivery: string;
     retraction: string;
     scopeMismatchDelivery: string;
+    regionUnresolvableDelivery: string;
     unresolvedDeliveries: string[];
     partiallyFulfilledAgreement: string;
     /** Coop A's forward, whose fulfilment is polluted by the fork. */
@@ -238,8 +242,13 @@ const weighedAgainstTheWrongFactor = (coop: CoopFixture, bags: number) => ({
  * the difference has to survive the change of source or the corpus stops
  * proving anything.
  */
-function harvestBagsFor(coop: CoopFixture, plantedAcres: number, rng: Rng): number {
-  const yieldKgPerHa = NATIONAL_YIELD_KG_PER_HA[coop.commodity];
+function harvestBagsFor(
+  coop: CoopFixture,
+  plantedAcres: number,
+  rng: Rng,
+  profile: YieldProfile,
+): number {
+  const yieldKgPerHa = yieldFor(profile, coop.commodity);
   if (yieldKgPerHa === undefined) {
     throw new Error(`no published yield for ${coop.commodity}`);
   }
@@ -255,7 +264,10 @@ function harvestBagsFor(coop: CoopFixture, plantedAcres: number, rng: Rng): numb
 
 /* ── the plan ─────────────────────────────────────────────────────────── */
 
-export function generate(seed: number = DEFAULT_SEED): SeedPlan {
+export function generate(
+  seed: number = DEFAULT_SEED,
+  profile: YieldProfile = 'faostat',
+): SeedPlan {
   const rng = new Rng(seed);
   const ids = new IdFactory(rng);
   const writes: SeedWrite[] = [];
@@ -460,7 +472,7 @@ export function generate(seed: number = DEFAULT_SEED): SeedPlan {
       // Work order M2: the size comes from the area planted and the FAOSTAT
       // national yield, not from a number somebody picked. The spread around
       // the national mean is still invented — FAOSTAT publishes a mean.
-      const harvestBags = harvestBagsFor(coop, plantedAcres, rng);
+      const harvestBags = harvestBagsFor(coop, plantedAcres, rng, profile);
       const harvestId = ids.next();
       harvests[farmerId] = {
         id: harvestId,
@@ -878,6 +890,7 @@ export function generate(seed: number = DEFAULT_SEED): SeedPlan {
 
   const plan: SeedPlan = {
     seed,
+    profile,
     writes,
     farmers,
     coopParties,
@@ -890,6 +903,7 @@ export function generate(seed: number = DEFAULT_SEED): SeedPlan {
       retractedDelivery: '',
       retraction: '',
       scopeMismatchDelivery: '',
+      regionUnresolvableDelivery: '',
       unresolvedDeliveries: deliveries.filter((d) => d.coop === 'D').map((d) => d.id),
       partiallyFulfilledAgreement: agreements.C,
       forkAgreement: agreements.A,

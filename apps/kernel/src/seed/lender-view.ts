@@ -49,7 +49,9 @@ const GLOSSARY: Record<string, string> = {
   conversion_mismatch:
     'the stated kilograms do not equal the raw quantity times the cited factor — the two disagree and the record kept both',
   conversion_scope_mismatch:
-    'the factor was registered for a different commodity or a different district than the record it is used in',
+    'the factor was registered for a different commodity or a different district than the record it is used in — the kilogram figure is derived from the wrong rule',
+  region_unresolvable:
+    'the factor is specific to a district and the record does not say which district it happened in; whether it applies cannot be determined either way',
   quantity_not_normalized:
     'no kilogram figure was derived; the raw count stands alone',
   occurred_after_recorded:
@@ -72,6 +74,21 @@ export async function lenderView(plan: SeedPlan, baseUrl: string): Promise<strin
   lines.push('LENDER VIEW — seed dataset');
   lines.push('='.repeat(76));
   lines.push(`as at ${new Date().toISOString().slice(0, 19).replace('T', ' ')} UTC`);
+  lines.push(`yield profile: ${plan.profile}`);
+  lines.push(
+    plan.profile === 'faostat'
+      ? '  Harvest volumes derive from FAOSTAT QCL national yields (FAO, CC BY 4.0),'
+      : '  Harvest volumes derive from invented yield figures. They are not FAO data',
+  );
+  lines.push(
+    plan.profile === 'faostat'
+      ? '  reduced by a documented smallholder haircut. Internal use only — FAO terms'
+      : '  and are not derived from FAO data. Plausible in magnitude, and nothing more.',
+  );
+  if (plan.profile === 'faostat') {
+    lines.push('  bar use in connection with promoting a commercial enterprise. Re-run with');
+    lines.push('  --profile demo before showing this to anyone outside.');
+  }
   lines.push('');
   lines.push('Read as the cooperative, not the lender. A third party is denied every');
   lines.push('record on this corpus: consent is not implemented, and the kernel says so');

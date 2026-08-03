@@ -47,6 +47,25 @@ repository's toolchain, not "exists on a website".
 - **Citation** FAO. 2025. FAOSTAT: Crops and livestock products. Accessed on
   3 August 2026. <https://www.fao.org/faostat/en/#data/QCL> Licence: CC-BY-4.0.
 
+**Where these figures may and may not be used.** CC BY 4.0 permits reuse with
+attribution, but the FAO Statistical Database Terms of Use additionally bar use
+"in connection with promoting a commercial enterprise". A lender view is a
+document put in front of a financier to show what the product can do, which is
+promoting a commercial enterprise, and attribution does not cure that — the
+restriction is on the purpose, not on the crediting.
+
+So the seed takes a `YieldProfile`:
+
+- `faostat` — the real figures. The default, for internal work, where the
+  realism is the point.
+- `demo` — `DEMO_YIELD_KG_PER_HA`, invented outright, for anything shown
+  outside. Not a rounding of the FAOSTAT numbers, because a rounding is still
+  derived from them.
+
+Both are reduced by `SMALLHOLDER_YIELD_HAIRCUT` and both are printed in the
+header of every artifact the seed produces, so a reader can always tell which
+one they are looking at. `pnpm seed -- --profile demo`.
+
 Figures used, Uganda, element `Yield`, unit kg/ha:
 
 | Item | 2022 | 2023 | 2024 |
@@ -148,6 +167,8 @@ data" cannot be said about the corpus as a whole.
 | --- | --- | --- |
 | Plot area, and area planted | `generate.ts`, `rng.normalWithin(1.2, 0.6, …)` acres | UNPS is the source and is gated |
 | Variation around the national yield | `HARVEST_YIELD_SPREAD` | FAOSTAT publishes a mean, not a distribution |
+| Smallholder reduction on the national yield | `SMALLHOLDER_YIELD_HAIRCUT` = 0.72 | A FAOSTAT national yield is total production over total area harvested, so the denominator includes commercial estates with irrigation, certified seed and mechanised handling. Every farmer here holds one to four acres. Applying the national mean to them overstates production, and every derived figure inherits it. 0.72 sits inside the range regional smallholder studies tend to report, but no single publication supports this figure, so it is an assumption and not a source |
+| The entire `demo` yield table | `DEMO_YIELD_KG_PER_HA` | Invented outright for external use, deliberately not a rounding of the FAOSTAT figures — a rounding would still be derived from them. See the profile note below |
 | Crop mix by region | one commodity per coop, in `COOPS` | No district-level source obtained |
 | Cooperative membership size | 20 farmers per coop | No source; chosen to keep the corpus legible |
 | Deliveries per farmer, and their size | `rng.int(2, 3)`, `rng.int(3, 14)` bags | No source |

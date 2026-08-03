@@ -1,10 +1,15 @@
 import { generate } from './generate.js';
+import type { YieldProfile } from './fixtures.js';
 import { lenderView } from './lender-view.js';
 import { DEFAULT_SEED } from './random.js';
 import { writePlan } from './write.js';
 
 /**
  * `pnpm seed -- --base-url http://localhost:3000 --seed 20260803`
+ *
+ * `--profile demo` for anything shown outside. See `YieldProfile`: FAOSTAT's
+ * terms bar use in connection with promoting a commercial enterprise, and a
+ * lender view is exactly that.
  *
  * The kernel must already be running with `SEED_INGEST_ENABLED=true`, which the
  * config refuses outright in production. Nothing here can reach the live
@@ -14,6 +19,7 @@ import { writePlan } from './write.js';
 interface Args {
   baseUrl: string;
   seed: number;
+  profile: YieldProfile;
   planOnly: boolean;
   viewOnly: boolean;
   quiet: boolean;
@@ -23,6 +29,10 @@ function parse(argv: string[]): Args {
   const args: Args = {
     baseUrl: process.env['SEED_BASE_URL'] ?? 'http://127.0.0.1:3000',
     seed: DEFAULT_SEED,
+    // Defaults to the real figures, because the ordinary use of this corpus
+    // is internal. Anything leaving the building is `--profile demo`, and the
+    // header on the artifact says which it was.
+    profile: (process.env['SEED_YIELD_PROFILE'] as YieldProfile | undefined) ?? 'faostat',
     planOnly: false,
     viewOnly: false,
     quiet: false,
@@ -36,6 +46,13 @@ function parse(argv: string[]): Args {
       const value = Number(argv[i + 1]);
       if (!Number.isFinite(value)) throw new Error('--seed expects a number');
       args.seed = value;
+      i += 1;
+    } else if (flag === '--profile') {
+      const value = argv[i + 1];
+      if (value !== 'faostat' && value !== 'demo') {
+        throw new Error('--profile expects faostat or demo');
+      }
+      args.profile = value;
       i += 1;
     } else if (flag === '--base-url') {
       args.baseUrl = argv[i + 1] ?? args.baseUrl;
@@ -55,7 +72,7 @@ function parse(argv: string[]): Args {
 
 async function main(): Promise<void> {
   const args = parse(process.argv.slice(2));
-  const plan = generate(args.seed);
+  const plan = generate(args.seed, args.profile);
 
   if (args.planOnly) {
     // The determinism check. Same seed in, same bytes out — pipe two runs

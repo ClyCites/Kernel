@@ -12,6 +12,7 @@ import { OperationsController } from './operations.controller.js';
 import { PartiesController } from './parties.controller.js';
 import { ProblemFilter } from './problem.filter.js';
 import { RateLimitMiddleware } from './rate-limit.middleware.js';
+import { RegistryCacheInterceptor } from './registry-cache.interceptor.js';
 import { RecordsController } from './records.controller.js';
 import { RegistryController } from './registry.controller.js';
 import { SyncController } from './sync.controller.js';
@@ -32,7 +33,10 @@ import { SyncController } from './sync.controller.js';
     SubjectAccessController,
     OperationsController,
   ],
-  providers: [{ provide: APP_FILTER, useClass: ProblemFilter }],
+  providers: [
+    { provide: APP_FILTER, useClass: ProblemFilter },
+    RegistryCacheInterceptor,
+  ],
 })
 export class ApiModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {

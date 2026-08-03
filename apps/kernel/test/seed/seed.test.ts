@@ -163,6 +163,21 @@ describe('the quality flags the corpus exists to reproduce', () => {
       [plan.markers.scopeMismatchDelivery],
     );
     assert.ok(flags.rows[0]?.quality_flags.includes('conversion_scope_mismatch'));
+    // The determinable case must not also carry the "cannot tell" flag, or
+    // the split bought nothing.
+    assert.ok(!flags.rows[0]?.quality_flags.includes('region_unresolvable'));
+  });
+
+  test('a scope that cannot be checked is not reported as a scope failure', async () => {
+    const flags = await db.owner.query<{ quality_flags: string[] }>(
+      'select quality_flags from facts.record where id = $1',
+      [plan.markers.regionUnresolvableDelivery],
+    );
+    assert.ok(flags.rows[0]?.quality_flags.includes('region_unresolvable'));
+    assert.ok(
+      !flags.rows[0]?.quality_flags.includes('conversion_scope_mismatch'),
+      'a district factor on a record with no district is unknown, not wrong',
+    );
   });
 
   test('a clock ahead of the server is flagged and kept', async () => {

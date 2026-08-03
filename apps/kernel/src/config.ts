@@ -68,6 +68,14 @@ const Env = z.object({
   REGISTRY_RATE_LIMIT: z.coerce.number().int().min(1).default(600),
   REGISTRY_RATE_WINDOW_SECONDS: z.coerce.number().int().min(1).default(60),
   /**
+   * How long a registry response stays in the in-process cache. The rows are
+   * immutable once written, so the only thing that can change an answer is a
+   * migration inserting new ones — and a migration is followed by a deploy,
+   * which empties the cache anyway. Ten minutes bounds the window in which a
+   * long-lived process could serve a list that has since grown.
+   */
+  REGISTRY_CACHE_SECONDS: z.coerce.number().int().min(0).default(600),
+  /**
    * Where the audit log is copied to, off this box. Empty means it is not.
    *
    * The database copy is the statutory record and is written synchronously.

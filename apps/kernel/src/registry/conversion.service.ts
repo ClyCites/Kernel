@@ -21,6 +21,19 @@ const RELATIVE_TOLERANCE = 1e-6;
 export const CONVERSION_UNRESOLVED = 'conversion_unresolved';
 export const CONVERSION_MISMATCH = 'conversion_mismatch';
 export const CONVERSION_SCOPE_MISMATCH = 'conversion_scope_mismatch';
+export const REGION_UNRESOLVABLE = 'region_unresolvable';
+
+/**
+ * Whether a scoped factor covers a record, or whether that cannot be worked
+ * out at all.
+ *
+ * A check that answers "fine" when it means "cannot tell" launders an
+ * unverified claim into a verified one. It is equally wrong the other way:
+ * reporting "cannot tell" as "does not apply" puts a defect on a record that
+ * may be perfectly correct, and a reader who learns a flag fires on honest
+ * records stops reading the flag.
+ */
+export type ScopeVerdict = 'covers' | 'mismatch' | 'unresolvable';
 
 /** What the record itself says the quantity is of, and where it was measured. */
 export interface ConversionScope {
@@ -63,9 +76,9 @@ export const quantitiesIn = (
  *
  * Only Plot and Facility carry an `admin_region`, and Party a `primary_region`.
  * Most records — a Delivery among them — place themselves nowhere in
- * particular, and a record that never says where it happened cannot support a
- * district-specific factor. That is treated as a mismatch rather than waved
- * through: an unverifiable claim is the thing being flagged.
+ * particular. That is not a mismatch and is no longer reported as one: a
+ * record that never says where it happened cannot be shown to fall outside a
+ * district factor any more than it can be shown to fall inside it.
  */
 export const scopeOf = (
   document: Record<string, unknown>,
@@ -123,6 +136,16 @@ export class ConversionService {
     const rows = await this.registry.conversions(ids);
     const flags = new Set<string>();
 
+    // Whether the boundary the record names is one the registry holds. A code
+    // we do not recognise is not a wrong district, it is an unreadable one.
+    const regionKnown =
+      scope.regionCode === null || scope.regionVintage === null
+        ? false
+        : await this.registry.adminRegionExists(
+            scope.regionCode,
+            scope.regionVintage,
+          );
+
     for (const quantity of quantities) {
       // `conversion_id` can only be null here when `raw_unit` is already kg:
       // the schema's own refinement rejects a normalized weight without a
@@ -135,9 +158,9 @@ export class ConversionService {
         continue;
       }
 
-      if (!this.applies(conversion, quantity.raw_unit, scope)) {
-        flags.add(CONVERSION_SCOPE_MISMATCH);
-      }
+      const verdict = this.applies(conversion, quantity.raw_unit, scope, regionKnown);
+      if (verdict === 'mismatch') flags.add(CONVERSION_SCOPE_MISMATCH);
+      if (verdict === 'unresolvable') flags.add(REGION_UNRESOLVABLE);
 
       // The point of the whole exercise: derive the number ourselves rather
       // than trusting the one we were handed.
@@ -153,39 +176,49 @@ export class ConversionService {
   }
 
   /**
-   * Whether a resolvable conversion actually covers this quantity.
+   * Whether a resolvable conversion covers this quantity, does not cover it,
+   * or cannot be compared against it at all.
    *
-   * A conversion with a null commodity or null region is general and applies
-   * anywhere. A scoped one applies only within its scope — and a record that
-   * does not say where it happened cannot claim a district factor.
+   * Unit, commodity and validity window are answerable from the record every
+   * time, so a disagreement there is a mismatch. Region is not: the factor is
+   * scoped to a district, and most record types never say which district they
+   * happened in. Those two cases used to produce the same flag, which meant
+   * `conversion_scope_mismatch` could not be read as evidence of anything.
    */
   private applies(
     conversion: UnitConversionRow,
     rawUnit: string,
     scope: ConversionScope,
-  ): boolean {
-    if (conversion.from_unit !== rawUnit) return false;
-    if (conversion.to_unit !== 'kg') return false;
+    regionKnown: boolean,
+  ): ScopeVerdict {
+    if (conversion.from_unit !== rawUnit) return 'mismatch';
+    if (conversion.to_unit !== 'kg') return 'mismatch';
 
     if (
       conversion.commodity !== null &&
       conversion.commodity !== scope.commodity
     ) {
-      return false;
-    }
-
-    if (conversion.region_code !== null) {
-      if (conversion.region_code !== scope.regionCode) return false;
-      if (conversion.region_vintage !== scope.regionVintage) return false;
+      return 'mismatch';
     }
 
     if (conversion.valid_from !== null && scope.on < conversion.valid_from) {
-      return false;
+      return 'mismatch';
     }
     if (conversion.valid_to !== null && scope.on > conversion.valid_to) {
-      return false;
+      return 'mismatch';
     }
 
-    return true;
+    // A conversion with no region is general and applies anywhere, so nothing
+    // about the record's own region can make it wrong.
+    if (conversion.region_code === null) return 'covers';
+
+    // The record places itself nowhere, or somewhere the registry cannot
+    // resolve. Either way the comparison has no answer.
+    if (scope.regionCode === null || !regionKnown) return 'unresolvable';
+
+    return conversion.region_code === scope.regionCode &&
+      conversion.region_vintage === scope.regionVintage
+      ? 'covers'
+      : 'mismatch';
   }
 }

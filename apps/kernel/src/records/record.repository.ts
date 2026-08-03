@@ -5,6 +5,7 @@ import { KERNEL_POOL } from '../storage/pool.js';
 import { containment, type SubjectTarget } from './subjects.js';
 import type { DeliveryTally } from './fulfilment.js';
 import type { DeclaredLoss, WeighedTransfer } from './mass-balance.js';
+import type { SettlementGroup } from './settlement.js';
 import type { RecordClass, StoredRecord } from './record.js';
 
 /**
@@ -374,6 +375,45 @@ export class RecordRepository {
     return new Map(
       rows.map(({ agreement, ...tally }) => [agreement, tally]),
     );
+  }
+
+  /**
+   * Settlement references against these obligations, grouped by currency and
+   * verification status.
+   *
+   * Grouped rather than totalled because the caller must not be handed one
+   * number: an asserted settlement and a provider-verified one are different
+   * evidence, and settlements in another currency are not addable at all.
+   *
+   * There is no counterpart method keyed on a party. See `settlement.ts`.
+   */
+  async settlementGroups(
+    obligationIds: readonly string[],
+  ): Promise<SettlementGroup[]> {
+    if (obligationIds.length === 0) return [];
+    const { rows } = await this.pool.query<
+      Omit<SettlementGroup, 'amount_minor'> & { amount_minor: string }
+    >(
+      `select r.body ->> 'obligation'                as obligation,
+              r.body -> 'amount' ->> 'currency'      as currency,
+              r.body ->> 'verification_status'       as verification_status,
+              count(*)::int                          as records,
+              coalesce(
+                sum((r.body -> 'amount' ->> 'amount_minor')::bigint), 0
+              )::text                                as amount_minor
+         from facts.record r
+        where r.type = 'settlement_reference'
+          and r.body ->> 'obligation' = any($1::text[])
+          and not ${SUPERSEDED}
+          and not ${RETRACTED}
+        group by 1, 2, 3`,
+      [[...new Set(obligationIds)]],
+    );
+
+    return rows.map((row) => ({
+      ...row,
+      amount_minor: Number(row.amount_minor),
+    }));
   }
 
   /**

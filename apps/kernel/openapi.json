@@ -11277,6 +11277,51 @@
           }
         }
       },
+      "SettlementSummary": {
+        "type": "object",
+        "required": [
+          "currency",
+          "amount_minor",
+          "references",
+          "referenced_minor",
+          "unreferenced_minor",
+          "currency_mismatch",
+          "disputed"
+        ],
+        "description": "What settlement records say about **one** obligation. Present on obligations only. There is deliberately no equivalent keyed on a party: totalling what someone is owed across obligations produces a balance, and ClyCites holds no funds and is not a ledger of record for money.",
+        "properties": {
+          "currency": {
+            "type": "string",
+            "description": "The obligation's currency. Only settlements in it count."
+          },
+          "amount_minor": {
+            "type": "integer"
+          },
+          "references": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "referenced_minor": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Sums by `verification_status`, kept apart and never added together. An `asserted` settlement is one side’s claim; a `provider_verified` one is evidence from the rail, and the distinction is the whole value of the repayment signal."
+          },
+          "unreferenced_minor": {
+            "type": "integer",
+            "description": "The obligation less every reference against it. Not a balance: the kernel does not know whether money moved, only whether a record exists claiming it did. Negative when over-referenced, and not clamped."
+          },
+          "currency_mismatch": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Settlements denominated in some other currency. Counted, never converted — adding across currencies would invent an exchange rate."
+          },
+          "disputed": {
+            "type": "boolean"
+          }
+        }
+      },
       "SubjectResolution": {
         "type": "object",
         "required": [
@@ -11531,6 +11576,9 @@
           },
           "subject": {
             "$ref": "#/components/schemas/SubjectResolution"
+          },
+          "settlement": {
+            "$ref": "#/components/schemas/SettlementSummary"
           }
         }
       },

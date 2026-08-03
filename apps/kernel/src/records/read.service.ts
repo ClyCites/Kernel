@@ -21,6 +21,10 @@ import {
 import { toDocument, type RecordDocument, type StoredRecord } from './record.js';
 import { RecordRepository, type DerivedRecord } from './record.repository.js';
 import {
+  summariseSettlements,
+  type SettlementSummary,
+} from './settlement.js';
+import {
   resolveSubject,
   subjectFields,
   subjectsOf,
@@ -57,6 +61,8 @@ export interface RecordView {
   fulfilment?: Fulfilment;
   /** Observations only. Whether `subject_ref` names anything, and what. */
   subject?: SubjectResolution;
+  /** Obligations only. What settlement records say about this one obligation. */
+  settlement?: SettlementSummary;
 }
 
 export interface Page {
@@ -198,7 +204,34 @@ export class ReadService {
       this.deriveLot(views),
       this.deriveFulfilment(views),
       this.deriveSubject(views),
+      this.deriveSettlement(views),
     ]);
+  }
+
+  /**
+   * What settlement records say about each obligation in the set.
+   *
+   * Scoped to one obligation at a time, on purpose. There is no path here that
+   * totals what a party is owed across obligations — that number is a balance,
+   * and the kernel is non-custodial by construction, not by policy.
+   */
+  private async deriveSettlement(views: RecordView[]): Promise<void> {
+    const obligations = views.filter(
+      (view) => view.record['type'] === 'obligation',
+    );
+    if (obligations.length === 0) return;
+
+    const groups = await this.repository.settlementGroups(
+      obligations.map((view) => view.record['id'] as string),
+    );
+
+    for (const view of obligations) {
+      const id = view.record['id'] as string;
+      view.settlement = summariseSettlements(
+        view.record['amount'] as { amount_minor: number; currency: string },
+        groups.filter((group) => group.obligation === id),
+      );
+    }
   }
 
   /**

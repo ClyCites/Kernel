@@ -3,7 +3,11 @@ import assert from 'node:assert/strict';
 import { uuidv7 } from 'uuidv7';
 
 import { startTestDatabase, type TestDatabase } from '../helpers/database.js';
-import { deliveryDocument, ingestServiceFor } from '../helpers/fixtures.js';
+import {
+  deliveryDocument,
+  ingestServiceFor,
+  subjectAccessServiceFor,
+} from '../helpers/fixtures.js';
 import { OperationsController } from '../../src/api/operations.controller.js';
 import { ObjectionRepository } from '../../src/consent/objection.repository.js';
 import { RegistryRepository } from '../../src/registry/registry.repository.js';
@@ -19,6 +23,7 @@ before(async () => {
     new RegistryRepository(db.app),
     new RecordRepository(db.app),
     new ObjectionRepository(db.app),
+    subjectAccessServiceFor(db.app),
   );
 });
 

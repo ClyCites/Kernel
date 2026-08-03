@@ -15,6 +15,10 @@ import { boundedIds, type AuditEntry } from './audit.entry.js';
  * capability: an application that can read who has been looking at whom hands
  * that answer to anyone who compromises it.
  *
+ * The single exception is `disclosure.repository.ts`, which answers s.24(1)(c)
+ * through a security-definer function scoped to one subject. It still does not
+ * select from this table.
+ *
  * Note the absence of `returning`. The id is generated here precisely because
  * the insert cannot read back what the database assigned.
  */

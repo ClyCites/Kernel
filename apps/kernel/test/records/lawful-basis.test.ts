@@ -7,6 +7,7 @@ import {
   deliveryDocument,
   entityDocument,
   ingestServiceFor,
+  subjectAccessServiceFor,
   type TestIngest,
 } from '../helpers/fixtures.js';
 import { OperationsController } from '../../src/api/operations.controller.js';
@@ -40,6 +41,7 @@ before(async () => {
     new RegistryRepository(db.app),
     repository,
     new ObjectionRepository(db.app),
+    subjectAccessServiceFor(db.app),
   );
 });
 

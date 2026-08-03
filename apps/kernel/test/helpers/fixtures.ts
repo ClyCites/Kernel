@@ -6,10 +6,12 @@ import { ConversionService } from '../../src/registry/conversion.service.js';
 import { AuditRepository } from '../../src/audit/audit.repository.js';
 import { AuditService } from '../../src/audit/audit.service.js';
 import { AuditShipper } from '../../src/audit/audit.shipper.js';
+import { DisclosureRepository } from '../../src/audit/disclosure.repository.js';
 import { ConsentGrantService } from '../../src/consent/consent-grant.service.js';
 import { ConsentRepository } from '../../src/consent/consent.repository.js';
 import { ObjectionRepository } from '../../src/consent/objection.repository.js';
 import { ObjectionService } from '../../src/consent/objection.service.js';
+import { SubjectAccessService } from '../../src/consent/subject-access.service.js';
 import { ConsentService } from '../../src/consent/consent.service.js';
 import { DelegationService } from '../../src/records/delegation.service.js';
 import { IngestService } from '../../src/records/ingest.service.js';
@@ -84,6 +86,15 @@ export const objectionServiceFor = (pool: Pool): ObjectionService =>
   new ObjectionService(
     new ObjectionRepository(pool),
     new ConsentRepository(pool),
+    auditServiceFor(pool),
+  );
+
+export const subjectAccessServiceFor = (pool: Pool): SubjectAccessService =>
+  new SubjectAccessService(
+    new RecordRepository(pool),
+    new DisclosureRepository(pool),
+    new ConsentRepository(pool),
+    new ObjectionRepository(pool),
     auditServiceFor(pool),
   );
 

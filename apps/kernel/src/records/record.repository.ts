@@ -691,6 +691,27 @@ export class RecordRepository {
   }
 
   /**
+   * Which of these party ids belong to a natural person.
+   *
+   * s.24(4) protects another *individual's* data, not a cooperative's trading
+   * identity, so a subject-access answer that redacted every counterparty
+   * would hide the buyer a farmer needs to name in a dispute.
+   */
+  async partyKinds(
+    ids: readonly string[],
+    dataset: Dataset,
+  ): Promise<Map<string, string>> {
+    if (ids.length === 0) return new Map();
+    const { rows } = await this.pool.query<{ id: string; kind: string | null }>(
+      `select id, body ->> 'kind' as kind
+         from facts.record
+        where type = 'party' and id = any($1::uuid[]) and dataset = $2`,
+      [[...new Set(ids)], dataset],
+    );
+    return new Map(rows.map((row) => [row.id, row.kind ?? 'person']));
+  }
+
+  /**
    * Live custody transfers for these lots, oldest first.
    *
    * Superseded and retracted transfers are excluded: a corrected transfer must

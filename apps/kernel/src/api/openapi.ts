@@ -912,6 +912,89 @@ export function buildOpenApiDocument(): OpenApiDocument {
     },
   };
 
+  schemas['SubjectAccessResponse'] = {
+    type: 'object',
+    required: ['subject', 'dataset', 'prepared_at', 'due_by', 'held', 'records', 'disclosures', 'consents', 'objections', 'truncated', 'notice'],
+    description:
+      'Everything held about one subject, assembled for them under s.24. Not a record read: the consent guard answers whether one party may see another’s record, and a subject asking for their own data is not that question.',
+    properties: {
+      subject: { type: 'string', format: 'uuid' },
+      dataset: { type: 'string', enum: [...DATASETS] },
+      prepared_at: { type: 'string', format: 'date-time' },
+      due_by: {
+        type: 'string',
+        format: 'date-time',
+        description:
+          's.24(9) gives thirty days. Carried here so the deadline is the subject’s to hold us to rather than ours to remember.',
+      },
+      held: {
+        type: 'boolean',
+        description: 's.24(1)(a). False is an answer, not a refusal.',
+      },
+      records: { type: 'array', items: ref('SubjectAccessRecord') },
+      disclosures: {
+        type: 'array',
+        items: ref('Disclosure'),
+        description:
+          's.24(1)(c). Third parties only: the subject’s own reads are not disclosures, and a refused request disclosed nothing.',
+      },
+      consents: { type: 'array', items: ref('ConsentGrant') },
+      objections: { type: 'array', items: ref('Objection') },
+      truncated: {
+        type: 'boolean',
+        description:
+          'True when the answer hit its cap and is incomplete. Reported rather than paginated: a response that silently stops at a page boundary is worse than a slow one.',
+      },
+      notice: { type: 'array', items: { type: 'string' } },
+    },
+  };
+
+  schemas['SubjectAccessRecord'] = {
+    type: 'object',
+    required: ['id', 'type', 'occurred_at', 'recorded_at', 'lawful_basis', 'retracted', 'superseded_by', 'document', 'redacted'],
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      type: { type: 'string' },
+      occurred_at: { type: 'string', format: 'date-time' },
+      recorded_at: { type: 'string', format: 'date-time' },
+      lawful_basis: {
+        type: 'string',
+        description:
+          'The ground it was collected on. Whether an objection can stop it turns on this.',
+      },
+      retracted: {
+        type: 'boolean',
+        description:
+          'A retracted record is still held, so it is still answered for. What a subject asks for is not what a buyer would be shown.',
+      },
+      superseded_by: { type: 'array', items: { type: 'string', format: 'uuid' } },
+      document: { type: 'object', description: 'The record, after redaction.' },
+      redacted: {
+        type: 'array',
+        items: { type: 'string' },
+        description:
+          'Fields blanked under s.24(4). Named rather than silently removed, so the subject knows what to ask about.',
+      },
+    },
+  };
+
+  schemas['Disclosure'] = {
+    type: 'object',
+    required: ['occurred_at', 'actor', 'purpose', 'access', 'record_types', 'records'],
+    properties: {
+      occurred_at: { type: 'string', format: 'date-time' },
+      actor: { type: ['string', 'null'], format: 'uuid' },
+      purpose: { type: ['string', 'null'] },
+      access: {
+        type: ['string', 'null'],
+        description:
+          'Which permission was leaned on. Whether somebody read a record on a grant the subject gave or on a membership they never agreed to is the part a subject would act on.',
+      },
+      record_types: { type: 'array', items: { type: 'string' } },
+      records: { type: 'array', items: { type: 'string', format: 'uuid' } },
+    },
+  };
+
   schemas['PartyLinkResolution'] = {
     type: 'object',
     required: ['identities', 'links', 'collapsed'],
@@ -1883,6 +1966,26 @@ export function buildOpenApiDocument(): OpenApiDocument {
             '400': problemResponse('Evidence too weak to remove a protection.'),
             '403': problemResponse('No verified subject.'),
             '404': problemResponse('No objection of yours with that id.'),
+          },
+        },
+      },
+      '/subject-access': {
+        get: {
+          tags: ['consent'],
+          operationId: 'subjectAccess',
+          summary: 'Everything held about you',
+          description:
+            'There is no subject parameter and there must not be one. The answer is assembled for the verified subject and nobody else, because a route that took an id would be a route for enumerating everyone’s records with one compromised token. Where a record involves another individual their particulars are blanked and the record is still returned — s.24(4) and s.24(7) offer redaction, and wholesale refusal is the wrong answer to the commonest shape of record held.',
+          responses: {
+            '200': {
+              description: 'The subject’s own answer under s.24.',
+              content: {
+                'application/json': {
+                  schema: ref('SubjectAccessResponse'),
+                },
+              },
+            },
+            '403': problemResponse('No verified subject.'),
           },
         },
       },

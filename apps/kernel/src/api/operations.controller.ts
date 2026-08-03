@@ -10,6 +10,7 @@ import type { Pool } from 'pg';
 
 import { KERNEL_POOL } from '../storage/pool.js';
 import { ObjectionRepository } from '../consent/objection.repository.js';
+import { SubjectAccessService } from '../consent/subject-access.service.js';
 import { RegistryRepository } from '../registry/registry.repository.js';
 import { RecordRepository } from '../records/record.repository.js';
 
@@ -23,6 +24,7 @@ export class OperationsController {
     @Inject(RegistryRepository) private readonly registry: RegistryRepository,
     @Inject(RecordRepository) private readonly records: RecordRepository,
     @Inject(ObjectionRepository) private readonly objections: ObjectionRepository,
+    @Inject(SubjectAccessService) private readonly subjectAccess: SubjectAccessService,
   ) {}
 
   @Get('health')
@@ -135,6 +137,22 @@ export class OperationsController {
     for (const row of objections) {
       lines.push(`kernel_standing_objections{scope="${row.scope}"} ${row.objections}`);
     }
+
+    // s.24(9) gives thirty days. Latency is worth watching long before it
+    // approaches that, because the request that breaches the deadline will be
+    // the first one against a subject with a large history, not the average.
+    const latency = this.subjectAccess.latency();
+    lines.push(
+      '# HELP kernel_subject_access_requests_total Subject access requests assembled under s.24.',
+      '# TYPE kernel_subject_access_requests_total counter',
+      `kernel_subject_access_requests_total ${latency.requests}`,
+      '# HELP kernel_subject_access_seconds_sum Total time spent assembling subject access responses.',
+      '# TYPE kernel_subject_access_seconds_sum counter',
+      `kernel_subject_access_seconds_sum ${(latency.totalMs / 1000).toFixed(3)}`,
+      '# HELP kernel_subject_access_seconds_max Slowest subject access response since start.',
+      '# TYPE kernel_subject_access_seconds_max gauge',
+      `kernel_subject_access_seconds_max ${(latency.slowestMs / 1000).toFixed(3)}`,
+    );
 
     return `${lines.join('\n')}\n`;
   }

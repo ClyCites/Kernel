@@ -6,16 +6,16 @@ import { startTestDatabase, type TestDatabase } from '../helpers/database.js';
 import {
   entityDocument,
   ingestServiceFor,
+  type TestIngest,
   readingAs,
   retractionDocument,
 } from '../helpers/fixtures.js';
 import { ConsentService } from '../../src/consent/consent.service.js';
 import { ReadService } from '../../src/records/read.service.js';
 import { resolveCustody } from '../../src/records/custody.js';
-import type { IngestService } from '../../src/records/ingest.service.js';
 
 let db: TestDatabase;
-let ingest: IngestService;
+let ingest: TestIngest;
 let read: ReadService;
 
 before(async () => {

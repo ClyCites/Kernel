@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { z } from 'zod';
 
 import { ConsentDenied, ConsentService } from '../consent/consent.service.js';
-import { IngestService } from '../records/ingest.service.js';
+import { IngestService, type IngestContext } from '../records/ingest.service.js';
 import { QueryRejected, RecordRejected } from '../records/errors.js';
 import { RecordRepository } from '../records/record.repository.js';
 import {
@@ -12,7 +12,6 @@ import {
   type Reader,
   type RecordView,
 } from '../records/read.service.js';
-import type { Dataset } from '../records/record.js';
 import { subjectsOf } from '../records/subjects.js';
 import { DeviceRepository, type Device } from './device.repository.js';
 
@@ -108,7 +107,10 @@ export class SyncService {
    * Replaying a batch is safe. Ingest is idempotent per id, so a device that
    * loses the response and posts again gets `replayed` rather than a conflict.
    */
-  async drain(payload: unknown, dataset: Dataset = 'live'): Promise<DrainOutcome[]> {
+  async drain(
+    payload: unknown,
+    context: IngestContext = {},
+  ): Promise<DrainOutcome[]> {
     if (!Array.isArray(payload)) {
       throw new RecordRejected(
         'malformed_record',
@@ -124,7 +126,7 @@ export class SyncService {
 
     const outcomes: DrainOutcome[] = [];
     for (const entry of payload) {
-      outcomes.push(await this.one(entry, dataset));
+      outcomes.push(await this.one(entry, context));
     }
     return outcomes;
   }
@@ -189,10 +191,13 @@ export class SyncService {
     };
   }
 
-  private async one(entry: unknown, dataset: Dataset): Promise<DrainOutcome> {
+  private async one(
+    entry: unknown,
+    context: IngestContext,
+  ): Promise<DrainOutcome> {
     const id = idOf(entry);
     try {
-      const result = await this.ingest.ingest(entry, { dataset });
+      const result = await this.ingest.ingest(entry, context);
       return {
         id: result.record.id,
         outcome: result.replayed ? 'replayed' : 'accepted',

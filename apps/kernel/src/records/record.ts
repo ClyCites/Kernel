@@ -12,6 +12,9 @@ export type Dataset = 'live' | 'seed';
 
 export const DATASETS: readonly Dataset[] = ['live', 'seed'];
 
+import type { LawfulBasis } from './lawful-basis.js';
+export type { LawfulBasis };
+
 /**
  * A record as it is held in Postgres: envelope in columns, entity body in
  * `jsonb`, kernel-derived flags alongside rather than inside.
@@ -34,6 +37,7 @@ export interface StoredRecord {
   ext: Record<string, unknown>;
   quality_flags: string[];
   dataset: Dataset;
+  lawful_basis: LawfulBasis;
 }
 
 /**

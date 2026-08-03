@@ -7,16 +7,16 @@ import { startTestDatabase, type TestDatabase } from '../helpers/database.js';
 import {
   deliveryDocument,
   ingestServiceFor,
+  type TestIngest,
   readingAs,
 } from '../helpers/fixtures.js';
 import { ConsentService } from '../../src/consent/consent.service.js';
-import { IngestService } from '../../src/records/ingest.service.js';
 import { ReadService } from '../../src/records/read.service.js';
 import { RecordRepository } from '../../src/records/record.repository.js';
 import { QueryRejected } from '../../src/records/errors.js';
 
 let db: TestDatabase;
-let ingest: IngestService;
+let ingest: TestIngest;
 let repository: RecordRepository;
 let read: ReadService;
 
@@ -302,8 +302,9 @@ describe('inference is not readable through the default path (brief §4.2)', () 
     await db.owner.query(
       `insert into inference.record (
          id, type, record_class, schema_version, occurred_at, occurred_at_precision,
-         recorded_at, asserted_by, body
-       ) values ($1, 'observation', 'inference', $2, now(), 'day', now(), $3, $4::jsonb)`,
+         recorded_at, asserted_by, body, lawful_basis
+       ) values ($1, 'observation', 'inference', $2, now(), 'day', now(), $3, $4::jsonb,
+                 'consent')`,
       [id, SCHEMA_VERSION, party, JSON.stringify({ subject_ref: party })],
     );
     return id;

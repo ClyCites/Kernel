@@ -3,6 +3,9 @@ import { z } from 'zod';
 import { CONSENT_PURPOSES } from '../consent/consent.service.js';
 import { ENTITY_SCHEMAS } from '../records/entity-registry.js';
 import { SUBJECT_HEADER } from './subject.js';
+import { DATASET_HEADER, LAWFUL_BASIS_HEADER } from './dataset.js';
+import { DATASETS } from '../records/record.js';
+import { LAWFUL_BASES } from '../records/lawful-basis.js';
 
 /**
  * OpenAPI 3.1 generated from the Zod schemas. Brief §5 phase 4: generated, not
@@ -107,6 +110,38 @@ const subjectHeader: JsonSchema = {
 
 const consentResponse: JsonSchema = problemResponse(
   'No lawful basis for this disclosure. Consent is not implemented yet, so only a subject reading their own records and the party that asserted a record are permitted.',
+);
+
+/**
+ * The DPPA ground the write is made under. Mandatory, and mandatory per record
+ * rather than per deployment, because s.7(3) resolves an objection by asking
+ * what the record was collected under — see docs/decisions/0019-lawful-basis.md.
+ */
+const lawfulBasisHeader: JsonSchema = {
+  name: LAWFUL_BASIS_HEADER,
+  in: 'header',
+  required: true,
+  description:
+    'The Data Protection and Privacy Act, 2019 ground this record is collected under. Financial records are s.9(1) special data and accept special_data_consent only.',
+  schema: { type: 'string', enum: [...LAWFUL_BASES] },
+};
+
+/**
+ * Present so that the seed generator is not a special case in the contract. It
+ * is ignored unless SEED_INGEST_ENABLED, and it can only ever select `seed`.
+ */
+const datasetHeader: JsonSchema = {
+  name: DATASET_HEADER,
+  in: 'header',
+  description:
+    'Marks a write as fabricated. Ignored unless seed ingest is enabled; anything unrecognised reads as live.',
+  schema: { type: 'string', enum: [...DATASETS] },
+};
+
+const writeHeaders: JsonSchema[] = [lawfulBasisHeader, datasetHeader];
+
+const basisResponse: JsonSchema = problemResponse(
+  'No delegation authorises this claim, or no lawful basis was stated for it. The record may be well formed; what is missing is our authority to hold it.',
 );
 
 export function buildOpenApiDocument(): OpenApiDocument {
@@ -532,6 +567,7 @@ export function buildOpenApiDocument(): OpenApiDocument {
           summary: 'Append a record',
           description:
             'Idempotent on the client-generated id: resubmitting an identical record returns 200 and writes nothing. Reusing an id for different contents is a conflict.',
+          parameters: writeHeaders,
           requestBody: {
             required: true,
             content: {
@@ -550,7 +586,7 @@ export function buildOpenApiDocument(): OpenApiDocument {
               description: 'Already in the log; nothing was written.',
               content: { 'application/json': { schema: ref('RecordView') } },
             },
-            '403': problemResponse('No delegation authorises this claim.'),
+            '403': basisResponse,
             '409': problemResponse('That id belongs to a different record.'),
             '422': problemResponse('The record is not one the schema allows.'),
           },
@@ -717,6 +753,7 @@ export function buildOpenApiDocument(): OpenApiDocument {
           summary: 'Append a batch captured offline',
           description:
             'Every record is processed independently, so one bad record does not strand the rest of a device\u2019s outbox. The response is always 200 when the batch itself was well formed; per-record outcomes are in the body. Replaying a batch is safe.',
+          parameters: writeHeaders,
           requestBody: {
             required: true,
             content: {

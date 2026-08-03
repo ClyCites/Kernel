@@ -8,17 +8,17 @@ import {
   ENTITY_BODIES,
   entityDocument,
   ingestServiceFor,
+  type TestIngest,
   readingAs,
   retractionDocument,
 } from '../helpers/fixtures.js';
 import { ConsentService } from '../../src/consent/consent.service.js';
-import { IngestService } from '../../src/records/ingest.service.js';
 import { ReadService } from '../../src/records/read.service.js';
 import { registeredTypes } from '../../src/records/entity-registry.js';
 import { SUBJECT_FIELDS, subjectFields } from '../../src/records/subjects.js';
 
 let db: TestDatabase;
-let ingest: IngestService;
+let ingest: TestIngest;
 let read: ReadService;
 
 before(async () => {

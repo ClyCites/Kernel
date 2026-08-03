@@ -15,6 +15,7 @@ import { KERNEL_CONFIG } from '../../src/config.js';
 import { DEFAULT_MASS_BALANCE_TOLERANCE } from '../../src/records/mass-balance.js';
 import { buildOpenApiDocument } from '../../src/api/openapi.js';
 import { SUBJECT_HEADER } from '../../src/api/subject.js';
+import { LAWFUL_BASIS_HEADER } from '../../src/api/dataset.js';
 import { startTestDatabase, type TestDatabase } from '../helpers/database.js';
 import { deliveryDocument } from '../helpers/fixtures.js';
 
@@ -57,9 +58,13 @@ async function call(
   method: string,
   path: string,
   body?: unknown,
-  options: { as?: string | null } = {},
+  options: { as?: string | null; basis?: string | null } = {},
 ): Promise<Json> {
   const subject = options.as === undefined ? undefined : options.as;
+  // Every write has to declare a DPPA ground — see docs/decisions/0019.
+  // Production has no default; this one keeps the tests that are not about the
+  // basis from restating it. Pass `basis: null` to exercise its absence.
+  const basis = options.basis === undefined ? 'special_data_consent' : options.basis;
   const response = await fetch(`${base}${path}`, {
     method,
     ...(body === undefined
@@ -70,6 +75,9 @@ async function call(
       ...(subject === undefined || subject === null
         ? {}
         : { [SUBJECT_HEADER]: subject }),
+      ...(body === undefined || basis === null
+        ? {}
+        : { [LAWFUL_BASIS_HEADER]: basis }),
     },
   });
   return {

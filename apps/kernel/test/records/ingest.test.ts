@@ -7,13 +7,13 @@ import {
   delegationDocument,
   deliveryDocument,
   ingestServiceFor,
+  type TestIngest,
 } from '../helpers/fixtures.js';
-import { IngestService } from '../../src/records/ingest.service.js';
 import { RecordRepository } from '../../src/records/record.repository.js';
 import { RecordRejected } from '../../src/records/errors.js';
 
 let db: TestDatabase;
-let ingest: IngestService;
+let ingest: TestIngest;
 let repository: RecordRepository;
 
 before(async () => {

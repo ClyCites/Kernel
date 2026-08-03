@@ -22,8 +22,7 @@ import {
   type Reader,
 } from '../records/read.service.js';
 import { verifiedSubject } from './subject.js';
-import { requestedDataset } from './dataset.js';
-import { KERNEL_CONFIG, type KernelConfig } from '../config.js';
+import { requestedDataset, declaredLawfulBasis } from './dataset.js';import { KERNEL_CONFIG, type KernelConfig } from '../config.js';
 
 /**
  * Query parameters are the kernel's own surface, not record contents, so they
@@ -60,6 +59,7 @@ export class RecordsController {
   ): Promise<unknown> {
     const result = await this.ingest.ingest(body, {
       dataset: requestedDataset(request, this.config.SEED_INGEST_ENABLED),
+      lawfulBasis: declaredLawfulBasis(request),
     });
 
     response.status(result.replayed ? 200 : 201);

@@ -25,8 +25,9 @@ const INSERT = `
   insert into facts.record (
     id, type, record_class, schema_version,
     occurred_at, occurred_at_precision, recorded_at,
-    asserted_by, on_behalf_of, delegation, supersedes, body
-  ) values ($1, $2, $3, '0.2.0', now(), 'day', now(), $4, $5, $6, $7, $8)
+    asserted_by, on_behalf_of, delegation, supersedes, body, lawful_basis
+  ) values ($1, $2, $3, '0.2.0', now(), 'day', now(), $4, $5, $6, $7, $8,
+            'special_data_consent')
 `;
 
 async function insertFact(
@@ -160,8 +161,10 @@ describe('invariant 2 — separate namespaces (brief §4.2)', () => {
       .query(
         `insert into inference.record (
            id, type, record_class, schema_version,
-           occurred_at, occurred_at_precision, recorded_at, asserted_by, body
-         ) values ($1, 'harvest', 'observation', '0.2.0', now(), 'day', now(), $2, '{}')`,
+           occurred_at, occurred_at_precision, recorded_at, asserted_by, body,
+           lawful_basis
+         ) values ($1, 'harvest', 'observation', '0.2.0', now(), 'day', now(), $2, '{}',
+                   'special_data_consent')`,
         [uuidv7(), uuidv7()],
       )
       .then(
@@ -170,6 +173,11 @@ describe('invariant 2 — separate namespaces (brief §4.2)', () => {
       );
 
     assert.equal(sqlState(error), CHECK_VIOLATION);
+    assert.match(
+      String((error as { constraint?: string }).constraint),
+      /record_class/,
+      'the namespace check has to be what refused it',
+    );
   });
 
   test('they are different tables in different schemas, not a column', async () => {

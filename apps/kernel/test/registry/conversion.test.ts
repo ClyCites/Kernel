@@ -3,13 +3,16 @@ import assert from 'node:assert/strict';
 import { uuidv7 } from 'uuidv7';
 
 import { startTestDatabase, type TestDatabase } from '../helpers/database.js';
-import { deliveryDocument, ingestServiceFor } from '../helpers/fixtures.js';
+import {
+  deliveryDocument,
+  ingestServiceFor,
+  type TestIngest,
+} from '../helpers/fixtures.js';
 import { ConversionService } from '../../src/registry/conversion.service.js';
 import { RegistryRepository } from '../../src/registry/registry.repository.js';
-import type { IngestService } from '../../src/records/ingest.service.js';
 
 let db: TestDatabase;
-let ingest: IngestService;
+let ingest: TestIngest;
 
 before(async () => {
   db = await startTestDatabase();

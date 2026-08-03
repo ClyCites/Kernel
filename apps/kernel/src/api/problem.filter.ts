@@ -28,6 +28,10 @@ const STATUS_BY_CODE: Record<string, number> = {
   unknown_record_type: 422,
   supersession_invalid: 422,
   delegation_not_authorised: 403,
+  // Not 422. The record is well formed; what is missing or wrong is our
+  // authority to hold it, which is the caller's standing, not the payload's.
+  lawful_basis_required: 403,
+  lawful_basis_insufficient: 403,
   id_conflict: 409,
   invalid_cursor: 400,
 };

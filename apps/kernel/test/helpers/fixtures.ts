@@ -5,6 +5,10 @@ import type { Pool } from 'pg';
 import { ConversionService } from '../../src/registry/conversion.service.js';
 import { DelegationService } from '../../src/records/delegation.service.js';
 import { IngestService } from '../../src/records/ingest.service.js';
+import type {
+  IngestContext,
+  IngestResult,
+} from '../../src/records/ingest.service.js';
 import { RecordRepository } from '../../src/records/record.repository.js';
 import { RegistryRepository } from '../../src/registry/registry.repository.js';
 import type { Reader } from '../../src/records/read.service.js';
@@ -19,18 +23,35 @@ import type { Dataset } from '../../src/records/record.js';
  * The write path, assembled by hand. Tests construct services directly rather
  * than through the Nest container because `tsx` does not emit decorator
  * metadata — see docs/decisions/0003-toolchain.md.
+ *
+ * The returned `ingest` supplies a default `IngestContext`. Production has no
+ * such default and must not — see docs/decisions/0019-lawful-basis.md — but a
+ * hundred tests restating the same lawful basis would obscure the handful that
+ * are actually about it. Those pass one explicitly.
+ *
+ * `special_data_consent` is the default because `deliveryDocument` carries an
+ * `agreed_price`, which makes it s.9(1) special data.
  */
 export const ingestServiceFor = (
   pool: Pool,
-): { ingest: IngestService; repository: RecordRepository } => {
+  defaults: IngestContext = { lawfulBasis: 'special_data_consent' },
+): { ingest: TestIngest; service: IngestService; repository: RecordRepository } => {
   const repository = new RecordRepository(pool);
-  const ingest = new IngestService(
+  const service = new IngestService(
     repository,
     new DelegationService(repository),
     new ConversionService(new RegistryRepository(pool)),
   );
-  return { ingest, repository };
+  const ingest: TestIngest = {
+    ingest: (payload, context = {}) =>
+      service.ingest(payload, { ...defaults, ...context }),
+  };
+  return { ingest, service, repository };
 };
+
+export interface TestIngest {
+  ingest(payload: unknown, context?: IngestContext): Promise<IngestResult>;
+}
 
 /**
  * Reads as a given party. Consent denies everything else, so a test that reads

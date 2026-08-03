@@ -6,13 +6,18 @@ import { startTestDatabase, type TestDatabase } from '../helpers/database.js';
 import { deliveryDocument, ingestServiceFor } from '../helpers/fixtures.js';
 import { OperationsController } from '../../src/api/operations.controller.js';
 import { RegistryRepository } from '../../src/registry/registry.repository.js';
+import { RecordRepository } from '../../src/records/record.repository.js';
 
 let db: TestDatabase;
 let operations: OperationsController;
 
 before(async () => {
   db = await startTestDatabase();
-  operations = new OperationsController(db.app, new RegistryRepository(db.app));
+  operations = new OperationsController(
+    db.app,
+    new RegistryRepository(db.app),
+    new RecordRepository(db.app),
+  );
 });
 
 after(async () => {
@@ -97,3 +102,70 @@ describe('the assumed-conversion share is reported', () => {
     assert.ok(body.endsWith('\n'));
   });
 });
+
+describe('a measured factor has to show its sample', () => {
+  const THIN = '019fc600-0000-7000-8000-000000000040';
+  const THICK = '019fc600-0000-7000-8000-000000000041';
+
+  const factor = async (id: string, sample: number) => {
+    await db.owner.query(
+      `insert into registry.unit_conversion
+         (id, from_unit, to_unit, factor, commodity, basis, source,
+          sample_size, sample_min, sample_max, sample_stddev,
+          condition, local_label)
+       values ($1, 'bag', 'kg', 100, 'crop.maize.grain', 'measured',
+               'field exercise', $2, 94, 106, 3.1, 'dried,tight', 'kaveera')`,
+      [id, sample],
+    );
+  };
+
+  test('a new measured factor without a sample size is refused', async () => {
+    await assert.rejects(
+      db.owner.query(
+        `insert into registry.unit_conversion
+           (id, from_unit, to_unit, factor, basis, source)
+         values ($1, 'debe', 'kg', 18, 'measured', 'no sample stated')`,
+        [uuidv7()],
+      ),
+      /unit_conversion_measured_shows_sample/,
+    );
+  });
+
+  test('the SI definitions stay exempt', async () => {
+    const { rows } = await db.app.query<{ n: string }>(
+      `select count(*) as n from registry.unit_conversion
+        where basis = 'measured' and sample_size is null`,
+    );
+
+    // kg, tonne, gram. They measured nothing and cannot honestly claim a sample.
+    assert.equal(rows[0]?.n, '3');
+  });
+
+  test('tonnage on a thin sample is separated from tonnage on a real one', async () => {
+    const { ingest } = ingestServiceFor(db.app);
+    await factor(THIN, 4);
+    await factor(THICK, 240);
+
+    await ingest.ingest(
+      deliveryDocument({
+        id: uuidv7(),
+        commodity: 'crop.maize.grain',
+        quantity: bags(THIN, 700, 7),
+      }),
+    );
+    await ingest.ingest(
+      deliveryDocument({
+        id: uuidv7(),
+        commodity: 'crop.maize.grain',
+        quantity: bags(THICK, 900, 9),
+      }),
+    );
+
+    const body = await operations.metrics();
+
+    // Both are `measured`, so the basis gauge alone would call them equal.
+    assert.match(body, /kernel_normalized_kg_total\{basis="measured"\} 1600/);
+    assert.match(body, /kernel_thin_sample_kg_total 700\n/);
+  });
+});
+

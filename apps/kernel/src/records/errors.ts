@@ -16,7 +16,13 @@ export type RejectionCode =
   /** The id is already in use by a record with different contents. */
   | 'id_conflict'
   /** `supersedes` points at a record that is not there, or would form a cycle. */
-  | 'supersession_invalid';
+  | 'supersession_invalid'
+  /** No DPPA s.7 or s.9 ground was stated. Not a defect in the claim — a
+   * defect in our authority to hold it, which flagging cannot cure. */
+  | 'lawful_basis_required'
+  /** The stated ground does not reach this record type. s.9(1) special data
+   * needs s.9(3)(b) consent, and nothing else will do. */
+  | 'lawful_basis_insufficient';
 
 export interface RejectionIssue {
   path: string;

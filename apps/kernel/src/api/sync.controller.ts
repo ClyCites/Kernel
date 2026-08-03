@@ -15,7 +15,7 @@ import { z } from 'zod';
 
 import { MAX_CHANGES, SyncService } from '../sync/sync.service.js';
 import { verifiedSubject } from './subject.js';
-import { requestedDataset } from './dataset.js';
+import { requestedDataset, declaredLawfulBasis } from './dataset.js';
 import { KERNEL_CONFIG, type KernelConfig } from '../config.js';
 
 const ChangesQuery = z.object({
@@ -57,7 +57,10 @@ export class SyncController {
   async drain(@Body() body: unknown, @Req() request: Request): Promise<unknown> {
     const outcomes = await this.sync.drain(
       Array.isArray(body) ? body : (body as { records?: unknown })?.records,
-      requestedDataset(request, this.config.SEED_INGEST_ENABLED),
+      {
+        dataset: requestedDataset(request, this.config.SEED_INGEST_ENABLED),
+        lawfulBasis: declaredLawfulBasis(request),
+      },
     );
     return { results: outcomes };
   }

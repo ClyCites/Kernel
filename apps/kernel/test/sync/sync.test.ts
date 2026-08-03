@@ -7,11 +7,11 @@ import {
   deliveryDocument,
   entityDocument,
   ingestServiceFor,
+  type TestIngest,
   readingAs,
   retractionDocument,
 } from '../helpers/fixtures.js';
 import { ConsentDenied, ConsentService } from '../../src/consent/consent.service.js';
-import { IngestService } from '../../src/records/ingest.service.js';
 import { RecordRepository } from '../../src/records/record.repository.js';
 import { RecordRejected } from '../../src/records/errors.js';
 import { DeviceRepository } from '../../src/sync/device.repository.js';
@@ -19,14 +19,18 @@ import { MAX_BATCH, SyncService } from '../../src/sync/sync.service.js';
 
 let db: TestDatabase;
 let sync: SyncService;
-let ingest: IngestService;
+let ingest: TestIngest;
+
+/** Every device write states a ground; deliveries carry a price, so s.9(3)(b). */
+const BASIS = { lawfulBasis: 'special_data_consent' } as const;
 
 before(async () => {
   db = await startTestDatabase();
   const repository = new RecordRepository(db.app);
-  ({ ingest } = ingestServiceFor(db.app));
+  const assembled = ingestServiceFor(db.app);
+  ingest = assembled.ingest;
   sync = new SyncService(
-    ingest,
+    assembled.service,
     repository,
     new DeviceRepository(db.app),
     new ConsentService(),
@@ -89,7 +93,7 @@ describe('draining an outbox', () => {
       quantity: { raw_value: 'twelve' },
     });
 
-    const results = await sync.drain([good, bad, alsoGood]);
+    const results = await sync.drain([good, bad, alsoGood], BASIS);
 
     assert.deepEqual(
       results.map((result) => result.outcome),
@@ -112,13 +116,13 @@ describe('draining an outbox', () => {
   test('replaying a batch writes nothing twice', async () => {
     const batch = [deliveryDocument(), entityDocument('plot')];
 
-    const first = await sync.drain(batch);
+    const first = await sync.drain(batch, BASIS);
     assert.deepEqual(
       first.map((result) => result.outcome),
       ['accepted', 'accepted'],
     );
 
-    const second = await sync.drain(batch);
+    const second = await sync.drain(batch, BASIS);
     assert.deepEqual(
       second.map((result) => result.outcome),
       ['replayed', 'replayed'],
@@ -131,7 +135,7 @@ describe('draining an outbox', () => {
 
   test('a batch that is not an array is refused whole', async () => {
     await assert.rejects(
-      sync.drain({ records: [] }),
+      sync.drain({ records: [] }, BASIS),
       (error: unknown) =>
         error instanceof RecordRejected && error.code === 'malformed_record',
     );
@@ -143,7 +147,7 @@ describe('draining an outbox', () => {
     );
 
     await assert.rejects(
-      sync.drain(batch),
+      sync.drain(batch, BASIS),
       (error: unknown) =>
         error instanceof RecordRejected && error.code === 'malformed_record',
     );

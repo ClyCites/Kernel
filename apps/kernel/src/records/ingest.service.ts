@@ -13,6 +13,12 @@ import {
   type RecordDocument,
   type StoredRecord,
 } from './record.js';
+import {
+  checkBasis,
+  isLawfulBasis,
+  LAWFUL_BASES,
+  type LawfulBasis,
+} from './lawful-basis.js';
 
 /**
  * What the kernel knows about a write that the payload does not say.
@@ -21,9 +27,16 @@ import {
  * describes what a record asserts about the world; which corpus a row belongs
  * to is not a claim anybody is making, and a client that could assert it could
  * mark its own records `seed` to slip past anchoring.
+ *
+ * `lawfulBasis` has no default. DPPA s.7(3) decides whether a farmer can stop
+ * us processing a record by looking at the ground relied on when it was
+ * collected, and this log is append-only, so a record that arrives without one
+ * can never acquire one. A caller that cannot state a basis has not established
+ * that it may hold the data at all.
  */
 export interface IngestContext {
   dataset?: Dataset | undefined;
+  lawfulBasis?: LawfulBasis | undefined;
 }
 
 export interface IngestResult {
@@ -92,6 +105,8 @@ export class IngestService {
     const document = parsed.data as RecordDocument;
     const { envelope, body } = splitEnvelope(document);
 
+    const lawfulBasis = this.statedBasis(context, type, body);
+
     const grant =
       envelope['on_behalf_of'] == null
         ? null
@@ -141,6 +156,7 @@ export class IngestService {
         precomputed: derived,
       }),
       dataset,
+      lawful_basis: lawfulBasis,
     };
 
     const result = await this.repository.appendIfAbsent(record);
@@ -210,6 +226,40 @@ export class IngestService {
         ],
       );
     }
+  }
+
+  /**
+   * The DPPA ground this record is collected under, from the calling
+   * application's declared purpose.
+   *
+   * Rejecting is correct here, unlike almost everywhere else in this service.
+   * P6 says flag rather than reject because a malformed claim is still someone's
+   * account of what happened — but an unstated basis is not a defect in the
+   * farmer's account, it is a defect in our authority to hold it, and storing it
+   * flagged would be doing the unlawful thing with a note attached.
+   */
+  private statedBasis(
+    context: IngestContext,
+    type: string,
+    body: RecordDocument,
+  ): LawfulBasis {
+    const stated = context.lawfulBasis;
+    if (stated === undefined || !isLawfulBasis(stated)) {
+      throw new RecordRejected(
+        'lawful_basis_required',
+        `a record must state the DPPA s.7 or s.9 ground it is collected under — one of ${LAWFUL_BASES.join(', ')}`,
+        [{ path: 'lawful_basis', message: 'required' }],
+      );
+    }
+
+    const rejection = checkBasis(stated, type, body);
+    if (rejection !== null) {
+      throw new RecordRejected('lawful_basis_insufficient', rejection.message, [
+        { path: 'lawful_basis', message: rejection.detail },
+      ]);
+    }
+
+    return stated;
   }
 
   /**

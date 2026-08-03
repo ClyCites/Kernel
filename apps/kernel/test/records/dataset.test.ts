@@ -7,6 +7,7 @@ import {
   deliveryDocument,
   entityDocument,
   ingestServiceFor,
+  type TestIngest,
   readingAs,
 } from '../helpers/fixtures.js';
 import { ConsentService } from '../../src/consent/consent.service.js';
@@ -15,11 +16,10 @@ import { RegistryRepository } from '../../src/registry/registry.repository.js';
 import { loadConfig } from '../../src/config.js';
 import { requestedDataset } from '../../src/api/dataset.js';
 import type { Request } from 'express';
-import type { IngestService } from '../../src/records/ingest.service.js';
 import type { RecordRepository } from '../../src/records/record.repository.js';
 
 let db: TestDatabase;
-let ingest: IngestService;
+let ingest: TestIngest;
 let repository: RecordRepository;
 let read: ReadService;
 let registry: RegistryRepository;
@@ -87,10 +87,10 @@ describe('the dataset discriminator', () => {
       `insert into facts.record (
          id, type, record_class, schema_version, occurred_at,
          occurred_at_precision, recorded_at, asserted_by, body, ext,
-         quality_flags, dataset
+         quality_flags, dataset, lawful_basis
        ) values (
          $1, 'retraction', 'observation', $2, now(), 'instant', now(), $3,
-         $4::jsonb, '{}'::jsonb, '{}', 'seed'
+         $4::jsonb, '{}'::jsonb, '{}', 'seed', 'special_data_consent'
        )`,
       [
         uuidv7(),

@@ -1,6 +1,7 @@
 import type { Request } from 'express';
 
 import { DATASETS, type Dataset } from '../records/record.js';
+import { isLawfulBasis, type LawfulBasis } from '../records/lawful-basis.js';
 
 /**
  * Which corpus a request means. Brief §D0.
@@ -29,4 +30,18 @@ export function requestedDataset(
   if (!seedIngestEnabled) return 'live';
   const claim = request.header(DATASET_HEADER);
   return DATASETS.includes(claim as Dataset) ? (claim as Dataset) : 'live';
+}
+
+/**
+ * The DPPA ground the calling application declares it is collecting under.
+ *
+ * Unlike the dataset header there is no fallback. An absent or unrecognised
+ * value yields `undefined` and ingest rejects the write, because guessing a
+ * basis would write an unfounded compliance claim into an append-only log.
+ */
+export const LAWFUL_BASIS_HEADER = 'x-clycites-lawful-basis';
+
+export function declaredLawfulBasis(request: Request): LawfulBasis | undefined {
+  const claim = request.header(LAWFUL_BASIS_HEADER);
+  return isLawfulBasis(claim) ? claim : undefined;
 }

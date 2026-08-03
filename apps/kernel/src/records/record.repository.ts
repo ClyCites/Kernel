@@ -29,6 +29,7 @@ const PLAIN_COLUMNS = [
   'ext',
   'quality_flags',
   'dataset',
+  'lawful_basis',
 ];
 
 const TIMESTAMP_COLUMNS = ['occurred_at', 'recorded_at'];
@@ -155,12 +156,13 @@ export class RecordRepository {
            id, type, record_class, schema_version,
            occurred_at, occurred_at_precision, recorded_at,
            asserted_by, authenticated_as, on_behalf_of, delegation,
-           device_id, supersedes, body, ext, quality_flags, dataset
+           device_id, supersedes, body, ext, quality_flags, dataset,
+           lawful_basis
          ) values (
            $1, $2, $3, $4,
            $5, $6, $7,
            $8, $9, $10, $11,
-           $12, $13, $14, $15, $16, $17
+           $12, $13, $14, $15, $16, $17, $18
          )`,
         [
           record.id,
@@ -180,6 +182,7 @@ export class RecordRepository {
           JSON.stringify(record.ext),
           record.quality_flags,
           record.dataset,
+          record.lawful_basis,
         ],
       );
 
@@ -191,6 +194,40 @@ export class RecordRepository {
     } finally {
       client.release();
     }
+  }
+
+  /**
+   * How many live records rest on each DPPA ground, and how many of those are
+   * financial records — s.9(1) special data — resting on something other than
+   * the s.9(3)(b) consent that alone permits them.
+   *
+   * The second number should be zero for anything written after 0013, because
+   * ingest refuses it. It is reported anyway: a non-zero value means either a
+   * pre-0013 record or a hole in the check, and both are worth seeing without
+   * having to go and look.
+   */
+  async lawfulBasisCensus(): Promise<
+    Array<{ basis: string; financial: boolean; records: number }>
+  > {
+    const { rows } = await this.pool.query<{
+      basis: string;
+      financial: boolean;
+      records: string;
+    }>(
+      `select coalesce(r.lawful_basis, 'unstated') as basis,
+              (r.type in ('obligation', 'settlement_reference')
+                 or (r.type = 'delivery'
+                     and r.body -> 'agreed_price' is not null)) as financial,
+              count(*) as records
+         from facts.record r
+        where r.dataset = 'live'
+        group by 1, 2`,
+    );
+    return rows.map((row) => ({
+      basis: row.basis,
+      financial: row.financial,
+      records: Number(row.records),
+    }));
   }
 
   /** Fetch by id from the fact log. Inferences are not reachable from here. */

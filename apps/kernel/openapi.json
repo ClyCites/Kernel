@@ -38,6 +38,40 @@
         "operationId": "submitRecord",
         "summary": "Append a record",
         "description": "Idempotent on the client-generated id: resubmitting an identical record returns 200 and writes nothing. Reusing an id for different contents is a conflict.",
+        "parameters": [
+          {
+            "name": "x-clycites-lawful-basis",
+            "in": "header",
+            "required": true,
+            "description": "The Data Protection and Privacy Act, 2019 ground this record is collected under. Financial records are s.9(1) special data and accept special_data_consent only.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "consent",
+                "legal_authorisation",
+                "public_duty",
+                "national_security",
+                "law_enforcement",
+                "contract_performance",
+                "medical",
+                "legal_obligation",
+                "special_data_consent"
+              ]
+            }
+          },
+          {
+            "name": "x-clycites-dataset",
+            "in": "header",
+            "description": "Marks a write as fabricated. Ignored unless seed ingest is enabled; anything unrecognised reads as live.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "live",
+                "seed"
+              ]
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -78,7 +112,7 @@
             }
           },
           "403": {
-            "description": "No delegation authorises this claim.",
+            "description": "No delegation authorises this claim, or no lawful basis was stated for it. The record may be well formed; what is missing is our authority to hold it.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -504,6 +538,40 @@
         "operationId": "drainOutbox",
         "summary": "Append a batch captured offline",
         "description": "Every record is processed independently, so one bad record does not strand the rest of a device’s outbox. The response is always 200 when the batch itself was well formed; per-record outcomes are in the body. Replaying a batch is safe.",
+        "parameters": [
+          {
+            "name": "x-clycites-lawful-basis",
+            "in": "header",
+            "required": true,
+            "description": "The Data Protection and Privacy Act, 2019 ground this record is collected under. Financial records are s.9(1) special data and accept special_data_consent only.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "consent",
+                "legal_authorisation",
+                "public_duty",
+                "national_security",
+                "law_enforcement",
+                "contract_performance",
+                "medical",
+                "legal_obligation",
+                "special_data_consent"
+              ]
+            }
+          },
+          {
+            "name": "x-clycites-dataset",
+            "in": "header",
+            "description": "Marks a write as fabricated. Ignored unless seed ingest is enabled; anything unrecognised reads as live.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "live",
+                "seed"
+              ]
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {

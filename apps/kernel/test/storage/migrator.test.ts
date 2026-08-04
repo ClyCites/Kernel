@@ -30,6 +30,7 @@ describe('migration runner', () => {
     const result = await migrate({
       connectionString: db.ownerUrl,
       appPassword: db.appPassword,
+      trainingPassword: db.appPassword,
     });
 
     assert.deepEqual(result.applied, []);
@@ -48,6 +49,7 @@ describe('migration runner', () => {
     const error = await migrate({
       connectionString: db.ownerUrl,
       appPassword: db.appPassword,
+      trainingPassword: db.appPassword,
       directory,
     }).then(
       () => null,
@@ -72,6 +74,7 @@ describe('migration runner', () => {
     const error = await migrate({
       connectionString: db.ownerUrl,
       appPassword: db.appPassword,
+      trainingPassword: db.appPassword,
       directory,
     }).then(
       () => null,

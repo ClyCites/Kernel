@@ -94,6 +94,15 @@ export interface SeedGrant {
   note: string;
 }
 
+/** What a later observation said about a prediction. Spec §6.3. */
+export interface SeedValidation {
+  inference: string;
+  observation: string;
+  verdict: 'confirmed' | 'contradicted' | 'inconclusive';
+  linkedBy: string;
+  note: string;
+}
+
 export interface SeedPlan {
   seed: number;
   /** Which yield table the harvests came from. Printed on every artifact. */
@@ -108,6 +117,12 @@ export interface SeedPlan {
    * grantee and neither exists until their party record does.
    */
   grants: SeedGrant[];
+  /**
+   * Linkages from a prediction to the observation that later settled it.
+   * Posted last, because both records must exist and the whole point is that
+   * the second one arrives months after the first.
+   */
+  validations: SeedValidation[];
   /** Ids the assertions need to find again. */
   markers: {
     supersededDelivery: string;
@@ -994,6 +1009,7 @@ export function generate(
     coopParties,
     lender,
     grants: lenderGrants(lender, lenderFarmerA, lenderFarmerC, coopParties),
+    validations: [],
     markers: {
       supersededDelivery: '',
       supersedingDelivery: '',

@@ -10,6 +10,8 @@ import { AuditModule } from './audit/audit.module.js';
 import { ConsentModule } from './consent/consent.module.js';
 import { IdentityModule } from './identity/identity.module.js';
 import { RecordsModule } from './records/records.module.js';
+import { InferenceModule } from './inference/inference.module.js';
+import { TrainingModule } from './training/training.module.js';
 import { RegistryModule } from './registry/registry.module.js';
 import { StorageModule } from './storage/storage.module.js';
 
@@ -27,6 +29,8 @@ const COMPRESSION_THRESHOLD_BYTES = 256;
     ConsentModule,
     RegistryModule,
     RecordsModule,
+    InferenceModule,
+    TrainingModule,
     IdentityModule,
     ApiModule,
   ],

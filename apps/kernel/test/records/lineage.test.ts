@@ -1,3 +1,4 @@
+import { InferenceRepository } from '../../src/inference/inference.repository.js';
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SCHEMA_VERSION } from '@clycites/schema';
@@ -31,7 +32,7 @@ let read: ReadService;
 before(async () => {
   db = await startTestDatabase();
   ({ ingest, repository } = ingestServiceFor(db.app));
-  read = new ReadService(repository, consentServiceFor(db.app), objectionServiceFor(db.app), auditServiceFor(db.app));
+  read = new ReadService(repository, consentServiceFor(db.app), objectionServiceFor(db.app), auditServiceFor(db.app), new InferenceRepository(db.app));
 });
 
 after(async () => {
@@ -84,6 +85,15 @@ async function inferenceOn(
   body: Record<string, unknown>,
 ): Promise<string> {
   const id = uuidv7();
+  // The key row as well as the record. The write path always claims the id
+  // there first, and since P4 the validation trigger reads it to check that an
+  // inference is an inference — a fixture that skipped it was writing a record
+  // the rest of the kernel could not classify.
+  await db.owner.query(
+    `insert into kernel.record_key (id, record_class, type, recorded_at, dataset)
+     values ($1, 'inference', 'inference', now(), 'live')`,
+    [id],
+  );
   await db.owner.query(
     `insert into inference.record (
        id, type, record_class, schema_version, occurred_at, occurred_at_precision,
@@ -193,7 +203,8 @@ describe('an inference is stale when its inputs move (spec §8 rule 5)', () => {
   });
 
   test('the lookup covers every field naming a record, not just inputs', () => {
-    // Work order G populates `validated_by`. It must need no change here.
+    // P4 populates `validated_by` from `inference.validation`. It needed no
+    // change here, which was the point of writing this generically in L.
     assert.ok(DEPENDENCY_FIELDS.includes('validated_by'));
 
     const a = uuidv7();
@@ -210,10 +221,20 @@ describe('an inference is stale when its inputs move (spec §8 rule 5)', () => {
     const [input] = await chainOf(0, party);
     const [validator] = await chainOf(1, party);
 
-    const id = await inferenceOn(party, {
-      inputs: [input],
-      validated_by: [validator],
+    const id = await inferenceOn(party, { inputs: [input] });
+    // Linked the way the API links it, because since P4 a `validated_by` in
+    // the body is discarded — the array is derived from this table on read.
+    await new InferenceRepository(db.app).link({
+      id: uuidv7(),
+      inferenceId: id,
+      observation: validator!,
+      verdict: 'confirmed',
+      note: null,
+      linkedAt: new Date().toISOString(),
+      linkedBy: party,
+      dataset: 'live',
     });
+
     const view = await read.getInference(id, readingAs(party));
 
     assert.equal(view?.staleness?.stale, true);
@@ -236,7 +257,7 @@ describe('an inference is stale when its inputs move (spec §8 rule 5)', () => {
         return (value as (...a: unknown[]) => unknown).bind(target);
       },
     });
-    const counted = new ReadService(counting, consentServiceFor(db.app), objectionServiceFor(db.app), auditServiceFor(db.app));
+    const counted = new ReadService(counting, consentServiceFor(db.app), objectionServiceFor(db.app), auditServiceFor(db.app), new InferenceRepository(db.app));
 
     // getInference reads one at a time, so drive the derivation the way a page
     // would: the method takes the whole set and must not fan out per record.

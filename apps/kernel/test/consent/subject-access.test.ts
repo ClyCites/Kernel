@@ -1,3 +1,4 @@
+import { InferenceRepository } from '../../src/inference/inference.repository.js';
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SCHEMA_VERSION } from '@clycites/schema';
@@ -43,6 +44,7 @@ before(async () => {
     consentServiceFor(db.app),
     objectionServiceFor(db.app),
     auditServiceFor(db.app),
+    new InferenceRepository(db.app),
   );
 
   // Who is a person and who is not. s.24(4) turns on it, so it cannot be

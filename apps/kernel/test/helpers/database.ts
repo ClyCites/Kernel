@@ -10,6 +10,7 @@ import { migrate } from '../../src/storage/migrator.js';
 export const POSTGIS_IMAGE = 'imresamu/postgis:16-3.5';
 
 const APP_PASSWORD = 'kernel_app_test';
+const TRAINING_PASSWORD = 'kernel_training_test';
 
 export interface TestDatabase {
   /** Connected as the schema owner. Can do anything. Used only for setup. */
@@ -20,6 +21,12 @@ export interface TestDatabase {
    * kernel can and cannot do must go through this pool.
    */
   app: Pool;
+  /**
+   * Connected as `kernel_training` — SELECT on facts.record and nothing else.
+   * Every assertion that the training path cannot reach a prediction must go
+   * through this pool, because the guard is a grant rather than a filter.
+   */
+  training: Pool;
   ownerUrl: string;
   appPassword: string;
   /**
@@ -43,22 +50,31 @@ export async function startTestDatabase(): Promise<TestDatabase> {
   const port = container.getMappedPort(5432);
   const ownerUrl = container.getConnectionUri();
 
-  await migrate({ connectionString: ownerUrl, appPassword: APP_PASSWORD });
+  await migrate({
+    connectionString: ownerUrl,
+    appPassword: APP_PASSWORD,
+    trainingPassword: TRAINING_PASSWORD,
+  });
 
   const owner = new Pool({ connectionString: ownerUrl });
   const app = new Pool({
     connectionString: `postgres://kernel_app:${APP_PASSWORD}@${host}:${port}/clycites`,
   });
+  const training = new Pool({
+    connectionString: `postgres://kernel_training:${TRAINING_PASSWORD}@${host}:${port}/clycites`,
+  });
 
   return {
     owner,
     app,
+    training,
     ownerUrl,
     appPassword: APP_PASSWORD,
     container,
     stop: async () => {
       // A Nest app under test ends the pool through its shutdown hook first.
       await app.end().catch(() => {});
+      await training.end().catch(() => {});
       await owner.end().catch(() => {});
       await container.stop();
     },

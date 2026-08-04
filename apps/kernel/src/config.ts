@@ -12,6 +12,22 @@ const Env = z.object({
   DATABASE_URL: z.string().min(1),
   MIGRATOR_DATABASE_URL: z.string().min(1),
   KERNEL_APP_PASSWORD: z.string().min(1),
+  /**
+   * The read-only role the training path connects as (migration 0028). It has
+   * no privileges on the inference schema, which is what makes "training never
+   * sees a prediction" a database fact rather than a filter someone remembers.
+   *
+   * Optional here and required by the migrator, which is where it is actually
+   * used. An instance that only serves requests never provisions the role and
+   * has no business holding the credential.
+   */
+  KERNEL_TRAINING_PASSWORD: z.string().min(1).optional(),
+  /**
+   * Connection string for that role. Absent in deployments that do not run a
+   * training path, in which case the training queries are simply unavailable —
+   * which is the safe direction to fail in.
+   */
+  TRAINING_DATABASE_URL: z.string().min(1).optional(),
   PARTITION_MONTHS_AHEAD: z.coerce.number().int().min(1).default(24),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),

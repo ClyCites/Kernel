@@ -1,3 +1,4 @@
+import { InferenceRepository } from '../../src/inference/inference.repository.js';
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SCHEMA_VERSION } from '@clycites/schema';
@@ -25,7 +26,7 @@ let read: ReadService;
 before(async () => {
   db = await startTestDatabase();
   ({ ingest, repository } = ingestServiceFor(db.app));
-  read = new ReadService(repository, consentServiceFor(db.app), objectionServiceFor(db.app), auditServiceFor(db.app));
+  read = new ReadService(repository, consentServiceFor(db.app), objectionServiceFor(db.app), auditServiceFor(db.app), new InferenceRepository(db.app));
 });
 
 after(async () => {

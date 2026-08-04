@@ -18,6 +18,13 @@ export interface MigrationFile {
 export interface MigrateOptions {
   connectionString: string;
   appPassword: string;
+  /**
+   * The read-only role the training path connects as (0028). Distinct from
+   * `appPassword` on purpose: sharing one credential between a role that can
+   * write records and a role that must not see inferences would make the
+   * separation a matter of which connection string somebody picked.
+   */
+  trainingPassword: string;
   monthsAhead?: number;
   directory?: string;
   log?: (message: string) => void;
@@ -137,6 +144,10 @@ export async function migrate(options: MigrateOptions): Promise<MigrateResult> {
         await client.query('select set_config($1, $2, true)', [
           'kernel.app_password',
           options.appPassword,
+        ]);
+        await client.query('select set_config($1, $2, true)', [
+          'kernel.training_password',
+          options.trainingPassword,
         ]);
         await client.query(migration.sql);
         await client.query(

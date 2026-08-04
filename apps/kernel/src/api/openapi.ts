@@ -7,6 +7,7 @@ import {
   WITHDRAWAL_CHANNELS,
 } from '../consent/objection.service.js';
 import { NOTICE_CHANNELS } from '../consent/retention-notice.repository.js';
+import { VERDICTS } from '../inference/inference.repository.js';
 import { ENTITY_SCHEMAS } from '../records/entity-registry.js';
 import { SUBJECT_HEADER } from './subject.js';
 import { DATASET_HEADER, LAWFUL_BASIS_HEADER } from './dataset.js';
@@ -881,6 +882,37 @@ export function buildOpenApiDocument(): OpenApiDocument {
     },
   };
 
+  schemas['InferenceValidation'] = {
+    type: 'object',
+    description:
+      'One later observation, and what it said about a prediction. Recorded beside the ' +
+      'inference, never merged into it: a verdict is bookkeeping about a claim, not part of it.',
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      inference_id: { type: 'string', format: 'uuid' },
+      observation: {
+        type: 'string',
+        format: 'uuid',
+        description: 'Must be an observation. Linking a prediction to a prediction is refused.',
+      },
+      verdict: { type: 'string', enum: [...VERDICTS] },
+      note: { type: 'string', nullable: true },
+      linked_at: { type: 'string', format: 'date-time' },
+      linked_by: { type: 'string', format: 'uuid' },
+    },
+    required: ['id', 'inference_id', 'observation', 'verdict', 'linked_at', 'linked_by'],
+  };
+
+  schemas['InferenceValidationSubmission'] = {
+    type: 'object',
+    properties: {
+      observation: { type: 'string', format: 'uuid' },
+      verdict: { type: 'string', enum: [...VERDICTS] },
+      note: { type: 'string', maxLength: 500, nullable: true },
+    },
+    required: ['observation', 'verdict'],
+  };
+
   schemas['RetentionNotice'] = {
     type: 'object',
     required: [
@@ -1280,6 +1312,101 @@ export function buildOpenApiDocument(): OpenApiDocument {
               content: { 'application/json': { schema: ref('RecordView') } },
             },
             '403': consentResponse,
+            '404': problemResponse('Not in the inference log.'),
+          },
+        },
+      },
+      '/inferences': {
+        post: {
+          tags: ['inference'],
+          operationId: 'submitInference',
+          summary: 'Write a model output',
+          description:
+            'A separate route from POST /records, because the two record classes never mix. ' +
+            '`inference_depth` is computed by the kernel as 1 + max(depth of inputs) and any submitted ' +
+            'value is discarded; a depth above 1 is flagged, not refused. `validated_by` and `stale` ' +
+            'are likewise discarded — both are derived on read.',
+          parameters: [subjectHeader],
+          requestBody: {
+            required: true,
+            content: { 'application/json': { schema: { type: 'object' } } },
+          },
+          responses: {
+            '201': {
+              description: 'Written.',
+              content: { 'application/json': { schema: ref('RecordView') } },
+            },
+            '200': {
+              description: 'The id was already in the log; nothing was written.',
+              content: { 'application/json': { schema: ref('RecordView') } },
+            },
+            '400': problemResponse('The payload does not satisfy the Inference schema.'),
+          },
+        },
+      },
+      '/inferences/{id}/validations': {
+        get: {
+          tags: ['inference'],
+          operationId: 'listValidations',
+          summary: 'What later observations said about this prediction',
+          parameters: [
+            {
+              name: 'id',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', format: 'uuid' },
+            },
+            subjectHeader,
+          ],
+          responses: {
+            '200': {
+              description: 'The verdicts recorded against this inference.',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      validations: {
+                        type: 'array',
+                        items: ref('InferenceValidation'),
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            '404': problemResponse('Not in the inference log.'),
+          },
+        },
+        post: {
+          tags: ['inference'],
+          operationId: 'validateInference',
+          summary: 'Link the observation that settled a prediction',
+          description:
+            'The prediction acquires a verdict and remains a prediction. There is no path from here ' +
+            'into the fact log. Idempotent on (inference, observation): re-linking the same pair ' +
+            'returns the row already recorded, so an evaluation set cannot be revised by replay.',
+          parameters: [
+            {
+              name: 'id',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', format: 'uuid' },
+            },
+            subjectHeader,
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': { schema: ref('InferenceValidationSubmission') },
+            },
+          },
+          responses: {
+            '201': {
+              description: 'Linked.',
+              content: { 'application/json': { schema: ref('InferenceValidation') } },
+            },
+            '400': problemResponse('The linkage is malformed, or the observation is not one.'),
             '404': problemResponse('Not in the inference log.'),
           },
         },

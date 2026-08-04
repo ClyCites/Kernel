@@ -1,3 +1,4 @@
+import { InferenceRepository } from '../../src/inference/inference.repository.js';
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { CORE_ENTITIES } from '@clycites/schema';
@@ -27,7 +28,7 @@ before(async () => {
   db = await startTestDatabase();
   const { ingest: service, repository } = ingestServiceFor(db.app);
   ingest = service;
-  read = new ReadService(repository, consentServiceFor(db.app), objectionServiceFor(db.app), auditServiceFor(db.app));
+  read = new ReadService(repository, consentServiceFor(db.app), objectionServiceFor(db.app), auditServiceFor(db.app), new InferenceRepository(db.app));
 });
 
 after(async () => {
@@ -47,8 +48,12 @@ describe('the registry covers the schema', () => {
   });
 
   test('subject fields are declared for registered types only', () => {
+    // `inference` is not a registered entity: it is a record class of its own,
+    // written through its own route, and `registeredTypes()` deliberately does
+    // not know about it. It still needs subject fields, because consent has to
+    // resolve a prediction to somebody or every read of one is denied.
     const stray = Object.keys(SUBJECT_FIELDS).filter(
-      (type) => !registeredTypes().includes(type),
+      (type) => type !== 'inference' && !registeredTypes().includes(type),
     );
     assert.deepEqual(stray, []);
   });

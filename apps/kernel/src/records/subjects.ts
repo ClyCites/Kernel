@@ -28,6 +28,10 @@ export const SUBJECT_FIELDS: Record<string, readonly string[]> = {
   obligation: ['obligor', 'obligee', 'arising_from'],
   settlement_reference: ['obligation', 'confirmed_by'],
   retraction: ['target'],
+  // FINDING, fixed here: until P4 nothing named an inference, so every read of
+  // one was denied `unattributed_record` — not by decision, but because the
+  // record class had no write path and therefore never reached the guard.
+  inference: ['subject_ref'],
 };
 
 export function subjectFields(type?: string | undefined): readonly string[] {
@@ -90,6 +94,12 @@ export const PARTY_HOP_FIELDS: Record<string, string> = {
   planting: 'plot',
   harvest: 'plot',
   observation: 'subject_ref',
+  // An inference resolves exactly as the observation it was computed from
+  // would: a yield prediction about a plot reaches the plot's holder, one
+  // about a party reaches the party. Deliberately the same one hop and no
+  // more — a prediction should not widen who may see something beyond the
+  // records it was derived from.
+  inference: 'subject_ref',
 };
 
 /**

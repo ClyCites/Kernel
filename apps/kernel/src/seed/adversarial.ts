@@ -437,27 +437,19 @@ export function appendAdversarial(plan: SeedPlan, ctx: AdversarialContext): void
     );
   }
 
-  /* ── 12. An inference, validated by a later delivery ────────────────────
-     FINDING: the public API cannot write one. `POST /v1/records` dispatches on
-     the entity name and there is no `inference` entity — by construction, since
-     `factRecord` pins `record_class` to observation and nothing routes to the
-     inference schema yet. That is work order G.
-
-     The write stays in the plan, asserted as refused. When G lands this fails
-     loudly and the seed has to be updated, which is better than an omission
-     nobody notices. D5's "at least one Inference with validated_by" cannot be
-     satisfied through the contract until then — see 0023. */
-
   /* ── 12. An inference, validated by a later delivery ──────────────────
-     FINDING: the public API cannot write one. `POST /v1/records` dispatches on
-     the entity name and there is no `inference` entity — by construction, since
-     `factRecord` pins `record_class` to observation and nothing routes to the
-     inference schema yet. That is work order G.
+     P4: this now writes. `POST /v1/inferences` is the second route, and the
+     validation is a second request months after the first, because that is
+     what happens in the field — the prediction is made in March and the
+     delivery that settles it arrives in August.
 
-     The write stays in the plan, asserted as refused. When G lands this fails
-     loudly and the seed has to be updated, which is better than an omission
-     nobody notices. D5's "at least one Inference with validated_by" cannot be
-     satisfied through the contract until then — see 0023. */
+     `validated_by` is not submitted. The kernel derives it from
+     `inference.validation`, so a value in the body would be discarded; the
+     seed states the linkage the same way a client has to, through the
+     validation route. `inference_depth` is likewise computed — every input
+     here is an observation, so it comes out 0 — and the fixture no longer
+     asserts a number the kernel would only overwrite. D5's "at least one
+     Inference with validated_by" is satisfiable through the contract now. */
 
   const subject = farmers.find((f) => f.coop === 'C')!;
   const validator = deliveries.filter((d) => d.coop === 'C').slice(-1)[0]!;
@@ -485,17 +477,18 @@ export function appendAdversarial(plan: SeedPlan, ctx: AdversarialContext): void
         unit: 'kg',
       },
       confidence: round(rng.normalWithin(0.62, 0.08, 0.4, 0.9), 3),
-      // Every input is an observation, so the depth is zero. A model consuming
-      // another model's output would be 1, and 0022's staleness rules would
-      // then have two hops to propagate through.
       inference_depth: 0,
-      validated_by: [validator.id],
-      stale: false,
     },
     'contract_performance',
-    'rejected',
-    'no write path exists for record_class=inference — work order G',
   );
+
+  plan.validations.push({
+    inference: plan.markers.inference,
+    observation: validator.id,
+    verdict: 'confirmed',
+    linkedBy: ctx.lender,
+    note: 'the delivery that settled the estimate, linked when it arrived',
+  });
 }
 
 /** A delivery body that mirrors an existing one at a different weight. */

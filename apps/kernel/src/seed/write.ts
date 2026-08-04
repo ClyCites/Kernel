@@ -34,6 +34,13 @@ export interface GrantOutcome {
   problem?: string;
 }
 
+export interface ValidationOutcome {
+  inference: string;
+  observation: string;
+  status: number;
+  problem?: string;
+}
+
 export interface WriteReport {
   accepted: number;
   rejected: number;
@@ -41,6 +48,7 @@ export interface WriteReport {
   surprises: WriteOutcome[];
   outcomes: WriteOutcome[];
   grants: GrantOutcome[];
+  validations: ValidationOutcome[];
 }
 
 export interface WriteOptions {
@@ -60,7 +68,13 @@ export async function writePlan(
     const document = write.document;
     const asserter = document['asserted_by'] as string;
 
-    const response = await fetch(`${base}/v1/records`, {
+    // Two endpoints, because there are two record classes and the kernel does
+    // not let one route serve both. The seed picks by `record_class` for the
+    // same reason a client would.
+    const path =
+      document['record_class'] === 'inference' ? '/v1/inferences' : '/v1/records';
+
+    const response = await fetch(`${base}${path}`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -103,6 +117,7 @@ export async function writePlan(
   );
 
   const grants = await writeGrants(plan, base);
+  const validations = await writeValidations(plan, base);
 
   return {
     accepted: outcomes.filter((o) => o.status === 200 || o.status === 201).length,
@@ -110,7 +125,52 @@ export async function writePlan(
     surprises,
     outcomes,
     grants,
+    validations,
   };
+}
+
+/**
+ * The linkage from a prediction to the observation that later settled it.
+ *
+ * Last, and a separate request, because that is the shape of the real thing:
+ * the delivery that settles a March forecast arrives in August, and the log is
+ * append-only, so the March row can never be edited to name it.
+ */
+async function writeValidations(
+  plan: SeedPlan,
+  base: string,
+): Promise<ValidationOutcome[]> {
+  const outcomes: ValidationOutcome[] = [];
+
+  for (const link of plan.validations) {
+    const response = await fetch(
+      `${base}/v1/inferences/${link.inference}/validations`,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          [SUBJECT_HEADER]: link.linkedBy,
+          [DATASET_HEADER]: 'seed',
+        },
+        body: JSON.stringify({
+          observation: link.observation,
+          verdict: link.verdict,
+          note: link.note,
+        }),
+      },
+    );
+
+    const accepted = response.status === 200 || response.status === 201;
+    const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+    outcomes.push({
+      inference: link.inference,
+      observation: link.observation,
+      status: response.status,
+      ...(accepted ? {} : { problem: String(body['detail'] ?? body['title'] ?? '') }),
+    });
+  }
+
+  return outcomes;
 }
 
 /**

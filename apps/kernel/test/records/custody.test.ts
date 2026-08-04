@@ -1,3 +1,4 @@
+import { InferenceRepository } from '../../src/inference/inference.repository.js';
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { uuidv7 } from 'uuidv7';
@@ -24,7 +25,7 @@ before(async () => {
   db = await startTestDatabase();
   const assembled = ingestServiceFor(db.app);
   ingest = assembled.ingest;
-  read = new ReadService(assembled.repository, consentServiceFor(db.app), objectionServiceFor(db.app), auditServiceFor(db.app));
+  read = new ReadService(assembled.repository, consentServiceFor(db.app), objectionServiceFor(db.app), auditServiceFor(db.app), new InferenceRepository(db.app));
 });
 
 after(async () => {

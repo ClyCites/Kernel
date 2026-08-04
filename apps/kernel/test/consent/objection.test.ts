@@ -1,3 +1,4 @@
+import { InferenceRepository } from '../../src/inference/inference.repository.js';
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { uuidv7 } from 'uuidv7';
@@ -37,6 +38,7 @@ before(async () => {
     consentServiceFor(db.app),
     objections,
     auditServiceFor(db.app),
+    new InferenceRepository(db.app),
   );
 
   // Asserted by the cooperative, about the farmer. The ordinary shape, and

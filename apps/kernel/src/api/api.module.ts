@@ -2,6 +2,7 @@ import { Module, type MiddlewareConsumer, type NestModule } from '@nestjs/common
 import { APP_FILTER } from '@nestjs/core';
 
 import { RecordsModule } from '../records/records.module.js';
+import { InferenceModule } from '../inference/inference.module.js';
 import { IdentityModule } from '../identity/identity.module.js';
 import { SyncModule } from '../sync/sync.module.js';
 import { CorrelationMiddleware } from './correlation.middleware.js';
@@ -14,6 +15,7 @@ import { ProblemFilter } from './problem.filter.js';
 import { RateLimitMiddleware } from './rate-limit.middleware.js';
 import { RegistryCacheInterceptor } from './registry-cache.interceptor.js';
 import { RecordsController } from './records.controller.js';
+import { InferencesController } from './inferences.controller.js';
 import { RegistryController } from './registry.controller.js';
 import { RetentionController } from './retention.controller.js';
 import { SyncController } from './sync.controller.js';
@@ -23,9 +25,10 @@ import { SyncController } from './sync.controller.js';
  * there is no direct database access for anyone but the kernel itself.
  */
 @Module({
-  imports: [RecordsModule, SyncModule, IdentityModule],
+  imports: [RecordsModule, InferenceModule, SyncModule, IdentityModule],
   controllers: [
     RecordsController,
+    InferencesController,
     RegistryController,
     SyncController,
     PartiesController,

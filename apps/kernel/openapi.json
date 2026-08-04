@@ -480,6 +480,198 @@
         }
       }
     },
+    "/inferences": {
+      "post": {
+        "tags": [
+          "inference"
+        ],
+        "operationId": "submitInference",
+        "summary": "Write a model output",
+        "description": "A separate route from POST /records, because the two record classes never mix. `inference_depth` is computed by the kernel as 1 + max(depth of inputs) and any submitted value is discarded; a depth above 1 is flagged, not refused. `validated_by` and `stale` are likewise discarded — both are derived on read.",
+        "parameters": [
+          {
+            "name": "x-clycites-subject",
+            "in": "header",
+            "description": "The authenticated party, set by the gateway. Reads without it are refused.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The id was already in the log; nothing was written.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordView"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Written.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The payload does not satisfy the Inference schema.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/inferences/{id}/validations": {
+      "get": {
+        "tags": [
+          "inference"
+        ],
+        "operationId": "listValidations",
+        "summary": "What later observations said about this prediction",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "x-clycites-subject",
+            "in": "header",
+            "description": "The authenticated party, set by the gateway. Reads without it are refused.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The verdicts recorded against this inference.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "validations": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/InferenceValidation"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not in the inference log.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "inference"
+        ],
+        "operationId": "validateInference",
+        "summary": "Link the observation that settled a prediction",
+        "description": "The prediction acquires a verdict and remains a prediction. There is no path from here into the fact log. Idempotent on (inference, observation): re-linking the same pair returns the row already recorded, so an evaluation set cannot be revised by replay.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "x-clycites-subject",
+            "in": "header",
+            "description": "The authenticated party, set by the gateway. Reads without it are refused.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InferenceValidationSubmission"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Linked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InferenceValidation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The linkage is malformed, or the observation is not one.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not in the inference log.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/devices": {
       "post": {
         "tags": [
@@ -2119,6 +2311,163 @@
           },
           "404": {
             "description": "No objection of yours with that id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/retention/notices": {
+      "post": {
+        "tags": [
+          "consent"
+        ],
+        "operationId": "giveRetentionNotice",
+        "summary": "Record the notice given at enrolment",
+        "description": "DPPA s.13(1)(i). Records what a subject was actually told about how long their data will be kept — the wording, the ground, the purposes, the language it was given in and how it reached them. `given_by` is the verified caller and is never taken from the body. Append-only: a changed policy is a new notice, and the earlier one still governs the period before it. Nothing in the kernel acts on `period_stated`; the lawful period is unresolved and no expiry job exists.",
+        "parameters": [
+          {
+            "name": "x-clycites-lawful-basis",
+            "in": "header",
+            "required": true,
+            "description": "The Data Protection and Privacy Act, 2019 ground this record is collected under. Financial records are s.9(1) special data and accept special_data_consent only.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "consent",
+                "legal_authorisation",
+                "public_duty",
+                "national_security",
+                "law_enforcement",
+                "contract_performance",
+                "medical",
+                "legal_obligation",
+                "special_data_consent"
+              ]
+            }
+          },
+          {
+            "name": "x-clycites-dataset",
+            "in": "header",
+            "description": "Marks a write as fabricated. Ignored unless seed ingest is enabled; anything unrecognised reads as live.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "live",
+                "seed"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetentionNoticeSubmission"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Recorded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetentionNotice"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The notice is incomplete.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No verified party.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "consent"
+        ],
+        "operationId": "retentionNotices",
+        "summary": "What a party was told, and when",
+        "description": "The subject sees every notice given to them; anybody else sees only the notices they themselves gave, so a cooperative cannot read what a rival told the same farmer. With `as_at`, returns the single notice in force at that moment — which is the question worth asking, since a notice given later does not retroactively become what somebody was told.",
+        "parameters": [
+          {
+            "name": "party",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "as_at",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notices this caller may read.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "notices"
+                  ],
+                  "properties": {
+                    "notices": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/RetentionNotice"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A party id is required.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No verified party.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -14041,6 +14390,238 @@
               "string",
               "null"
             ],
+            "format": "date-time"
+          }
+        }
+      },
+      "InferenceValidation": {
+        "type": "object",
+        "description": "One later observation, and what it said about a prediction. Recorded beside the inference, never merged into it: a verdict is bookkeeping about a claim, not part of it.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "inference_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "observation": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Must be an observation. Linking a prediction to a prediction is refused."
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "confirmed",
+              "contradicted",
+              "inconclusive"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "linked_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "linked_by": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "id",
+          "inference_id",
+          "observation",
+          "verdict",
+          "linked_at",
+          "linked_by"
+        ]
+      },
+      "InferenceValidationSubmission": {
+        "type": "object",
+        "properties": {
+          "observation": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "confirmed",
+              "contradicted",
+              "inconclusive"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500,
+            "nullable": true
+          }
+        },
+        "required": [
+          "observation",
+          "verdict"
+        ]
+      },
+      "RetentionNotice": {
+        "type": "object",
+        "required": [
+          "id",
+          "party",
+          "notice_text",
+          "period_stated",
+          "lawful_basis",
+          "purposes",
+          "language",
+          "given_via",
+          "given_at"
+        ],
+        "description": "The notice given to a subject at enrolment, DPPA s.13(1)(i), recorded as it was given. A farmer enrolled in March was told something; a policy changed in June does not become what they were told.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "party": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "notice_text": {
+            "type": "string",
+            "description": "The notice in full, not a template id. A template can be edited afterwards, which would make the notice unprovable."
+          },
+          "period_stated": {
+            "type": "string",
+            "description": "What the subject was told about how long, in the words used. Free text on purpose: “until three years after your last delivery” is a real answer and is not a duration. A machine-readable period would invite a job to act on it, and the lawful period is unresolved."
+          },
+          "lawful_basis": {
+            "type": "string",
+            "enum": [
+              "consent",
+              "legal_authorisation",
+              "public_duty",
+              "national_security",
+              "law_enforcement",
+              "contract_performance",
+              "medical",
+              "legal_obligation",
+              "special_data_consent"
+            ]
+          },
+          "purposes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "language": {
+            "type": "string",
+            "description": "A notice in a language the subject does not read does not inform them, so the claim is recorded and can be checked."
+          },
+          "given_via": {
+            "type": "string",
+            "enum": [
+              "in_person_reading",
+              "in_person_signature",
+              "ussd_confirmation",
+              "sms",
+              "printed_handout",
+              "witnessed"
+            ]
+          },
+          "given_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "The verified caller who gave it, never a body field."
+          },
+          "given_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "dataset": {
+            "type": "string",
+            "enum": [
+              "live",
+              "seed"
+            ]
+          }
+        }
+      },
+      "RetentionNoticeSubmission": {
+        "type": "object",
+        "required": [
+          "party",
+          "notice_text",
+          "period_stated",
+          "lawful_basis",
+          "purposes",
+          "language",
+          "given_via",
+          "given_at"
+        ],
+        "properties": {
+          "party": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "notice_text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20000
+          },
+          "period_stated": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "lawful_basis": {
+            "type": "string",
+            "enum": [
+              "consent",
+              "legal_authorisation",
+              "public_duty",
+              "national_security",
+              "law_enforcement",
+              "contract_performance",
+              "medical",
+              "legal_obligation",
+              "special_data_consent"
+            ]
+          },
+          "purposes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "maxItems": 16
+          },
+          "language": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 64
+          },
+          "given_via": {
+            "type": "string",
+            "enum": [
+              "in_person_reading",
+              "in_person_signature",
+              "ussd_confirmation",
+              "sms",
+              "printed_handout",
+              "witnessed"
+            ]
+          },
+          "given_at": {
+            "type": "string",
             "format": "date-time"
           }
         }

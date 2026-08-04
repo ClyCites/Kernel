@@ -42,6 +42,7 @@ import {
   type SubjectResolution,
 } from './subjects.js';
 import { carriesFinancialData } from './lawful-basis.js';
+import { InferenceRepository } from '../inference/inference.repository.js';
 
 export const DEFAULT_PAGE_SIZE = 50;
 export const MAX_PAGE_SIZE = 200;
@@ -92,6 +93,20 @@ export interface RecordView {
   settlement?: SettlementSummary;
   /** Inferences only. Whether the records it was computed from have moved. */
   staleness?: Staleness;
+  /**
+   * Inferences only. What later observations said about the prediction.
+   *
+   * Beside the record, not inside it: a verdict is the kernel's bookkeeping
+   * about a claim, not part of the claim. The prediction acquires a verdict
+   * and never becomes a fact.
+   */
+  validation?: ValidationView[];
+}
+
+export interface ValidationView {
+  observation: string;
+  verdict: 'confirmed' | 'contradicted' | 'inconclusive';
+  linked_at: string;
 }
 
 export interface Page {
@@ -127,6 +142,8 @@ export class ReadService {
     @Inject(ConsentService) private readonly consent: ConsentService,
     @Inject(ObjectionService) private readonly objections: ObjectionService,
     @Inject(AuditService) private readonly audit: AuditService,
+    @Inject(InferenceRepository)
+    private readonly validations: InferenceRepository,
     @Inject(KERNEL_CONFIG)
     private readonly config: Pick<KernelConfig, 'MASS_BALANCE_TOLERANCE'> = {
       MASS_BALANCE_TOLERANCE: DEFAULT_MASS_BALANCE_TOLERANCE,
@@ -161,8 +178,47 @@ export class ReadService {
 
     const view = recordView({ ...found, superseded_by: [], retracted: false });
     await this.guard([found], reader, { by: 'inference_id' });
+    await this.deriveValidation([view], datasetOf(reader));
     await this.deriveStaleness([view], datasetOf(reader));
     return view;
+  }
+
+  /**
+   * Spec §6.3. `validated_by`, resolved from `inference.validation`.
+   *
+   * Derived rather than stored for the same reason `superseded_by` is: the
+   * observation that settles a March prediction arrives in August, and the
+   * March row cannot be edited. A stored array would therefore be permanently
+   * empty, and ingest discards whatever the client submitted.
+   *
+   * It runs before `deriveStaleness` on purpose. `DEPENDENCY_FIELDS` already
+   * includes `validated_by`, so a retracted validator makes the verdict stale
+   * exactly as a retracted input does — but only if the field is populated by
+   * the time staleness looks at it.
+   */
+  private async deriveValidation(
+    views: RecordView[],
+    dataset: Dataset,
+  ): Promise<void> {
+    const inferences = views.filter(
+      (view) => view.record['record_class'] === 'inference',
+    );
+    if (inferences.length === 0) return;
+
+    const byInference = await this.validations.validationsFor(
+      inferences.map((view) => String(view.record['id'])),
+      dataset,
+    );
+
+    for (const view of inferences) {
+      const rows = byInference.get(String(view.record['id'])) ?? [];
+      view.record['validated_by'] = rows.map((row) => row.observation);
+      view.validation = rows.map((row) => ({
+        observation: row.observation,
+        verdict: row.verdict,
+        linked_at: row.linked_at,
+      }));
+    }
   }
 
   /**

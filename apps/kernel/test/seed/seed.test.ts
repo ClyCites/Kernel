@@ -104,18 +104,32 @@ describe('the adversarial seed', () => {
       await count("select count(*) n from facts.record where record_class = 'inference'"),
       0,
     );
-    // Zero, and not because the seed omitted one. The plan contains a fully
-    // formed Inference; the kernel has no write path for it yet. See the
-    // refusal asserted below and the finding in 0023.
-    assert.equal(await count('select count(*) n from inference.record'), 0);
+    // Zero on the fact side and non-zero on the other. Before P4 both were
+    // zero, because no write path existed; the interesting property now is
+    // that the prediction went in and stayed on its own side.
+    assert.ok((await count('select count(*) n from inference.record')) > 0);
   });
 
-  test('an inference cannot be written through the public API at all', () => {
-    const refusal = report.outcomes.find((o) => o.type === 'inference');
-    assert.ok(refusal, 'the inference case is missing from the plan');
-    assert.equal(refusal.expected, 'rejected');
-    assert.equal(refusal.status, 422);
-    assert.match(String(refusal.problem?.detail), /no entity named "inference"/);
+  test('the inference goes in through its own route, and is not a fact', () => {
+    const written = report.outcomes.find((o) => o.type === 'inference');
+    assert.ok(written, 'the inference case is missing from the plan');
+    assert.equal(written.expected, 'accepted');
+    assert.ok(written.status === 200 || written.status === 201);
+  });
+
+  test('validated_by is stated the way a client has to state it', async () => {
+    const [link] = report.validations;
+    assert.ok(link, 'the seed links no observation to the prediction');
+    assert.ok(link.status === 200 || link.status === 201, link.problem ?? '');
+
+    // Derived, not submitted. The seed body carries no `validated_by` at all.
+    assert.equal(
+      await count(
+        `select count(*) n from inference.validation
+          where inference_id = '${link.inference}' and observation = '${link.observation}'`,
+      ),
+      1,
+    );
   });
 
   test('the corpus is the size work order D3 asked for', async () => {

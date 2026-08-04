@@ -1,3 +1,4 @@
+import { InferenceRepository } from '../../src/inference/inference.repository.js';
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
@@ -35,7 +36,7 @@ before(async () => {
   db = await startTestDatabase();
   ({ ingest, repository } = ingestServiceFor(db.app));
   audit = auditServiceFor(db.app);
-  read = new ReadService(repository, consentServiceFor(db.app), objectionServiceFor(db.app), audit);
+  read = new ReadService(repository, consentServiceFor(db.app), objectionServiceFor(db.app), audit, new InferenceRepository(db.app));
 });
 
 after(async () => {

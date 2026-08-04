@@ -4,6 +4,7 @@ import { APP_FILTER } from '@nestjs/core';
 import { RecordsModule } from '../records/records.module.js';
 import { InferenceModule } from '../inference/inference.module.js';
 import { IdentityModule } from '../identity/identity.module.js';
+import { MediaModule } from '../media/media.module.js';
 import { SyncModule } from '../sync/sync.module.js';
 import { CorrelationMiddleware } from './correlation.middleware.js';
 import { ConsentController } from './consent.controller.js';
@@ -16,6 +17,7 @@ import { RateLimitMiddleware } from './rate-limit.middleware.js';
 import { RegistryCacheInterceptor } from './registry-cache.interceptor.js';
 import { RecordsController } from './records.controller.js';
 import { InferencesController } from './inferences.controller.js';
+import { MediaController } from './media.controller.js';
 import { RegistryController } from './registry.controller.js';
 import { RetentionController } from './retention.controller.js';
 import { SyncController } from './sync.controller.js';
@@ -25,10 +27,11 @@ import { SyncController } from './sync.controller.js';
  * there is no direct database access for anyone but the kernel itself.
  */
 @Module({
-  imports: [RecordsModule, InferenceModule, SyncModule, IdentityModule],
+  imports: [RecordsModule, InferenceModule, MediaModule, SyncModule, IdentityModule],
   controllers: [
     RecordsController,
     InferencesController,
+    MediaController,
     RegistryController,
     SyncController,
     PartiesController,

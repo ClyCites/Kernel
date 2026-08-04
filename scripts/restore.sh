@@ -150,6 +150,17 @@ select 'privilege ' || g.table_schema || '.' || g.table_name || ' '
   from information_schema.role_table_grants g
  where g.table_schema in ('facts', 'inference', 'registry', 'kernel', 'audit')
  order by 1;
+
+-- The object inventory (work order H). Postgres is no longer the only data
+-- store: media bytes live in a bucket, and a restore that recovers the
+-- database but not the bucket leaves every MediaRef pointing at nothing while
+-- every count, key and constraint still matches. This line is what makes that
+-- failure visible. The bucket side is checked separately, by
+-- src/media/inventory-cli.ts, because it is not something SQL can see.
+select 'object ' || i.dataset || ' ' || i.object_count || ' '
+       || i.byte_total || ' ' || i.digest
+  from kernel.object_inventory i
+ order by 1;
 SQL
 )
 
@@ -158,6 +169,26 @@ printf '%s\n' "$MANIFEST_SQL" | psql --quiet "$TARGET" > "$WORK/manifest.txt"
 
 if diff -u "$DIR/manifest.txt" "$WORK/manifest.txt" > "$WORK/manifest.diff"; then
   echo "restore: verified — $(wc -l < "$DIR/manifest.txt" | tr -d ' ') manifest lines match"
+
+  # The bucket, if there is one. The manifest above proves the database came
+  # back; this proves the objects it names came back too. A restore that
+  # passed the first and failed the second is the specific silent failure
+  # work order H asked for: every MediaRef resolving to a key that is not
+  # there.
+  if [ -n "${MEDIA_S3_ENDPOINT:-}" ]; then
+    echo "restore: verifying the object inventory"
+    ( cd "$(dirname "$0")/../apps/kernel" \
+      && BACKUP_DATABASE_URL="$TARGET" \
+         ./node_modules/.bin/tsx src/media/inventory-cli.ts verify ) || {
+      echo "restore: FAILED — the database came back but the objects did not" >&2
+      exit 1
+    }
+  elif [ -f "$DIR/objects.txt" ]; then
+    echo "restore: FAILED — the backup holds an object inventory but no store" >&2
+    echo "         is configured to check it against. Set MEDIA_S3_ENDPOINT." >&2
+    exit 1
+  fi
+
   exit 0
 fi
 

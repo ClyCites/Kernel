@@ -3,6 +3,7 @@ import { uuidv7 } from 'uuidv7';
 import type { Pool } from 'pg';
 
 import { ConversionService } from '../../src/registry/conversion.service.js';
+import { MediaRepository } from '../../src/media/media.repository.js';
 import { AuditRepository } from '../../src/audit/audit.repository.js';
 import { AuditService } from '../../src/audit/audit.service.js';
 import { AuditShipper } from '../../src/audit/audit.shipper.js';
@@ -132,6 +133,7 @@ export const ingestServiceFor = (
     auditServiceFor(pool),
     disclosureNotificationServiceFor(pool),
     config,
+    new MediaRepository(pool),
   );
   const ingest: TestIngest = {
     ingest: (payload, context = {}) =>

@@ -132,6 +132,24 @@ const Env = z.object({
     .default('true')
     .transform((value) => value === 'true'),
   NODE_ENV: z.string().default('development'),
+
+  // ── the object store (work order H) ───────────────────────────────────────
+  //
+  // All optional, and all read by MediaModule directly rather than from here.
+  // They are declared so that `.env.example` and this schema stay in step —
+  // test/ops/exposure.test.ts checks that every documented variable is one the
+  // kernel actually reads — and so an operator can see the full set in one
+  // place.
+  //
+  // A kernel with none of these set starts normally and answers 503 on the
+  // media endpoints. Media is one concern of twelve; a missing bucket
+  // credential must not take the consent module down with it.
+  MEDIA_S3_ENDPOINT: z.string().min(1).optional(),
+  MEDIA_S3_BUCKET: z.string().min(1).optional(),
+  MEDIA_S3_ACCESS_KEY: z.string().min(1).optional(),
+  MEDIA_S3_SECRET_KEY: z.string().min(1).optional(),
+  MEDIA_S3_REGION: z.string().min(1).optional(),
+  MEDIA_S3_PATH_STYLE: z.string().optional(),
 });
 
 export type KernelConfig = z.infer<typeof Env>;

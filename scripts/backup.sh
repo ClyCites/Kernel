@@ -127,6 +127,17 @@ select 'privilege ' || g.table_schema || '.' || g.table_name || ' '
   from information_schema.role_table_grants g
  where g.table_schema in ('facts', 'inference', 'registry', 'kernel', 'audit')
  order by 1;
+
+-- The object inventory (work order H). Postgres is no longer the only data
+-- store: media bytes live in a bucket, and a restore that recovers the
+-- database but not the bucket leaves every MediaRef pointing at nothing while
+-- every count, key and constraint still matches. This line is what makes that
+-- failure visible. The bucket side is checked separately, by
+-- src/media/inventory-cli.ts, because it is not something SQL can see.
+select 'object ' || i.dataset || ' ' || i.object_count || ' '
+       || i.byte_total || ' ' || i.digest
+  from kernel.object_inventory i
+ order by 1;
 SQL
 )
 
@@ -151,4 +162,29 @@ pg_dump --format=custom --compress=9 --dbname="$URL" \
 ( cd "$OUT" && sha256sum kernel.dump.enc manifest.txt > checksums.sha256 )
 
 echo "backup: $(wc -l < "$OUT/manifest.txt" | tr -d ' ') manifest lines"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# The bucket.
+#
+# MinIO — now Garage — is a second data store, and the manifest above only
+# fingerprints Postgres. This records what the store actually held at dump
+# time, so a later restore has something to be checked against rather than
+# being taken on trust.
+#
+# Skipped, loudly, when no store is configured. A kernel with no media path is
+# a legitimate deployment; a kernel with a media path whose objects were never
+# backed up is not, and the difference must be visible in the output rather
+# than inferred from its absence.
+# ─────────────────────────────────────────────────────────────────────────────
+if [ -n "${MEDIA_S3_ENDPOINT:-}" ]; then
+  echo "backup: taking the object inventory"
+  ( cd "$(dirname "$0")/../apps/kernel" \
+    && ./node_modules/.bin/tsx src/media/inventory-cli.ts manifest \
+  ) > "$OUT/objects.txt"
+  cat "$OUT/objects.txt"
+  ( cd "$OUT" && sha256sum objects.txt >> checksums.sha256 )
+else
+  echo "backup: no object store configured — objects NOT backed up"
+fi
+
 echo "backup: output=$OUT"

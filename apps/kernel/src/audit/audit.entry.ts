@@ -20,6 +20,18 @@ export const AUDIT_ACTIONS = [
   'write.refused',
   /** The shape of the database changed. Written by the database, not by us. */
   'schema.ddl',
+  /**
+   * A download url was issued for stored bytes.
+   *
+   * Separate from `record.read` because releasing a photograph is not the same
+   * act as returning the row that cites it — but counted alongside it by
+   * `audit.disclosures_to`, because it is just as much a disclosure.
+   */
+  'media.read',
+  /** Bytes were accepted and stored. */
+  'media.write',
+  /** An upload was refused. */
+  'media.refused',
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

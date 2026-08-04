@@ -22,5 +22,36 @@ services:
       timeout: 5s
       retries: 20
 
+  # Object storage for media (work order H), reached over the S3 API.
+  #
+  # Garage rather than MinIO. MinIO's open-source server repository was
+  # archived by its owner in April 2026 and has had no release since October
+  # 2025 — the last of those was itself a privilege-escalation CVE fix. Running
+  # photographs of farmers' homesteads on a storage server with no
+  # security-patch path is not defensible. See docs/decisions/0037-p5-media.md
+  # for the comparison and for what a later swap would cost.
+  #
+  # Nothing in the kernel names Garage. It speaks S3 and only the subset every
+  # implementation actually has.
+  garage:
+    image: dxflrs/garage:v2.3.0
+    container_name: clycites-kernel-objects
+    environment:
+      GARAGE_DEFAULT_ACCESS_KEY: clycites_media_dev_only
+      GARAGE_DEFAULT_SECRET_KEY: clycites_media_dev_only_secret
+      GARAGE_DEFAULT_BUCKET: clycites-media
+    command: ["/garage", "server", "--single-node"]
+    ports:
+      # Loopback only, for the same reason postgres is. A bucket published on
+      # every interface is a bucket on the open internet, and the objects in
+      # this one are the most sensitive artifacts the system holds.
+      # Asserted in apps/kernel/test/ops/exposure.test.ts.
+      - "127.0.0.1:3900:3900"
+    volumes:
+      - kernel-objects-data:/var/lib/garage/data
+      - kernel-objects-meta:/var/lib/garage/meta
+
 volumes:
   kernel-pgdata:
+  kernel-objects-data:
+  kernel-objects-meta:

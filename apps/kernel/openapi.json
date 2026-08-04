@@ -21,6 +21,10 @@
       "description": "Derived records, kept apart."
     },
     {
+      "name": "media",
+      "description": "Photographs and documents. Uploaded resumably because the link fails, addressed by content because a key that names a farmer discloses one, and reachable only through a link that expires."
+    },
+    {
       "name": "sync",
       "description": "Offline devices push and pull."
     },
@@ -661,6 +665,415 @@
           },
           "404": {
             "description": "Not in the inference log.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media": {
+      "options": {
+        "tags": [
+          "media"
+        ],
+        "operationId": "mediaCapabilities",
+        "summary": "What this kernel will accept",
+        "description": "The tus discovery request. `Clycites-Accept-Types` and `Clycites-Max-Chunk` are extensions: a client on a metered link needs to know the chunk ceiling before it starts, and needs to know the type is acceptable before it spends the bytes.",
+        "responses": {
+          "204": {
+            "description": "Capabilities, in headers.",
+            "headers": {
+              "Tus-Resumable": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Tus-Version": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Tus-Extension": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Tus-Max-Size": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "Clycites-Accept-Types": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Clycites-Max-Chunk": {
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This kernel has no object store configured.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "media"
+        ],
+        "operationId": "beginUpload",
+        "summary": "Open a resumable upload",
+        "description": "Declares the SHA-256, the type and the length before any byte is sent, so a file that will be refused is refused before it is paid for. The declared hash is of the file as it leaves the device; the hash the kernel stores and anchors is computed after metadata is stripped, and the two differ whenever the file carried any. Both are returned when the upload completes.",
+        "parameters": [
+          {
+            "name": "x-clycites-subject",
+            "in": "header",
+            "description": "The authenticated party, set by the gateway. Reads without it are refused.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Upload-Length",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "Upload-Metadata",
+            "in": "header",
+            "required": true,
+            "description": "tus metadata: comma-separated `key base64(value)` pairs. `hash` and `mime` are required.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Opened. The session id is in `Location`.",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Upload-Offset": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "Tus-Resumable": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The declared hash, type or size is not acceptable. `reason` is one of `hash_malformed`, `type_refused`, `too_large`.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No verified subject; an upload must have an owner.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This kernel has no object store configured.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/{id}": {
+      "head": {
+        "tags": [
+          "media"
+        ],
+        "operationId": "uploadOffset",
+        "summary": "How much of my upload arrived",
+        "description": "The resume point. A client that lost the network mid-file asks this and continues from the returned offset. Only the party that opened the session may ask; anyone else gets 404.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "x-clycites-subject",
+            "in": "header",
+            "description": "The authenticated party, set by the gateway. Reads without it are refused.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The current offset and state.",
+            "headers": {
+              "Upload-Offset": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "Upload-Length": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "Clycites-Upload-State": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "open",
+                    "complete",
+                    "rejected"
+                  ]
+                }
+              },
+              "Clycites-Upload-Rejection": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Clycites-Content-Hash": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such session, or not yours.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "media"
+        ],
+        "operationId": "appendChunk",
+        "summary": "Send the next piece",
+        "description": "A chunk at any offset other than the current one is a conflict, not a correction — accepting it would let a retry that crossed with a success silently duplicate bytes. On the last chunk the kernel verifies the hash, checks the bytes really are the type declared, strips metadata and stores the result; the response then carries the content hash to cite.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "x-clycites-subject",
+            "in": "header",
+            "description": "The authenticated party, set by the gateway. Reads without it are refused.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Upload-Offset",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/offset+octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Accepted.",
+            "headers": {
+              "Upload-Offset": {
+                "schema": {
+                  "type": "integer"
+                }
+              },
+              "Clycites-Upload-State": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Clycites-Content-Hash": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Present once the object is stored. This is what a record cites."
+              },
+              "Clycites-Metadata-Stripped": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Wrong content type, or a missing offset.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such session, or not yours.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The offset does not match; re-read it with HEAD.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/{hash}/url": {
+      "get": {
+        "tags": [
+          "media"
+        ],
+        "operationId": "mediaUrl",
+        "summary": "A short-lived link to the bytes",
+        "description": "The bucket is not public and no object is reachable without passing through here. The answer is decided by the records that cite the object: a caller who may read at least one of them gets a signed URL valid for minutes, and everyone else gets 404 — not 403, which would confirm the photograph exists. The disclosure is logged, so it appears in the subject’s own disclosure list alongside record reads.",
+        "parameters": [
+          {
+            "name": "hash",
+            "in": "path",
+            "required": true,
+            "description": "The content hash — the stored, post-strip one.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-clycites-subject",
+            "in": "header",
+            "description": "The authenticated party, set by the gateway. Reads without it are refused.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "purpose",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The link and its lifetime in seconds.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "url",
+                    "expires_in"
+                  ],
+                  "properties": {
+                    "url": {
+                      "type": "string"
+                    },
+                    "expires_in": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such object, or nothing citing it may be read by this caller.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "This kernel has no object store configured.",
             "content": {
               "application/problem+json": {
                 "schema": {

@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 
 import { schemaFor, registeredTypes } from './entity-registry.js';
 import { RecordRejected } from './errors.js';
@@ -9,6 +9,8 @@ import { ConversionService } from '../registry/conversion.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { DisclosureNotificationService } from '../consent/disclosure-notification.service.js';
 import { KERNEL_CONFIG, type KernelConfig } from '../config.js';
+import { citedMedia } from '../media/citations.js';
+import { MediaRepository } from '../media/media.repository.js';
 import { RecordRepository } from './record.repository.js';
 import { subjectsOf, subjectTypeMismatched } from './subjects.js';
 import {
@@ -75,6 +77,13 @@ export class IngestService {
     private readonly config: Pick<KernelConfig, 'SUPERSESSION_MAX_DEPTH'> = {
       SUPERSESSION_MAX_DEPTH: DEFAULT_SUPERSESSION_MAX_DEPTH,
     },
+    // Optional only so that the many tests which construct this service by
+    // hand keep working. Nest always supplies it — RecordsModule provides it —
+    // so the null branch is never taken by the running kernel, and a test that
+    // cares about citations passes one.
+    @Optional()
+    @Inject(MediaRepository)
+    private readonly media: MediaRepository | null = null,
   ) {}
 
   async ingest(
@@ -231,6 +240,12 @@ export class IngestService {
     };
 
     const result = await this.repository.appendIfAbsent(record);
+
+    // Which objects this record cites. Written after the append and not
+    // before, so a refused record never makes bytes reachable. Citations are
+    // the join the media read guard runs against: an object no readable
+    // record cites cannot be downloaded by anyone.
+    await this.media?.cite(citedMedia(document), record.id, 'observation', dataset);
 
     if (result.replayed && !sameRecord(result.record, record)) {
       // Idempotency is on the id. Two different records sharing one id is a

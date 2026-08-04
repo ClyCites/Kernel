@@ -161,6 +161,23 @@ select 'object ' || i.dataset || ' ' || i.object_count || ' '
        || i.byte_total || ' ' || i.digest
   from kernel.object_inventory i
  order by 1;
+
+-- Published roots (work order P6). Everything above this line is a claim we
+-- make about our own backup, checked against a manifest we also wrote. That is
+-- worth something against corruption and nothing against ourselves. These
+-- lines are different in kind: each root was published to a public consensus
+-- topic on the day it covers, and the topic and sequence number are where
+-- anyone can go and read the same value back without asking us.
+--
+-- A restore that reproduces these roots from its own restored leaves has been
+-- verified against evidence it could not have manufactured. That check is
+-- src/anchoring/anchor-cli.ts --verify, which restore.sh runs; this section is
+-- how the coordinates travel with the backup.
+select 'anchor ' || r.batch_date || ' ' || r.merkle_root || ' '
+       || r.record_count || ' ' || r.network || ' '
+       || coalesce(r.topic_id, '-') || '/' || coalesce(r.sequence_number::text, '-')
+  from kernel.published_root r
+ order by 1;
 SQL
 )
 
@@ -187,6 +204,24 @@ if diff -u "$DIR/manifest.txt" "$WORK/manifest.txt" > "$WORK/manifest.diff"; the
     echo "restore: FAILED — the backup holds an object inventory but no store" >&2
     echo "         is configured to check it against. Set MEDIA_S3_ENDPOINT." >&2
     exit 1
+  fi
+
+  # Published roots (work order P6). Everything above this point compares the
+  # restore against a manifest we wrote at backup time. That catches corruption
+  # and would not catch us. Each published root was on a public consensus topic
+  # before this restore existed, so a restore that reproduces it from its own
+  # restored leaves has been checked against evidence nobody here could have
+  # made up. That is a materially stronger statement, and it is the reason to
+  # run this last rather than treat the manifest as the end of the matter.
+  if grep -q '^anchor ' "$DIR/manifest.txt" 2>/dev/null; then
+    echo "restore: verifying against published roots"
+    ( cd "$(dirname "$0")/../apps/kernel" \
+      && DATABASE_URL="$TARGET" \
+         ./node_modules/.bin/tsx src/anchoring/anchor-cli.ts --verify ) || {
+      echo "restore: FAILED — a restored batch does not reproduce the root that" >&2
+      echo "         was published for it. Records are missing or altered." >&2
+      exit 1
+    }
   fi
 
   exit 0

@@ -1145,6 +1145,11 @@ export function buildOpenApiDocument(): OpenApiDocument {
       },
       { name: 'sync', description: 'Offline devices push and pull.' },
       {
+        name: 'anchoring',
+        description:
+          'A daily Merkle root, published once to a public consensus service. What it buys is narrow and worth stating: it proves a record existed, unchanged, on a given day, to somebody who does not trust us. It proves nothing about whether the record is true. Per-record anchoring would cost a message per record and buy the same thing.',
+      },
+      {
         name: 'registry',
         description:
           'Reference data. Unauthenticated on purpose: a weight you need our permission to verify is a weight you are trusting us for. Immutable, so cache it.',
@@ -1617,6 +1622,150 @@ export function buildOpenApiDocument(): OpenApiDocument {
               'No such object, or nothing citing it may be read by this caller.',
             ),
             '503': problemResponse('This kernel has no object store configured.'),
+          },
+        },
+      },
+      '/anchors/roots': {
+        get: {
+          tags: ['anchoring'],
+          operationId: 'publishedRoots',
+          summary: 'Every published Merkle root',
+          description:
+            'Unauthenticated on purpose, for the same reason the registry is: a root you need ' +
+            'our permission to see is a root you are trusting us for. Each entry names the day ' +
+            'it covers, the number of records in it, and where the root was published — enough ' +
+            'to read the same value off the ledger without asking us again. A root discloses ' +
+            'nothing about the records under it.',
+          responses: {
+            '200': {
+              description: 'The roots, oldest first.',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    required: ['roots'],
+                    properties: {
+                      roots: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          required: ['batch_date', 'merkle_root', 'record_count'],
+                          properties: {
+                            batch_date: { type: 'string', format: 'date' },
+                            merkle_root: { type: 'string' },
+                            record_count: { type: 'integer' },
+                            network: { type: 'string', enum: ['testnet', 'mainnet'] },
+                            topic_id: { type: 'string', nullable: true },
+                            sequence_number: { type: 'string', nullable: true },
+                            consensus_at: {
+                              type: 'string',
+                              format: 'date-time',
+                              nullable: true,
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            '503': problemResponse('This kernel does not anchor.'),
+          },
+        },
+      },
+      '/anchors/{id}/proof': {
+        get: {
+          tags: ['anchoring'],
+          operationId: 'anchorProof',
+          summary: 'Proof that one record is under a published root',
+          description:
+            'Recompute the root yourself: hash the record body canonically, prepend the salt to ' +
+            'get the leaf, then fold the path — left siblings on the left, right on the right, ' +
+            'each step prefixed 0x01 — and compare the result against the root published to the ' +
+            'consensus service. If they agree, that record existed, unchanged, on that day, and ' +
+            'you did not have to take our word for any of it.\n\n' +
+            'The path is sibling hashes and nothing else: no other record\u2019s id, type or ' +
+            'contents appears here, which is the property the whole scheme exists for.\n\n' +
+            'Behind the ordinary read check, because the proof carries the record\u2019s salt, ' +
+            'and the salt is what stops a leaf hash being ground out from a name, a weight and a ' +
+            'date. A caller who may not read the record gets 404 — as does a record that has not ' +
+            'been anchored yet, because distinguishing the two would confirm it exists.',
+          parameters: [
+            {
+              name: 'id',
+              in: 'path',
+              required: true,
+              schema: { type: 'string', format: 'uuid' },
+            },
+            subjectHeader,
+            {
+              name: 'purpose',
+              in: 'query',
+              required: false,
+              schema: { type: 'string' },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'The leaf, the path to the root, and where the root was published.',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    required: [
+                      'record_id',
+                      'batch_date',
+                      'merkle_root',
+                      'record_count',
+                      'salt',
+                      'record_digest',
+                      'leaf_hash',
+                      'path',
+                    ],
+                    properties: {
+                      record_id: { type: 'string', format: 'uuid' },
+                      batch_date: { type: 'string', format: 'date' },
+                      merkle_root: { type: 'string' },
+                      record_count: { type: 'integer' },
+                      network: { type: 'string' },
+                      topic_id: { type: 'string', nullable: true },
+                      sequence_number: { type: 'string', nullable: true },
+                      consensus_at: {
+                        type: 'string',
+                        format: 'date-time',
+                        nullable: true,
+                      },
+                      salt: {
+                        type: 'string',
+                        description:
+                          'Thirty-two random bytes, hex. Not derived from the record.',
+                      },
+                      record_digest: { type: 'string' },
+                      leaf_hash: {
+                        type: 'string',
+                        description: 'sha256(0x00 || salt || record_digest).',
+                      },
+                      path: {
+                        type: 'array',
+                        description: 'Sibling hashes, leaf upwards.',
+                        items: {
+                          type: 'object',
+                          required: ['side', 'hash'],
+                          properties: {
+                            side: { type: 'string', enum: ['left', 'right'] },
+                            hash: { type: 'string' },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            '404': problemResponse(
+              'No such record, not readable by this caller, or not yet anchored.',
+            ),
           },
         },
       },

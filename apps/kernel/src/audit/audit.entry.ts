@@ -32,6 +32,15 @@ export const AUDIT_ACTIONS = [
   'media.write',
   /** An upload was refused. */
   'media.refused',
+  /** A Merkle root was submitted to the consensus service. */
+  'anchor.publish',
+  /**
+   * A proof was handed out for one record.
+   *
+   * Logged because the proof carries that record's salt, which is the only
+   * thing standing between its leaf hash and a brute-force search.
+   */
+  'anchor.prove',
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

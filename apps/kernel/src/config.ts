@@ -150,6 +150,22 @@ const Env = z.object({
   MEDIA_S3_SECRET_KEY: z.string().min(1).optional(),
   MEDIA_S3_REGION: z.string().min(1).optional(),
   MEDIA_S3_PATH_STYLE: z.string().optional(),
+
+  // Anchoring. Same arrangement as media: read by AnchoringModule directly,
+  // declared here so `.env.example` and this schema stay in step, and all
+  // optional — a kernel with none of them set records and reads normally and
+  // simply never publishes a root.
+  //
+  // Testnet is the default and mainnet is not a config change. Moving to
+  // mainnet needs ANCHOR_NETWORK=mainnet *and* ANCHOR_MAINNET_ACKNOWLEDGED set
+  // to the exact sentence below, because the thing being made permanent is
+  // other people's farm records on a ledger nobody can edit, and one
+  // mistyped environment variable should not be able to do that.
+  ANCHOR_NETWORK: z.enum(['testnet', 'mainnet']).default('testnet'),
+  ANCHOR_TOPIC_ID: z.string().min(1).optional(),
+  ANCHOR_OPERATOR_ID: z.string().min(1).optional(),
+  ANCHOR_OPERATOR_KEY: z.string().min(1).optional(),
+  ANCHOR_MAINNET_ACKNOWLEDGED: z.string().optional(),
 });
 
 export type KernelConfig = z.infer<typeof Env>;

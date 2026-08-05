@@ -65,7 +65,7 @@ function storeFromEnvironment(): ObjectStore {
     bucket,
     accessKeyId,
     secretAccessKey,
-    region: process.env['MEDIA_S3_REGION'] ?? 'garage',
+    region: process.env['MEDIA_S3_REGION'] ?? 'us-east-1',
     forcePathStyle: process.env['MEDIA_S3_PATH_STYLE'] !== 'false',
   });
 }

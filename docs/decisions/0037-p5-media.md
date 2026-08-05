@@ -32,6 +32,11 @@ that the last thing the project shipped was a privilege-escalation fix and
 there is now no path for the next one. We would be running an unmaintained
 credential system in front of farmers' photographs.
 
+> **Reversed on 2026-08-05 by [0040](0040-minio.md).** The store is now MinIO.
+> The reasoning below was not rebutted — the risk was accepted. Read 0040
+> before relying on this section; two properties it describes as free are not
+> free under MinIO.
+
 **We use Garage** (`dxflrs/garage`, AGPL-3.0). Current stable **v2.3.0**,
 released about three months ago; v2.2.0 and v1.3.1 within the six months
 before that; regular contributor activity throughout. It speaks S3 signature

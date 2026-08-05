@@ -12,10 +12,10 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
  * The object store, reached over the S3 API and nothing else.
  *
  * Nothing above this file knows which implementation is behind it. That is not
- * decoration: the store this was built against is Garage, MinIO's open-source
- * server was archived by its owner in April 2026, and whatever runs in
- * production in two years is not knowable now. See
- * docs/decisions/0037-p5-media.md.
+ * decoration: the store this was built against is MinIO, pinned to the last
+ * release published before its owner archived the open-source server, and
+ * whatever runs in production in two years is not knowable now. See
+ * docs/decisions/0040-minio.md.
  *
  * Only the S3 subset that every implementation actually has is used here —
  * PUT, GET, HEAD, DELETE, LIST, and SigV4 presigning. No bucket policies, no
@@ -80,8 +80,8 @@ export class ObjectStore {
         Body: body,
         ContentType: contentType,
         // Belt and braces against a store that has been configured with a
-        // permissive default ACL. Garage has no ACLs at all and ignores this;
-        // S3 and MinIO honour it.
+        // permissive default ACL. S3 and MinIO honour it; stores with no ACL
+        // model at all ignore it.
         ACL: 'private',
       }),
     );

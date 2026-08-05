@@ -183,7 +183,7 @@ echo "backup: $(wc -l < "$OUT/manifest.txt" | tr -d ' ') manifest lines"
 # ─────────────────────────────────────────────────────────────────────────────
 # The bucket.
 #
-# MinIO — now Garage — is a second data store, and the manifest above only
+# The object store is a second data store, and the manifest above only
 # fingerprints Postgres. This records what the store actually held at dump
 # time, so a later restore has something to be checked against rather than
 # being taken on trust.

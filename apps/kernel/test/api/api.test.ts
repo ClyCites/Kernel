@@ -14,10 +14,16 @@ import { KERNEL_POOL } from '../../src/storage/pool.js';
 import { KERNEL_CONFIG } from '../../src/config.js';
 import { DEFAULT_MASS_BALANCE_TOLERANCE } from '../../src/records/mass-balance.js';
 import { buildOpenApiDocument } from '../../src/api/openapi.js';
-import { SUBJECT_HEADER } from '../../src/api/subject.js';
+import {
+  ACTING_FOR_HEADER,
+  CLIENT_HEADER,
+  SUBJECT_HEADER,
+} from '../../src/api/subject.js';
 import { LAWFUL_BASIS_HEADER } from '../../src/api/dataset.js';
+import { ClientRepository } from '../../src/identity/client.repository.js';
+import { ClientService } from '../../src/identity/client.service.js';
 import { startTestDatabase, type TestDatabase } from '../helpers/database.js';
-import { deliveryDocument } from '../helpers/fixtures.js';
+import { deliveryDocument, ingestServiceFor } from '../helpers/fixtures.js';
 
 let db: TestDatabase;
 let app: INestApplication;
@@ -100,6 +106,76 @@ async function call(
     body: await response.json(),
   };
 }
+
+describe('the field client boundary', () => {
+  test('queues no-PIN confirmation requests, rejects event payloads, and wipes on revocation', async () => {
+    const cooperative = uuidv7();
+    const officer = uuidv7();
+    const clientId = `field-${uuidv7()}`;
+    const clients = new ClientService(new ClientRepository(db.app));
+    await clients.register({
+      clientId,
+      displayName: 'Field test client',
+      ownerParty: cooperative,
+      scopes: ['records:read', 'records:write', 'sync'],
+    });
+    const authorisation = await clients.authorise({
+      party: cooperative,
+      clientId,
+      scopes: ['records:read', 'records:write', 'sync'],
+      expiresAt: null,
+      grantedVia: 'in_person_signature',
+    });
+    const { ingest } = ingestServiceFor(db.app);
+    const delivery = await ingest.ingest(
+      deliveryDocument({ asserted_by: cooperative, to_party: cooperative }),
+    );
+    const headers = {
+      [CLIENT_HEADER]: clientId,
+      [ACTING_FOR_HEADER]: cooperative,
+    };
+
+    const queued = await call(
+      'POST',
+      '/v1/field/confirmation-requests',
+      { delivery: delivery.record.id },
+      { as: officer, headers },
+    );
+    assert.equal(queued.status, 201);
+    assert.equal((queued.body as { status: string }).status, 'queued');
+    assert.equal('pin' in (queued.body as object), false);
+
+    const payload = await call(
+      'POST',
+      '/v1/field/events',
+      {
+        event: 'name_collision',
+        choice: 'kept_separate',
+        farmer_name: 'must never be accepted',
+      },
+      { as: officer, headers },
+    );
+    assert.equal(payload.status, 400);
+
+    const event = await call(
+      'POST',
+      '/v1/field/events',
+      { event: 'name_collision', choice: 'kept_separate' },
+      { as: officer, headers },
+    );
+    assert.equal(event.status, 201);
+
+    assert.equal(
+      await clients.revoke(authorisation.id, cooperative, cooperative, 'device lost'),
+      true,
+    );
+    const refused = await call('GET', '/v1/sync/changes?limit=1', undefined, {
+      as: officer,
+      headers,
+    });
+    assert.equal(refused.status, 403);
+  });
+});
 
 /** Validates a payload against a schema from the generated document. */
 function conforms(schemaName: string, payload: unknown): void {

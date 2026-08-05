@@ -15,6 +15,7 @@ import { SubjectAccessService } from '../consent/subject-access.service.js';
 import { RegistryRepository } from '../registry/registry.repository.js';
 import { RecordRepository } from '../records/record.repository.js';
 import { AnchorService } from '../anchoring/anchor.service.js';
+import { FieldRepository } from '../field/field.repository.js';
 
 /** Below this many weighed containers, `measured` is one morning's anecdote. */
 const THIN_SAMPLE = 10;
@@ -30,6 +31,10 @@ export class OperationsController {
     @Inject(DisclosureNotificationRepository)
     private readonly notifications: DisclosureNotificationRepository,
     @Inject(AnchorService) private readonly anchors: AnchorService,
+    @Inject(FieldRepository)
+    private readonly field: Pick<FieldRepository, 'eventCounts'> = {
+      eventCounts: async () => [],
+    },
   ) {}
 
   @Get('health')
@@ -60,7 +65,7 @@ export class OperationsController {
   @Get('metrics')
   @Header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
   async metrics(): Promise<string> {
-    const [byBasis, thinKg, census, delegations, objections, effects, outstanding, anchors] =
+    const [byBasis, thinKg, census, delegations, objections, effects, outstanding, anchors, fieldEvents] =
       await Promise.all([
         this.registry.tonnageByConversionBasis(),
         this.registry.tonnageOnThinSample(THIN_SAMPLE),
@@ -70,6 +75,7 @@ export class OperationsController {
         this.objections.effectCensus(),
         this.notifications.outstanding(),
         this.anchors.freshness(),
+        this.field.eventCounts(),
       ]);
 
     const total = [...byBasis.values()].reduce((sum, kg) => sum + kg, 0);
@@ -224,6 +230,16 @@ export class OperationsController {
       '# TYPE kernel_anchor_batches_failed gauge',
       `kernel_anchor_batches_failed ${anchors.failed_batches}`,
     );
+
+    lines.push(
+      '# HELP kernel_field_events_total Privacy-safe field-client choices and flow signals.',
+      '# TYPE kernel_field_events_total counter',
+    );
+    for (const row of fieldEvents) {
+      lines.push(
+        `kernel_field_events_total{event="${row.event}",choice="${row.choice}",flow="${row.flow}"} ${row.events}`,
+      );
+    }
 
     return `${lines.join('\n')}\n`;
   }

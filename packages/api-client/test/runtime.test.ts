@@ -8,6 +8,7 @@ test('sends one acting-for party and a correlation id', async () => {
   const client = new ApiClient({
     baseUrl: 'https://kernel.example/v1',
     actingFor: '018f0000-0000-7000-8000-000000000001',
+    accessToken: () => 'short-lived-token',
     correlationId: () => 'request-42',
     fetch: async (input) => {
       request = input;
@@ -16,6 +17,7 @@ test('sends one acting-for party and a correlation id', async () => {
   });
 
   await client.api.GET('/records');
+  assert.equal(request?.headers.get('Authorization'), 'Bearer short-lived-token');
   assert.equal(request?.headers.get('X-Acting-For'), '018f0000-0000-7000-8000-000000000001');
   assert.equal(request?.headers.get('X-Correlation-Id'), 'request-42');
 });

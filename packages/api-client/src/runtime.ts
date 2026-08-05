@@ -28,6 +28,7 @@ export class ProblemError extends Error {
 export interface ApiClientOptions {
   baseUrl: string;
   actingFor?: string;
+  accessToken?: () => string | null;
   correlationId?: () => string;
   fetch?: typeof globalThis.fetch;
 }
@@ -43,6 +44,10 @@ export class ApiClient {
 
     const middleware: Middleware = {
       onRequest({ request }) {
+        const accessToken = options.accessToken?.();
+        if (accessToken != null) {
+          request.headers.set('Authorization', `Bearer ${accessToken}`);
+        }
         if (options.actingFor !== undefined) {
           request.headers.set('X-Acting-For', options.actingFor);
         }

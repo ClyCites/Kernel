@@ -30,6 +30,8 @@ import {
 } from '../media/format.js';
 import { MediaService, MediaUnavailable } from '../media/media.service.js';
 import { KERNEL_CONFIG, type KernelConfig } from '../config.js';
+import { ClientService } from '../identity/client.service.js';
+import { actingFor, verifiedClient } from './subject.js';
 
 /**
  * Resumable upload, tus 1.0.0 core plus creation.
@@ -53,6 +55,7 @@ const TUS_VERSION = '1.0.0';
 export class MediaController {
   constructor(
     @Inject(MediaService) private readonly media: MediaService,
+    @Inject(ClientService) private readonly clients: ClientService,
     @Inject(KERNEL_CONFIG)
     private readonly config: Pick<KernelConfig, 'SEED_INGEST_ENABLED'> = {
       SEED_INGEST_ENABLED: false,
@@ -90,7 +93,7 @@ export class MediaController {
     @Headers('upload-metadata') uploadMetadata: string | undefined,
   ): Promise<void> {
     this.available();
-    const requester = this.owner(request);
+    const requester = await this.owner(request, 'media:write');
     const metadata = decodeMetadata(uploadMetadata);
 
     const size = Number(uploadLength ?? '');
@@ -134,7 +137,7 @@ export class MediaController {
     @Param('id') id: string,
   ): Promise<void> {
     this.available();
-    const requester = this.owner(request);
+    const requester = await this.owner(request, 'media:write');
     const session = await this.media.session(
       id,
       requestedDataset(request, this.config.SEED_INGEST_ENABLED),
@@ -193,7 +196,7 @@ export class MediaController {
     }
 
     const outcome = await this.media.receive(id, offset, body, {
-      requester: this.owner(request),
+      requester: await this.owner(request, 'media:write'),
       dataset: requestedDataset(request, this.config.SEED_INGEST_ENABLED),
       correlation: correlationOf(request),
     });
@@ -232,7 +235,7 @@ export class MediaController {
     this.available();
 
     const released = await this.media.release(hash, {
-      requester: verifiedSubject(request),
+      requester: await this.owner(request, 'media:read'),
       purpose: request.query['purpose'] as never,
       dataset: requestedDataset(request, this.config.SEED_INGEST_ENABLED),
       correlationId: correlationOf(request),
@@ -262,8 +265,18 @@ export class MediaController {
    * owner would make every anonymous session belong to every anonymous caller
    * — anyone could resume, and therefore finish, anyone else's file.
    */
-  private owner(request: Request): string {
-    const requester = verifiedSubject(request);
+  private async owner(
+    request: Request,
+    scope: 'media:read' | 'media:write',
+  ): Promise<string> {
+    const subject = verifiedSubject(request);
+    const client = await this.clients.resolve(
+      subject,
+      verifiedClient(request),
+      actingFor(request),
+      scope,
+    );
+    const requester = client?.requester ?? subject;
     if (requester === null) throw new NotFoundException();
     return requester;
   }

@@ -903,6 +903,95 @@ export function buildOpenApiDocument(): OpenApiDocument {
     },
   };
 
+  schemas['ConfirmationRequest'] = {
+    type: 'object',
+    required: [
+      'id',
+      'delivery',
+      'requested_by',
+      'client_id',
+      'dataset',
+      'status',
+      'attempts',
+      'requested_at',
+      'updated_at',
+    ],
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      delivery: { type: 'string', format: 'uuid' },
+      requested_by: { type: 'string', format: 'uuid' },
+      client_id: { type: 'string' },
+      dataset: { type: 'string', enum: [...DATASETS] },
+      status: { type: 'string', enum: ['queued', 'sent', 'failed'] },
+      attempts: { type: 'integer', minimum: 0 },
+      last_error: { type: ['string', 'null'], maxLength: 500 },
+      requested_at: { type: 'string', format: 'date-time' },
+      updated_at: { type: 'string', format: 'date-time' },
+    },
+  };
+
+  const fieldEventVariant = (
+    event: string,
+    choices: string[],
+    withFlow = false,
+  ): JsonSchema => ({
+    type: 'object',
+    additionalProperties: false,
+    required: withFlow ? ['event', 'choice', 'flow', 'step'] : ['event', 'choice'],
+    properties: {
+      event: { const: event },
+      choice: { type: 'string', enum: choices },
+      ...(withFlow
+        ? {
+            flow: {
+              type: 'string',
+              enum: ['enrolment', 'delivery', 'confirmation', 'calibration', 'media', 'sync'],
+            },
+            step: { type: 'string', pattern: '^[a-z0-9_]{1,80}$' },
+          }
+        : {}),
+    },
+  });
+  schemas['FieldEventSubmission'] = {
+    oneOf: [
+      fieldEventVariant('delegation_basis', [
+        'witnessed_in_person',
+        'ussd_confirmation',
+        'organisational_bylaw',
+      ]),
+      fieldEventVariant('name_collision', [
+        'created_separate',
+        'same_as_linked',
+        'kept_separate',
+      ]),
+      fieldEventVariant('season_label', [
+        'registry_label',
+        'officer_label',
+        'no_label',
+      ]),
+      fieldEventVariant('missing_field', ['unsupported'], true),
+      fieldEventVariant('flow_abandoned', ['abandoned'], true),
+    ],
+  };
+
+  schemas['FieldEvent'] = {
+    type: 'object',
+    required: ['id', 'client_id', 'acting_for', 'event', 'choice', 'recorded_at'],
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      client_id: { type: 'string' },
+      acting_for: { type: 'string', format: 'uuid' },
+      event: {
+        type: 'string',
+        enum: ['delegation_basis', 'name_collision', 'season_label', 'missing_field', 'flow_abandoned'],
+      },
+      choice: { type: 'string' },
+      flow: { type: ['string', 'null'] },
+      step: { type: ['string', 'null'] },
+      recorded_at: { type: 'string', format: 'date-time' },
+    },
+  };
+
   schemas['Objection'] = {
     type: 'object',
     required: ['id', 'subject', 'lodged_at', 'lodged_via', 'lodged_by'],
@@ -1198,6 +1287,11 @@ export function buildOpenApiDocument(): OpenApiDocument {
           'Photographs and documents. Uploaded resumably because the link fails, addressed by content because a key that names a farmer discloses one, and reachable only through a link that expires.',
       },
       { name: 'sync', description: 'Offline devices push and pull.' },
+      {
+        name: 'field',
+        description:
+          'Field-client operations: no-PIN confirmation requests and bounded product signals without personal payloads.',
+      },
       {
         name: 'anchoring',
         description:
@@ -2462,6 +2556,83 @@ export function buildOpenApiDocument(): OpenApiDocument {
           responses: {
             '200': { description: 'Revoked.' },
             '404': problemResponse('No authorisation of this party with that id.'),
+          },
+        },
+      },
+      '/field/confirmation-requests': {
+        get: {
+          tags: ['field'],
+          operationId: 'listConfirmationRequests',
+          summary: 'List this cooperative’s confirmation requests',
+          parameters: [clientHeader, actingForHeader],
+          responses: {
+            '200': {
+              description: 'Recent requests made by this represented party.',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    required: ['requests'],
+                    properties: {
+                      requests: { type: 'array', items: ref('ConfirmationRequest') },
+                    },
+                  },
+                },
+              },
+            },
+            '403': problemResponse('The field client is not currently authorised.'),
+          },
+        },
+        post: {
+          tags: ['field'],
+          operationId: 'requestDeliveryConfirmation',
+          summary: 'Queue a farmer confirmation prompt',
+          description:
+            'Queues work for the external USSD adapter. The officer’s device never receives or submits the farmer’s PIN.',
+          parameters: [clientHeader, actingForHeader],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: false,
+                  required: ['delivery'],
+                  properties: { delivery: { type: 'string', format: 'uuid' } },
+                },
+              },
+            },
+          },
+          responses: {
+            '201': {
+              description: 'Queued, or the existing request returned.',
+              content: { 'application/json': { schema: ref('ConfirmationRequest') } },
+            },
+            '400': problemResponse('The delivery id is malformed.'),
+            '403': problemResponse('The field client is not currently authorised.'),
+            '404': problemResponse('No delivery visible to this cooperative.'),
+          },
+        },
+      },
+      '/field/events': {
+        post: {
+          tags: ['field'],
+          operationId: 'recordFieldEvent',
+          summary: 'Record one bounded field-use signal',
+          description:
+            'The closed schema has no payload or free-text field, so farmer data cannot be sent as analytics.',
+          parameters: [clientHeader, actingForHeader],
+          requestBody: {
+            required: true,
+            content: { 'application/json': { schema: ref('FieldEventSubmission') } },
+          },
+          responses: {
+            '201': {
+              description: 'Recorded.',
+              content: { 'application/json': { schema: ref('FieldEvent') } },
+            },
+            '400': problemResponse('The event is outside the closed vocabulary.'),
+            '403': problemResponse('The field client is not currently authorised.'),
           },
         },
       },

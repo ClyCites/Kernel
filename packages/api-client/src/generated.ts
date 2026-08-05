@@ -147,6 +147,47 @@ export type paths = {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/field/confirmation-requests": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        /** List this cooperative’s confirmation requests */
+        readonly get: operations["listConfirmationRequests"];
+        readonly put?: never;
+        /**
+         * Queue a farmer confirmation prompt
+         * @description Queues work for the external USSD adapter. The officer’s device never receives or submits the farmer’s PIN.
+         */
+        readonly post: operations["requestDeliveryConfirmation"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
+    readonly "/field/events": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /**
+         * Record one bounded field-use signal
+         * @description The closed schema has no payload or free-text field, so farmer data cannot be sent as analytics.
+         */
+        readonly post: operations["recordFieldEvent"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/health": {
         readonly parameters: {
             readonly query?: never;
@@ -1040,6 +1081,25 @@ export type components = {
             readonly revoked_at?: string | null;
             readonly scopes: readonly ("records:read" | "records:write" | "registry:read" | "media:read" | "media:write" | "sync")[];
         };
+        readonly ConfirmationRequest: {
+            readonly attempts: number;
+            readonly client_id: string;
+            /** @enum {string} */
+            readonly dataset: "live" | "seed";
+            /** Format: uuid */
+            readonly delivery: string;
+            /** Format: uuid */
+            readonly id: string;
+            readonly last_error?: string | null;
+            /** Format: date-time */
+            readonly requested_at: string;
+            /** Format: uuid */
+            readonly requested_by: string;
+            /** @enum {string} */
+            readonly status: "queued" | "sent" | "failed";
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
         /** @description One subject permitting one grantee to use records of named types for one named purpose. Purpose-bound and never widened. Withdrawal fills `revoked_at` from a separate row; the grant itself is never edited, because a consent record that could be edited is not evidence of anything. */
         readonly ConsentGrant: {
             /** @enum {string} */
@@ -1552,6 +1612,52 @@ export type components = {
              * @enum {string}
              */
             readonly type: "facility";
+        };
+        readonly FieldEvent: {
+            /** Format: uuid */
+            readonly acting_for: string;
+            readonly choice: string;
+            readonly client_id: string;
+            /** @enum {string} */
+            readonly event: "delegation_basis" | "name_collision" | "season_label" | "missing_field" | "flow_abandoned";
+            readonly flow?: string | null;
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: date-time */
+            readonly recorded_at: string;
+            readonly step?: string | null;
+        };
+        readonly FieldEventSubmission: {
+            /** @enum {string} */
+            readonly choice: "witnessed_in_person" | "ussd_confirmation" | "organisational_bylaw";
+            /** @constant */
+            readonly event: "delegation_basis";
+        } | {
+            /** @enum {string} */
+            readonly choice: "created_separate" | "same_as_linked" | "kept_separate";
+            /** @constant */
+            readonly event: "name_collision";
+        } | {
+            /** @enum {string} */
+            readonly choice: "registry_label" | "officer_label" | "no_label";
+            /** @constant */
+            readonly event: "season_label";
+        } | {
+            /** @enum {string} */
+            readonly choice: "unsupported";
+            /** @constant */
+            readonly event: "missing_field";
+            /** @enum {string} */
+            readonly flow: "enrolment" | "delivery" | "confirmation" | "calibration" | "media" | "sync";
+            readonly step: string;
+        } | {
+            /** @enum {string} */
+            readonly choice: "abandoned";
+            /** @constant */
+            readonly event: "flow_abandoned";
+            /** @enum {string} */
+            readonly flow: "enrolment" | "delivery" | "confirmation" | "calibration" | "media" | "sync";
+            readonly step: string;
         };
         /** @description What the deliveries pointing at this agreement add up to. Present on agreements only. Summed on every read — the agreement stores no counter, because a stored total is wrong the moment a delivery is corrected or retracted. */
         readonly Fulfilment: {
@@ -2915,6 +3021,148 @@ export interface operations {
             };
             /** @description The registration is not well formed. */
             readonly 422: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    readonly listConfirmationRequests: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: {
+                /** @description Exactly one party represented by the OAuth client. Repeated or list-valued forms are refused. */
+                readonly "x-acting-for"?: string;
+                /** @description The Authentik OAuth client identifier, set by the trusted gateway from the validated token. */
+                readonly "x-clycites-client-id"?: string;
+            };
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody?: never;
+        readonly responses: {
+            /** @description Recent requests made by this represented party. */
+            readonly 200: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": {
+                        readonly requests: readonly components["schemas"]["ConfirmationRequest"][];
+                    };
+                };
+            };
+            /** @description The field client is not currently authorised. */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    readonly requestDeliveryConfirmation: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: {
+                /** @description Exactly one party represented by the OAuth client. Repeated or list-valued forms are refused. */
+                readonly "x-acting-for"?: string;
+                /** @description The Authentik OAuth client identifier, set by the trusted gateway from the validated token. */
+                readonly "x-clycites-client-id"?: string;
+            };
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": {
+                    /** Format: uuid */
+                    readonly delivery: string;
+                };
+            };
+        };
+        readonly responses: {
+            /** @description Queued, or the existing request returned. */
+            readonly 201: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["ConfirmationRequest"];
+                };
+            };
+            /** @description The delivery id is malformed. */
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The field client is not currently authorised. */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description No delivery visible to this cooperative. */
+            readonly 404: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    readonly recordFieldEvent: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: {
+                /** @description Exactly one party represented by the OAuth client. Repeated or list-valued forms are refused. */
+                readonly "x-acting-for"?: string;
+                /** @description The Authentik OAuth client identifier, set by the trusted gateway from the validated token. */
+                readonly "x-clycites-client-id"?: string;
+            };
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": components["schemas"]["FieldEventSubmission"];
+            };
+        };
+        readonly responses: {
+            /** @description Recorded. */
+            readonly 201: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": components["schemas"]["FieldEvent"];
+                };
+            };
+            /** @description The event is outside the closed vocabulary. */
+            readonly 400: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The field client is not currently authorised. */
+            readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };

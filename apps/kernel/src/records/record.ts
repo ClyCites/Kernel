@@ -98,6 +98,7 @@ export function toDocument(
     device_id: record.device_id,
     supersedes: record.supersedes,
     superseded_by: options.supersededBy ?? null,
+    lawful_basis: record.lawful_basis,
     ext: record.ext,
     ...record.body,
   };

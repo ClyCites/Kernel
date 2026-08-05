@@ -8,6 +8,7 @@ import {
   entityDocument,
   ingestServiceFor,
   subjectAccessServiceFor,
+  anchorServiceFor,
   type TestIngest,
 } from '../helpers/fixtures.js';
 import { OperationsController } from '../../src/api/operations.controller.js';
@@ -44,6 +45,7 @@ before(async () => {
     new ObjectionRepository(db.app),
     subjectAccessServiceFor(db.app),
     new DisclosureNotificationRepository(db.app),
+    anchorServiceFor(db.app),
   );
 });
 
@@ -203,7 +205,7 @@ describe('s.7(3) resolves by basis', () => {
   });
 });
 
-describe('the declared basis comes from the caller, not the payload', () => {
+describe('the declared basis travels in the envelope', () => {
   test('a recognised header is read', () => {
     const request = requestWith({ 'x-clycites-lawful-basis': 'consent' });
 
@@ -220,16 +222,39 @@ describe('the declared basis comes from the caller, not the payload', () => {
     assert.equal(declaredLawfulBasis(request), undefined);
   });
 
-  test('a basis in the payload is ignored', async () => {
+  test('the record states its own basis, and the header need not repeat it', async () => {
     const document = deliveryDocument();
-    document['lawful_basis'] = 'legal_obligation';
+    document['lawful_basis'] = 'special_data_consent';
+
+    const { record } = await ingest.ingest(document, {});
+
+    assert.equal(record.lawful_basis, 'special_data_consent');
+    // Envelope, not body — so it reads back in the document and the anchoring
+    // digest commits to it.
+    assert.equal(record.body['lawful_basis'], undefined);
+  });
+
+  test('the header still works for a client that has not moved to v0.3', async () => {
+    const document = deliveryDocument();
 
     const { record } = await ingest.ingest(document, {
       lawfulBasis: 'special_data_consent',
     });
 
     assert.equal(record.lawful_basis, 'special_data_consent');
-    assert.equal(record.body['lawful_basis'], undefined);
+  });
+
+  test('a payload and a header that disagree are refused, not reconciled', async () => {
+    const document = deliveryDocument();
+    document['lawful_basis'] = 'legal_obligation';
+
+    await assert.rejects(
+      ingest.ingest(document, { lawfulBasis: 'special_data_consent' }),
+      (error: unknown) => {
+        assert.equal((error as { code: string }).code, 'lawful_basis_conflict');
+        return true;
+      },
+    );
   });
 });
 

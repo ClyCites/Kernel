@@ -22,7 +22,12 @@ export type RejectionCode =
   | 'lawful_basis_required'
   /** The stated ground does not reach this record type. s.9(1) special data
    * needs s.9(3)(b) consent, and nothing else will do. */
-  | 'lawful_basis_insufficient';
+  | 'lawful_basis_insufficient'
+  /** The record's own `lawful_basis` and the request header disagree. Since
+   * v0.3 the ground lives in the envelope; the header is kept for clients that
+   * have not moved yet. Two different answers is not a conflict the kernel may
+   * resolve on the caller's behalf. */
+  | 'lawful_basis_conflict';
 
 export interface RejectionIssue {
   path: string;

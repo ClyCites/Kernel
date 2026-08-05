@@ -65,6 +65,39 @@ export interface AnchorVerification {
   agrees: boolean;
 }
 
+/**
+ * How long anchoring may be silent before it is a fault.
+ *
+ * The batch covers the previous day, so a healthy kernel is always one day
+ * behind and never zero. Two days is one missed run, which happens; three is a
+ * pattern. Set here rather than in configuration because an operator who can
+ * widen the window can also silence the alarm, and the whole point of this
+ * measure is that it cannot be quietly turned off.
+ */
+export const ANCHOR_STALE_AFTER_DAYS = 3;
+
+/**
+ * The state a monitor needs, not the outcome of a run.
+ *
+ * `stale` is computed from whether a fresh root exists, so a scheduler that
+ * was never installed, a container that stopped, and a credential that expired
+ * all produce the same alert. A check that watched exit codes would see
+ * nothing in any of those cases, because a job that does not run does not
+ * fail.
+ */
+export interface AnchorFreshness {
+  configured: boolean;
+  last_published: string | null;
+  last_consensus_at: string | null;
+  age_days: number | null;
+  stale: boolean;
+  stale_after_days: number;
+  pending_batches: number;
+  failed_batches: number;
+  oldest_unanchored: string | null;
+  unanchored_age_days: number | null;
+}
+
 @Injectable()
 export class AnchorService {
   constructor(
@@ -275,6 +308,54 @@ export class AnchorService {
   /** Every published root. Deliberately open: a verifier must not need us. */
   roots(): Promise<{ batch_date: string; merkle_root: string; record_count: number }[]> {
     return this.anchors.publishedRoots();
+  }
+
+  /**
+   * Whether a fresh root exists — the measure the alert hangs on.
+   *
+   * Anchoring is the only property in the kernel whose failure is silent by
+   * construction. Everything else breaks in front of somebody: a refused write
+   * is a 4xx a caller sees, a broken read is a support ticket. A batch that
+   * stops running produces nothing at all, and the absence is only noticed the
+   * first time someone needs a proof, which is exactly the moment it cannot be
+   * repaired. So the alarm is wired to the absence of an expected root rather
+   * than to the presence of an error.
+   *
+   * `configured` is reported alongside because a kernel with no publisher is
+   * not broken — it is a deployment that has not been given a topic — and an
+   * alert that cannot tell those apart gets muted.
+   */
+  async freshness(now: Date = new Date()): Promise<AnchorFreshness> {
+    const state = await this.anchors.freshness();
+
+    const days = (from: Date): number =>
+      Math.floor((now.getTime() - from.getTime()) / 86_400_000);
+
+    const ageDays =
+      state.lastPublished === null
+        ? null
+        : days(new Date(`${state.lastPublished}T00:00:00Z`));
+
+    const unanchoredAgeDays =
+      state.oldestUnanchored === null ? null : days(state.oldestUnanchored);
+
+    return {
+      configured: this.configured,
+      last_published: state.lastPublished,
+      last_consensus_at: state.lastConsensusAt?.toISOString() ?? null,
+      age_days: ageDays,
+      // Never anchored at all counts as stale once a publisher is configured.
+      // The first root is the one most likely never to be cut, because that is
+      // the run nobody has watched succeed yet.
+      stale:
+        this.configured &&
+        (ageDays === null || ageDays > ANCHOR_STALE_AFTER_DAYS),
+      stale_after_days: ANCHOR_STALE_AFTER_DAYS,
+      pending_batches: state.pendingBatches,
+      failed_batches: state.failedBatches,
+      oldest_unanchored: state.oldestUnanchored?.toISOString() ?? null,
+      unanchored_age_days: unanchoredAgeDays,
+    };
   }
 
   /**

@@ -124,14 +124,17 @@ describe('depth is the kernel arithmetic, not the client claim', () => {
     assert.ok(record.quality_flags.includes(INFERENCE_INPUT_UNRESOLVED));
   });
 
-  test('a submitted validated_by or stale is discarded', async () => {
+  test('a submitted validated_by is discarded, and stale is not a field at all', async () => {
     const input = await observation();
     const { record } = await inferences.append(
       prediction({ inputs: [input], validated_by: [uuidv7()], stale: true }),
       { lawfulBasis: 'consent' },
     );
     assert.deepEqual(record.body['validated_by'], []);
-    assert.equal(record.body['stale'], false);
+    // v0.3 removed `stale` from the body. It is derived on every read from the
+    // inputs' current tips, so a stored copy could only ever be a claim that
+    // was true once. A client that sends one is not corrected — it is dropped.
+    assert.equal(record.body['stale'], undefined);
   });
 
   test('an inference without a stated ground is refused', async () => {

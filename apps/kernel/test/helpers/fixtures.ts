@@ -3,6 +3,10 @@ import { uuidv7 } from 'uuidv7';
 import type { Pool } from 'pg';
 
 import { ConversionService } from '../../src/registry/conversion.service.js';
+import { AnchorRepository } from '../../src/anchoring/anchor.repository.js';
+import { AnchorService } from '../../src/anchoring/anchor.service.js';
+import { InferenceRepository } from '../../src/inference/inference.repository.js';
+import { ReadService } from '../../src/records/read.service.js';
 import { MediaRepository } from '../../src/media/media.repository.js';
 import { AuditRepository } from '../../src/audit/audit.repository.js';
 import { AuditService } from '../../src/audit/audit.service.js';
@@ -86,6 +90,26 @@ export const consentServiceFor = (
 
 export const consentGrantServiceFor = (pool: Pool): ConsentGrantService =>
   new ConsentGrantService(new ConsentRepository(pool), auditServiceFor(pool));
+
+/**
+ * Anchoring with no publisher, which is the default deployment and the one
+ * most tests want: batches are built and roots are stored, nothing goes to a
+ * topic. `configured` is false, so freshness reports no staleness — a kernel
+ * that was never asked to publish is not failing to.
+ */
+export const anchorServiceFor = (pool: Pool): AnchorService =>
+  new AnchorService(
+    new AnchorRepository(pool),
+    new ReadService(
+      new RecordRepository(pool),
+      consentServiceFor(pool),
+      objectionServiceFor(pool),
+      auditServiceFor(pool),
+      new InferenceRepository(pool),
+    ),
+    auditServiceFor(pool),
+    null,
+  );
 
 export const retentionNoticeServiceFor = (pool: Pool): RetentionNoticeService =>
   new RetentionNoticeService(

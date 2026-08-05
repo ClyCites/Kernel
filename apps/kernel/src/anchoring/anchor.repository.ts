@@ -286,4 +286,63 @@ export class AnchorRepository {
     );
     return rows;
   }
+
+  /**
+   * What the monitoring system needs to notice that anchoring has stopped.
+   *
+   * Deliberately a query about *state*, not about the last run. A scheduler
+   * that never fires leaves no failed run to find, and that is the failure
+   * mode worth catching: a cron entry silently removed in August is not
+   * discovered until someone asks for a proof in November.
+   *
+   * `oldest_unanchored` is the companion measure. A fresh root with a month of
+   * unanchored records behind it means the batch is running and covering
+   * nothing, which no freshness check alone would show.
+   */
+  async freshness(): Promise<{
+    lastPublished: string | null;
+    lastConsensusAt: Date | null;
+    pendingBatches: number;
+    failedBatches: number;
+    oldestUnanchored: Date | null;
+  }> {
+    const { rows } = await this.pool.query<{
+      last_published: string | null;
+      last_consensus_at: Date | null;
+      pending_batches: string;
+      failed_batches: string;
+      oldest_unanchored: Date | null;
+    }>(
+      `select
+         (select to_json(max(batch_date)) #>> '{}' from kernel.published_root)
+           as last_published,
+         (select max(consensus_at) from kernel.published_root)
+           as last_consensus_at,
+         (select count(*) from kernel.anchor_batch
+           where dataset = 'live' and state = 'pending') as pending_batches,
+         (select count(*) from kernel.anchor_batch
+           where dataset = 'live' and state = 'failed') as failed_batches,
+         (select min(recorded_at) from kernel.unanchored_record)
+           as oldest_unanchored`,
+    );
+
+    const row = rows[0];
+    if (row === undefined) {
+      return {
+        lastPublished: null,
+        lastConsensusAt: null,
+        pendingBatches: 0,
+        failedBatches: 0,
+        oldestUnanchored: null,
+      };
+    }
+
+    return {
+      lastPublished: row.last_published,
+      lastConsensusAt: row.last_consensus_at,
+      pendingBatches: Number(row.pending_batches),
+      failedBatches: Number(row.failed_batches),
+      oldestUnanchored: row.oldest_unanchored,
+    };
+  }
 }

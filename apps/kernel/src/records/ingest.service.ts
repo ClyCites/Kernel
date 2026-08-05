@@ -169,6 +169,42 @@ export class IngestService {
     delete candidate['superseded_by'];
     delete candidate['stale'];
 
+    // v0.3 moved `lawful_basis` into the envelope, so the record now carries
+    // its own ground and the anchoring digest commits to it. The transport
+    // header that used to carry it still works and is folded in here, because
+    // an application that upgrades its kernel before its client should not
+    // start failing writes. Where both are present they must agree: silently
+    // preferring one would mean the basis the record shows is not necessarily
+    // the basis the write was authorised under, which is the one question this
+    // field exists to answer.
+    const fromHeader = context.lawfulBasis;
+    const inEnvelope = candidate['lawful_basis'];
+    if (inEnvelope === undefined && fromHeader !== undefined) {
+      candidate['lawful_basis'] = fromHeader;
+    } else if (
+      inEnvelope !== undefined &&
+      fromHeader !== undefined &&
+      inEnvelope !== fromHeader
+    ) {
+      throw new RecordRejected(
+        'lawful_basis_conflict',
+        `the record states "${String(inEnvelope)}" but the request declares "${fromHeader}" — a record cannot be collected under two grounds`,
+        [{ path: 'lawful_basis', message: 'record and request disagree' }],
+      );
+    }
+
+    // Checked before `safeParse` so a missing ground is reported as itself
+    // rather than as one more malformed field. The distinction matters to the
+    // caller: a malformed record is a bug in their serialiser, an absent
+    // lawful basis is a gap in their authority to send it at all.
+    if (!isLawfulBasis(candidate['lawful_basis'])) {
+      throw new RecordRejected(
+        'lawful_basis_required',
+        `a record must state the DPPA s.7 or s.9 ground it is collected under — one of ${LAWFUL_BASES.join(', ')}`,
+        [{ path: 'lawful_basis', message: 'required' }],
+      );
+    }
+
     const parsed = schema.safeParse(candidate);
     if (!parsed.success) {
       throw new RecordRejected(
@@ -184,7 +220,7 @@ export class IngestService {
     const document = parsed.data as RecordDocument;
     const { envelope, body } = splitEnvelope(document);
 
-    const lawfulBasis = this.statedBasis(context, type, body);
+    const lawfulBasis = this.statedBasis(envelope, type, body);
 
     const grant =
       envelope['on_behalf_of'] == null
@@ -399,8 +435,13 @@ export class IngestService {
   }
 
   /**
-   * The DPPA ground this record is collected under, from the calling
-   * application's declared purpose.
+   * The DPPA ground this record is collected under.
+   *
+   * Read from the envelope since v0.3. It was previously an out-of-band field
+   * on the ingest context, which meant the ground a record was held on was not
+   * part of the record: it never reached the stored document, so the anchoring
+   * digest did not commit to it, and a disclosure could not show a reader the
+   * authority the data was collected under without a second lookup.
    *
    * Rejecting is correct here, unlike almost everywhere else in this service.
    * P6 says flag rather than reject because a malformed claim is still someone's
@@ -409,11 +450,11 @@ export class IngestService {
    * flagged would be doing the unlawful thing with a note attached.
    */
   private statedBasis(
-    context: IngestContext,
+    envelope: RecordDocument,
     type: string,
     body: RecordDocument,
   ): LawfulBasis {
-    const stated = context.lawfulBasis;
+    const stated = envelope['lawful_basis'];
     if (stated === undefined || !isLawfulBasis(stated)) {
       throw new RecordRejected(
         'lawful_basis_required',

@@ -1,42 +1,28 @@
+import {
+  LawfulBasis as LawfulBasisEnum,
+  objectionStops as schemaObjectionStops,
+} from '@clycites/schema';
+
 import type { RecordDocument } from './record.js';
 
 /**
  * The grounds the Data Protection and Privacy Act, 2019 allows personal data to
- * be processed on. Values are s.7(1), the limbs of s.7(2), and s.9(3)(b).
+ * be processed on.
  *
- * Stored per record because s.7(3) turns on it: an objection stops processing
- * "except for data collected or processed under subsection (2)". The answer to
- * "can this farmer make us stop" is fixed at collection and cannot be
- * reconstructed later.
+ * The list itself moved to @clycites/schema in v0.3 and is re-exported here so
+ * the kernel's call sites keep their existing import. It belongs in the schema
+ * because `lawful_basis` is now an envelope field: every application that
+ * writes a record supplies one, so the set of legal values is part of the
+ * contract rather than an internal kernel detail.
  *
- * There is deliberately no member-body ground here: that is an access class,
- * resolved per request, and a basis mirroring it would let a record assert its
- * own classification. See 0029.
+ * The reasoning about what is *not* in the list — there is no member-body
+ * ground, because that is an access class resolved per request and a basis
+ * mirroring it would let a record assert its own classification — now lives
+ * beside the enum. See 0029.
  */
-export const LAWFUL_BASES = [
-  'consent',
-  'legal_authorisation',
-  'public_duty',
-  'national_security',
-  'law_enforcement',
-  'contract_performance',
-  'medical',
-  'legal_obligation',
-  'special_data_consent',
-] as const;
+export const LAWFUL_BASES = LawfulBasisEnum.options;
 
-export type LawfulBasis = (typeof LAWFUL_BASES)[number];
-
-/** The s.7(2) grounds, which s.7(3) exempts from the right to object. */
-const SECTION_7_2: ReadonlySet<LawfulBasis> = new Set([
-  'legal_authorisation',
-  'public_duty',
-  'national_security',
-  'law_enforcement',
-  'contract_performance',
-  'medical',
-  'legal_obligation',
-]);
+export type LawfulBasis = LawfulBasisEnum;
 
 /**
  * Whether an objection under s.7(3) stops processing of a record held on this
@@ -44,11 +30,11 @@ const SECTION_7_2: ReadonlySet<LawfulBasis> = new Set([
  * to withdraw.
  */
 export function objectionStops(basis: LawfulBasis): boolean {
-  return !SECTION_7_2.has(basis);
+  return schemaObjectionStops(basis);
 }
 
 export function isLawfulBasis(value: unknown): value is LawfulBasis {
-  return LAWFUL_BASES.includes(value as LawfulBasis);
+  return LawfulBasisEnum.safeParse(value).success;
 }
 
 /**

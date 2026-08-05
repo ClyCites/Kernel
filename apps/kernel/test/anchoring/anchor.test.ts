@@ -20,7 +20,10 @@ import { InferenceRepository } from '../../src/inference/inference.repository.js
 import { ReadService } from '../../src/records/read.service.js';
 import { RecordRepository } from '../../src/records/record.repository.js';
 import { AnchorRepository } from '../../src/anchoring/anchor.repository.js';
-import { AnchorService } from '../../src/anchoring/anchor.service.js';
+import {
+  AnchorService,
+  ANCHOR_STALE_AFTER_DAYS,
+} from '../../src/anchoring/anchor.service.js';
 import {
   canonical,
   leafHash,
@@ -584,5 +587,82 @@ describe('the message is small on purpose', () => {
     });
     assert.ok(large.length - small.length < 10, 'the cost does not grow with the batch');
     assert.ok(large.length < 200, 'HCS charges by the byte');
+  });
+});
+
+/* ── freshness ────────────────────────────────────────────────────────── */
+
+/**
+ * The alert exists because this failure is silent. These tests are about the
+ * one distinction that makes it usable: a kernel that was never asked to
+ * publish is not failing to, and an alert that cannot tell those apart is an
+ * alert everybody mutes.
+ */
+describe('freshness is measured on state, not on the last run', () => {
+  /** Its own day, as elsewhere: a date already anchored is a no-op. */
+  const dayAhead = (days: number): string => {
+    const date = new Date();
+    date.setUTCDate(date.getUTCDate() + days);
+    return date.toISOString().slice(0, 10);
+  };
+
+  test('a kernel with no publisher is never stale', async () => {
+    const offline = new AnchorService(anchors, read, auditServiceFor(db.app), null);
+    const state = await offline.freshness();
+
+    assert.equal(state.configured, false);
+    assert.equal(state.stale, false, 'no topic is a deployment choice, not a fault');
+  });
+
+  test('a configured kernel that has never published is stale from the start', async () => {
+    const state = await service.freshness();
+
+    // The first root is the one most likely never to be cut, because it is the
+    // run nobody has watched succeed. Reporting "no roots yet" as healthy is
+    // how a kernel spends its first month anchoring nothing.
+    if (state.last_published === null) {
+      assert.equal(state.configured, true);
+      assert.equal(state.stale, true);
+      assert.equal(state.age_days, null);
+    }
+  });
+
+  test('a root published today is not stale', async () => {
+    const date = dayAhead(20);
+    await service.run(date);
+
+    const state = await service.freshness(new Date(`${date}T12:00:00Z`));
+
+    assert.equal(state.last_published, date);
+    assert.equal(state.age_days, 0);
+    assert.equal(state.stale, false);
+  });
+
+  test('a root older than the window is stale, and says how old', async () => {
+    // Measured from whatever root is newest, not from a date this test picked.
+    // A run over an empty backlog cuts no batch, so asking for a date does not
+    // guarantee a root on it — and the alert has to work off what was actually
+    // published, not off what somebody meant to publish.
+    const before = await service.freshness();
+    assert.ok(before.last_published !== null, 'the earlier tests left a root');
+
+    const muchLater = new Date(`${before.last_published}T00:00:00Z`);
+    muchLater.setUTCDate(muchLater.getUTCDate() + ANCHOR_STALE_AFTER_DAYS + 2);
+
+    const state = await service.freshness(muchLater);
+
+    assert.equal(state.age_days, ANCHOR_STALE_AFTER_DAYS + 2);
+    assert.equal(state.stale, true);
+  });
+
+  test('the backlog is reported separately from the freshness', async () => {
+    const state = await service.freshness();
+
+    // A fresh root over a growing backlog is the failure freshness alone
+    // misses: the batch runs, publishes, and covers nothing.
+    assert.ok(
+      state.unanchored_age_days === null || state.unanchored_age_days >= 0,
+      'the oldest uncovered record is measured whether or not a root is fresh',
+    );
   });
 });

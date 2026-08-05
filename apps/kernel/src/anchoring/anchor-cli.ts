@@ -10,10 +10,16 @@ import { AnchorService, MAX_BATCH_RECORDS } from './anchor.service.js';
  * The daily job.
  *
  *   tsx src/anchoring/anchor-cli.ts [--date 2026-08-03] [--dry-run]
+ *   tsx src/anchoring/anchor-cli.ts --check
  *
  * Defaults to yesterday, because today is not over. Safe to run more than once
  * a day and safe to run late: a day already anchored is a no-op, and a day
  * missed is picked up whenever this next runs.
+ *
+ * `--check` is the one that catches the failure this job is prone to. It asks
+ * whether a fresh root exists, and exits non-zero if not. Run it on its own
+ * schedule, from somewhere that is not this job: a check that runs as part of
+ * the batch cannot report that the batch stopped running.
  *
  * Wired through the application context rather than by hand, so the job and
  * the server cannot disagree about how anything is configured — including
@@ -30,6 +36,7 @@ function parse(argv: readonly string[]): {
   date: string;
   dryRun: boolean;
   verify: boolean;
+  check: boolean;
 } {
   const at = argv.indexOf('--date');
   const date = at === -1 ? yesterday() : (argv[at + 1] ?? yesterday());
@@ -40,6 +47,7 @@ function parse(argv: readonly string[]): {
     date,
     dryRun: argv.includes('--dry-run'),
     verify: argv.includes('--verify'),
+    check: argv.includes('--check'),
   };
 }
 
@@ -51,7 +59,29 @@ const context = await NestFactory.createApplicationContext(AppModule, {
 });
 
 try {
-  if (options.verify) {
+  if (options.check) {
+    const state = await context.get(AnchorService).freshness();
+
+    process.stdout.write(
+      `anchor: configured=${state.configured} ` +
+        `last_root=${state.last_published ?? 'none'} ` +
+        `age_days=${state.age_days ?? '-'} ` +
+        `unanchored_age_days=${state.unanchored_age_days ?? '-'} ` +
+        `pending=${state.pending_batches} failed=${state.failed_batches}\n`,
+    );
+
+    if (state.stale) {
+      process.stderr.write(
+        state.last_published === null
+          ? 'anchor: STALE — a topic is configured and no root has ever been published. ' +
+              'Nothing recorded so far can be proved to predate today.\n'
+          : `anchor: STALE — the most recent root is ${state.last_published}, ` +
+              `${state.age_days} days old, past the ${state.stale_after_days}-day limit. ` +
+              'Anchoring has stopped; records since then have no published commitment.\n',
+      );
+      process.exitCode = 1;
+    }
+  } else if (options.verify) {
     // Run by restore.sh. Every published root is recomputed from the leaves
     // that are actually in this database. A root published to a public topic
     // before this restore existed is evidence we could not have manufactured,

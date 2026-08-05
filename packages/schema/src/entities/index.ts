@@ -279,7 +279,7 @@ export type Delivery = z.infer<typeof Delivery>;
 /**
  * Spec §5.12. A commitment to transact in future.
  *
- * A forward commitment from a creditworthy buyer converts an unsecured loan to
+ * A forward commitment from a solvent buyer converts an unsecured loan to
  * a farmer into a receivable against an offtaker — which is why this is core
  * rather than marketplace-local state. Listings and bids stay in the app.
  *

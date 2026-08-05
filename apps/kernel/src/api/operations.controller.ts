@@ -14,6 +14,7 @@ import { ObjectionRepository } from '../consent/objection.repository.js';
 import { SubjectAccessService } from '../consent/subject-access.service.js';
 import { RegistryRepository } from '../registry/registry.repository.js';
 import { RecordRepository } from '../records/record.repository.js';
+import { AnchorService } from '../anchoring/anchor.service.js';
 
 /** Below this many weighed containers, `measured` is one morning's anecdote. */
 const THIN_SAMPLE = 10;
@@ -28,6 +29,7 @@ export class OperationsController {
     @Inject(SubjectAccessService) private readonly subjectAccess: SubjectAccessService,
     @Inject(DisclosureNotificationRepository)
     private readonly notifications: DisclosureNotificationRepository,
+    @Inject(AnchorService) private readonly anchors: AnchorService,
   ) {}
 
   @Get('health')
@@ -58,7 +60,7 @@ export class OperationsController {
   @Get('metrics')
   @Header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
   async metrics(): Promise<string> {
-    const [byBasis, thinKg, census, delegations, objections, outstanding] =
+    const [byBasis, thinKg, census, delegations, objections, outstanding, anchors] =
       await Promise.all([
         this.registry.tonnageByConversionBasis(),
         this.registry.tonnageOnThinSample(THIN_SAMPLE),
@@ -66,6 +68,7 @@ export class OperationsController {
         this.records.delegationBasisCensus(),
         this.objections.standingCensus(),
         this.notifications.outstanding(),
+        this.anchors.freshness(),
       ]);
 
     const total = [...byBasis.values()].reduce((sum, kg) => sum + kg, 0);
@@ -171,6 +174,39 @@ export class OperationsController {
       '# HELP kernel_disclosure_notification_oldest_seconds Age of the oldest undischarged s.16(4) obligation.',
       '# TYPE kernel_disclosure_notification_oldest_seconds gauge',
       `kernel_disclosure_notification_oldest_seconds ${live?.oldestSeconds ?? 0}`,
+    );
+
+    // The alert that matters here is on `kernel_anchor_root_age_days`, not on
+    // the anchoring job's exit status. A scheduler that was uninstalled, a
+    // container that stopped and a credential that expired all leave no failed
+    // run behind them, so a check watching for errors sees a healthy system
+    // with nothing being anchored. Absence is the signal.
+    //
+    // Alert when `kernel_anchor_stale` is 1 for longer than a scrape interval.
+    // It is already gated on `configured`, so a deployment without a topic
+    // stays quiet rather than teaching everyone to ignore the page.
+    lines.push(
+      '# HELP kernel_anchor_configured Whether this kernel has a topic to publish roots to.',
+      '# TYPE kernel_anchor_configured gauge',
+      `kernel_anchor_configured ${anchors.configured ? 1 : 0}`,
+      '# HELP kernel_anchor_root_age_days Days since the most recent published Merkle root. Absent roots read as -1.',
+      '# TYPE kernel_anchor_root_age_days gauge',
+      `kernel_anchor_root_age_days ${anchors.age_days ?? -1}`,
+      `# HELP kernel_anchor_stale No fresh root within ${anchors.stale_after_days} days on a kernel configured to publish one.`,
+      '# TYPE kernel_anchor_stale gauge',
+      `kernel_anchor_stale ${anchors.stale ? 1 : 0}`,
+      // A fresh root over a growing backlog is the quieter failure: the batch
+      // runs, publishes, and covers almost nothing. Freshness alone would show
+      // green throughout.
+      '# HELP kernel_anchor_unanchored_age_days Age of the oldest live record no published root covers.',
+      '# TYPE kernel_anchor_unanchored_age_days gauge',
+      `kernel_anchor_unanchored_age_days ${anchors.unanchored_age_days ?? -1}`,
+      '# HELP kernel_anchor_batches_pending Batches built but not yet on the topic.',
+      '# TYPE kernel_anchor_batches_pending gauge',
+      `kernel_anchor_batches_pending ${anchors.pending_batches}`,
+      '# HELP kernel_anchor_batches_failed Batches whose publication exhausted its retries.',
+      '# TYPE kernel_anchor_batches_failed gauge',
+      `kernel_anchor_batches_failed ${anchors.failed_batches}`,
     );
 
     return `${lines.join('\n')}\n`;

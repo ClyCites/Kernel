@@ -228,7 +228,77 @@ Run on the first working day of each month.
 
 ---
 
-## 7. Incident log
+## 7. Anchoring has stopped
+
+**Alert:** `kernel_anchor_stale == 1`, or `scripts/anchor-cron.sh check` exiting
+non-zero.
+
+### What it means
+
+No Merkle root has been published in three days on a kernel configured to
+publish one. Every record written since the last root has no public commitment,
+so nothing about it can be shown to predate today. The data is intact; the
+*evidence* that it is intact is not being produced.
+
+This is the only failure in the kernel that is silent by construction.
+Everything else breaks in front of somebody — a refused write is a 4xx a caller
+sees, a broken read is a support ticket. A batch that stops running produces
+nothing at all, and the absence is normally noticed the first time someone asks
+for a proof, which is exactly the moment it cannot be repaired. That is why the
+alert is wired to the absence of an expected root and not to a job's exit code:
+a scheduler that was uninstalled leaves no failed run behind it.
+
+### Diagnose
+
+```
+scripts/anchor-cron.sh check
+```
+
+Read the line it prints:
+
+| Field | Meaning |
+| --- | --- |
+| `configured=false` | No topic. Not a fault — the alert is gated on this and will not fire. If you expected a topic, the environment is wrong, not the job. |
+| `last_root=none` | A topic is set and nothing has ever been published. The first run has never succeeded. Check credentials before anything else. |
+| `age_days` large | Anchoring ran once and stopped. Check the crontab first: `crontab -l \| grep anchor`. |
+| `pending` > 0 | Batches were built but never reached the topic. Credentials, network, or an operator account out of hbar. |
+| `failed` > 0 | Publication exhausted its retries. Read `last_error` on `kernel.anchor_batch`. |
+| `unanchored_age_days` large with a fresh `last_root` | The quieter failure. The batch is running and covering almost nothing. Do not close this as healthy because a root exists. |
+
+### Repair
+
+Missed days are not lost. Each day is its own batch keyed on `batch_date`, and
+a day already anchored is a no-op, so the fix is to run the missing days:
+
+```
+cd apps/kernel
+for d in 2026-07-30 2026-07-31 2026-08-01; do
+  ./node_modules/.bin/tsx src/anchoring/anchor-cli.ts --date "$d"
+done
+```
+
+Then confirm:
+
+```
+scripts/anchor-cron.sh check
+```
+
+Roots published late are still roots. What was lost is the *tightness* of the
+bound — a record from 30 July anchored on 5 August is proved to predate 5
+August, not 31 July. Say so plainly if anyone asks; do not backdate a batch to
+close the gap, and note the window in the incident log below.
+
+### Do not
+
+- Do not widen `ANCHOR_STALE_AFTER_DAYS` to silence the alert. It is in
+  `anchor.service.ts` and not in configuration precisely so that the person who
+  can quiet the alarm has to change the code and be seen doing it.
+- Do not delete a `failed` batch to make the metric read zero. The leaves are
+  the record of what was in that day's tree.
+
+---
+
+## 8. Incident log
 
 Every incident, every drill, every restore. Append only — correct an entry by
 adding another, which is the same discipline the log itself keeps.
@@ -239,7 +309,7 @@ adding another, which is the same discipline the log itself keeps.
 
 ---
 
-## 8. Known gaps
+## 9. Known gaps
 
 Recorded here rather than left implicit, because a gap somebody wrote down is a
 decision and a gap nobody wrote down is a surprise.

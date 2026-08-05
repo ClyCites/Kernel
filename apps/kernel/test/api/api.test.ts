@@ -162,7 +162,13 @@ describe('the generated OpenAPI document (brief §5.4)', () => {
 describe('a Delivery round-trips through the public API', () => {
   test('submit, then read back, both conforming to the document', async () => {
     const asserter = uuidv7();
-    const submission = deliveryDocument({ asserted_by: asserter });
+    // v0.3 moved the DPPA ground into the envelope, so a conforming submission
+    // states it. A delivery carries an `agreed_price`, which is s.9(1) special
+    // data, and s.9(3)(b) consent is the only limb that reaches it.
+    const submission = deliveryDocument({
+      asserted_by: asserter,
+      lawful_basis: 'special_data_consent',
+    });
     conforms('DeliverySubmission', submission);
 
     const created = await call('POST', '/v1/records', submission);

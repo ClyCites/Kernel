@@ -7,6 +7,7 @@ import {
   deliveryDocument,
   ingestServiceFor,
   subjectAccessServiceFor,
+  anchorServiceFor,
 } from '../helpers/fixtures.js';
 import { OperationsController } from '../../src/api/operations.controller.js';
 import { DisclosureNotificationRepository } from '../../src/consent/disclosure-notification.repository.js';
@@ -26,6 +27,7 @@ before(async () => {
     new ObjectionRepository(db.app),
     subjectAccessServiceFor(db.app),
     new DisclosureNotificationRepository(db.app),
+    anchorServiceFor(db.app),
   );
 });
 

@@ -8,6 +8,12 @@ import { DEFAULT_SUPERSESSION_MAX_DEPTH } from './records/lineage.js';
  * validated with — but note this is process configuration, not a core record,
  * so it does not belong in @clycites/schema.
  */
+/** An optional string where blank and absent mean the same thing. */
+const unset = z
+  .string()
+  .optional()
+  .transform((value) => (value === undefined || value.trim() === '' ? undefined : value));
+
 const Env = z.object({
   DATABASE_URL: z.string().min(1),
   MIGRATOR_DATABASE_URL: z.string().min(1),
@@ -133,6 +139,11 @@ const Env = z.object({
     .transform((value) => value === 'true'),
   NODE_ENV: z.string().default('development'),
 
+  // `.env.example` ships these keys blank so an operator can see the full set.
+  // A blank line means "not configured", not "configured as the empty string" —
+  // without this, copying the example file produces a kernel that refuses to
+  // start, which is how a documentation file becomes a boot failure.
+
   // ── the object store (work order H) ───────────────────────────────────────
   //
   // All optional, and all read by MediaModule directly rather than from here.
@@ -144,12 +155,12 @@ const Env = z.object({
   // A kernel with none of these set starts normally and answers 503 on the
   // media endpoints. Media is one concern of twelve; a missing bucket
   // credential must not take the consent module down with it.
-  MEDIA_S3_ENDPOINT: z.string().min(1).optional(),
-  MEDIA_S3_BUCKET: z.string().min(1).optional(),
-  MEDIA_S3_ACCESS_KEY: z.string().min(1).optional(),
-  MEDIA_S3_SECRET_KEY: z.string().min(1).optional(),
-  MEDIA_S3_REGION: z.string().min(1).optional(),
-  MEDIA_S3_PATH_STYLE: z.string().optional(),
+  MEDIA_S3_ENDPOINT: unset,
+  MEDIA_S3_BUCKET: unset,
+  MEDIA_S3_ACCESS_KEY: unset,
+  MEDIA_S3_SECRET_KEY: unset,
+  MEDIA_S3_REGION: unset,
+  MEDIA_S3_PATH_STYLE: unset,
 
   // Anchoring. Same arrangement as media: read by AnchoringModule directly,
   // declared here so `.env.example` and this schema stay in step, and all
@@ -162,10 +173,10 @@ const Env = z.object({
   // other people's farm records on a ledger nobody can edit, and one
   // mistyped environment variable should not be able to do that.
   ANCHOR_NETWORK: z.enum(['testnet', 'mainnet']).default('testnet'),
-  ANCHOR_TOPIC_ID: z.string().min(1).optional(),
-  ANCHOR_OPERATOR_ID: z.string().min(1).optional(),
-  ANCHOR_OPERATOR_KEY: z.string().min(1).optional(),
-  ANCHOR_MAINNET_ACKNOWLEDGED: z.string().optional(),
+  ANCHOR_TOPIC_ID: unset,
+  ANCHOR_OPERATOR_ID: unset,
+  ANCHOR_OPERATOR_KEY: unset,
+  ANCHOR_MAINNET_ACKNOWLEDGED: unset,
 });
 
 export type KernelConfig = z.infer<typeof Env>;

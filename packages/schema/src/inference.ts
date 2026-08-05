@@ -88,10 +88,19 @@ export const Inference = inferenceRecord({
    * designed for from the first inference written.
    */
   validated_by: z.array(EventId).default([]),
-
-  /** Set by the kernel when a superseded input invalidates this. Spec §8 rule 5. */
-  stale: z.boolean().default(false),
 });
+
+/**
+ * v0.3 removed a `stale` boolean from this body. Spec §8 rule 5 says
+ * superseding an observation "sets `stale`" on the inferences computed from
+ * it, and in an append-only log nothing is ever set: correcting the flag would
+ * take a second record asserting the first is stale, which is a fact about our
+ * bookkeeping rather than about the world, and it would be wrong again the
+ * moment another input moved. Staleness is a function of the inputs' current
+ * tips, so the kernel derives it on every read and discards any value supplied
+ * on ingest. It was never read in two years of the field being there. A field
+ * that is always computed and never trusted is not part of the record.
+ */
 
 export type Inference = z.infer<typeof Inference>;
 

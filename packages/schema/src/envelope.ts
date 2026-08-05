@@ -7,7 +7,7 @@ import {
   PartyId,
   Timestamp,
 } from "./primitives.js";
-import { OccurredAtPrecision, RecordClass } from "./enums.js";
+import { OccurredAtPrecision, LawfulBasis, RecordClass } from "./enums.js";
 
 /**
  * Spec §4. Every record in the kernel carries this envelope. No exceptions,
@@ -52,6 +52,17 @@ export const Envelope = z
     /** Which principal was authenticated. Distinct from the subject. Spec §5.2. */
     authenticated_as: AccountId.nullable().default(null),
 
+    /**
+     * The ground this record is held on. Promoted into the envelope in v0.3.
+     *
+     * It sits beside `asserted_by` rather than in any entity body because it is
+     * a property of the act of recording, not of the thing recorded, and
+     * because s.7(3) of the Act turns on it: whether a farmer's objection can
+     * stop this processing is fixed at collection and cannot be worked out
+     * afterwards. A record that cannot say why it may exist should not exist.
+     */
+    lawful_basis: LawfulBasis,
+
     /** When an officer records for a farmer. Requires `delegation`. */
     on_behalf_of: PartyId.nullable().default(null),
     delegation: DelegationId.nullable().default(null),
@@ -90,6 +101,7 @@ export const envelopeShape = {
   recorded_at: Timestamp,
   asserted_by: PartyId,
   authenticated_as: AccountId.nullable().default(null),
+  lawful_basis: LawfulBasis,
   on_behalf_of: PartyId.nullable().default(null),
   delegation: DelegationId.nullable().default(null),
   device_id: z.string().nullable().default(null),

@@ -83,19 +83,6 @@ export class InferenceService {
     context: InferenceContext = {},
   ): Promise<InferenceResult> {
     const dataset = context.dataset ?? 'live';
-    const basis = context.lawfulBasis;
-    if (basis === undefined || !isLawfulBasis(basis)) {
-      throw new RecordRejected(
-        'lawful_basis_required',
-        'no DPPA ground was stated for this inference',
-        [
-          {
-            path: 'x-clycites-lawful-basis',
-            message: `expected one of: ${LAWFUL_BASES.join(', ')}`,
-          },
-        ],
-      );
-    }
 
     if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) {
       throw new RecordRejected('malformed_record', 'an inference must be a JSON object');
@@ -118,6 +105,39 @@ export class InferenceService {
     // anything useful about why.
     candidate['inference_depth'] = typeof claimedDepth === 'number' ? claimedDepth : 0;
 
+    // v0.3: the ground lives in the envelope. The header still populates it so
+    // existing clients keep working, and a disagreement is refused rather than
+    // resolved. See the same block in IngestService.
+    const fromHeader = context.lawfulBasis;
+    const inEnvelope = candidate['lawful_basis'];
+    if (inEnvelope === undefined && fromHeader !== undefined) {
+      candidate['lawful_basis'] = fromHeader;
+    } else if (
+      inEnvelope !== undefined &&
+      fromHeader !== undefined &&
+      inEnvelope !== fromHeader
+    ) {
+      throw new RecordRejected(
+        'lawful_basis_conflict',
+        `the inference states "${String(inEnvelope)}" but the request declares "${fromHeader}" — a record cannot be collected under two grounds`,
+        [{ path: 'lawful_basis', message: 'record and request disagree' }],
+      );
+    }
+
+    const basis = candidate['lawful_basis'];
+    if (!isLawfulBasis(basis)) {
+      throw new RecordRejected(
+        'lawful_basis_required',
+        'no DPPA ground was stated for this inference',
+        [
+          {
+            path: 'lawful_basis',
+            message: `expected one of: ${LAWFUL_BASES.join(', ')}`,
+          },
+        ],
+      );
+    }
+
     const parsed = Inference.safeParse(candidate);
     if (!parsed.success) {
       throw new RecordRejected(
@@ -137,7 +157,6 @@ export class InferenceService {
     const { depth, unresolved } = await this.depthOf(inputs, dataset);
     body['inference_depth'] = depth;
     body['validated_by'] = [];
-    body['stale'] = false;
 
     const flags: string[] = [];
     if (depth > MAX_RECOMMENDED_INFERENCE_DEPTH) flags.push(INFERENCE_DEPTH_EXCEEDED);

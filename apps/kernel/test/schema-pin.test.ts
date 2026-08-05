@@ -16,7 +16,7 @@ import {
  */
 describe('vendored schema', () => {
   test('is pinned at the version this kernel was written against', () => {
-    assert.equal(SCHEMA_VERSION, '0.2.0');
+    assert.equal(SCHEMA_VERSION, '0.3.0');
   });
 
   test('carries the sixteen core record types', () => {

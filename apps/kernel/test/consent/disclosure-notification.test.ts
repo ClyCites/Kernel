@@ -14,6 +14,7 @@ import {
   readingAs,
   retractionDocument,
   subjectAccessServiceFor,
+  anchorServiceFor,
   type TestIngest,
 } from '../helpers/fixtures.js';
 import { OperationsController } from '../../src/api/operations.controller.js';
@@ -264,6 +265,7 @@ describe('the obligation is countable while it is outstanding', () => {
       new ObjectionRepository(db.app),
       subjectAccessServiceFor(db.app),
       notifications,
+      anchorServiceFor(db.app),
     );
   });
 

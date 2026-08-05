@@ -17,7 +17,10 @@
     "dev": "turbo run dev",
     "migrate": "pnpm --filter @clycites/kernel run migrate",
     "seed": "pnpm --filter @clycites/kernel run seed",
-    "openapi": "pnpm --filter @clycites/kernel run openapi"
+    "openapi": "pnpm --filter @clycites/kernel run openapi",
+    "docs:reference": "pnpm --filter @clycites/kernel run docs:reference",
+    "docs": ".venv-docs/bin/mkdocs serve",
+    "docs:build": ".venv-docs/bin/mkdocs build --strict"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",

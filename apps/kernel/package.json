@@ -12,6 +12,7 @@
     "test": "tsx --test \"test/**/*.test.ts\"",
     "migrate": "tsx src/storage/migrate-cli.ts",
     "openapi": "tsx src/api/openapi-cli.ts",
+    "docs:reference": "tsx scripts/generate-docs-reference.ts",
     "seed": "tsx src/seed/cli.ts"
   },
   "dependencies": {

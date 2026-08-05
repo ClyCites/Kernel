@@ -1,0 +1,6 @@
+# Pinned, because a docs build that changes when nobody changed it is a docs
+# build nobody trusts.
+mkdocs==1.6.1
+mkdocs-material==9.6.21
+mkdocs-render-swagger-plugin==0.1.2
+mike==2.1.3

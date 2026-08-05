@@ -295,8 +295,8 @@ media existed. It is now half a backup, and the missing half fails silently:
 > foreign key resolves. Every count matches. Every constraint is valid. And
 > every `MediaRef` in the system points at nothing.
 
-Two additions, in both files, because [backup.sh](scripts/backup.sh) and
-[restore.sh](scripts/restore.sh) duplicate the manifest query verbatim on
+Two additions, in both files, because `scripts/backup.sh` and
+`scripts/restore.sh` duplicate the manifest query verbatim on
 purpose — a shared helper would let the pair drift while still agreeing with
 each other, which is exactly the failure this comparison exists to catch.
 

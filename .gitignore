@@ -14,3 +14,14 @@ coverage/
 # Encrypted dumps and their manifests. Retained off this host — see
 # docs/runbook.md §2.
 backups/
+
+# Documentation site. The virtualenv is rebuilt from requirements-docs.txt, the
+# built site is published by CI, and the API document is copied in at build time
+# by scripts/mkdocs_hooks.py — none of the three is a source file.
+.venv-docs/
+site/
+docs/building/openapi.json
+
+# Byte-compiled mkdocs hooks.
+__pycache__/
+*.pyc

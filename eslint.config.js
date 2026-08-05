@@ -9,6 +9,11 @@ export default tseslint.config(
       '**/node_modules/**',
       '**/.turbo/**',
       'packages/schema/**',
+      // Build output of the documentation site, and the virtualenv that
+      // produces it. Both contain vendored, minified JavaScript that nobody
+      // here wrote.
+      'site/**',
+      '.venv-docs/**',
     ],
   },
   ...tseslint.configs.recommended,

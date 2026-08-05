@@ -25,7 +25,7 @@ import {
  * Every entry points at `@clycites/schema`. Nothing here restates a field, and
  * nothing validates a record a second time (brief §7).
  *
- * All sixteen core entities are here, and none of them needed special handling.
+ * All seventeen core entities are here, and none of them needed special handling.
  * The envelope is identical across entities, so ingest, provenance,
  * supersession and idempotency are entity-agnostic. The only per-entity code in
  * the kernel is two lookup tables — which fields name a record's subject

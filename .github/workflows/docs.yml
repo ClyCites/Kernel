@@ -1,0 +1,114 @@
+# The site is generated from two things the repository already holds: the
+# markdown under docs/, and openapi.json. Neither is hand-copied here, because a
+# hand-copied API reference drifts within a fortnight and then actively
+# misleads.
+#
+# The build runs on every push and pull request as a required check. A broken
+# internal link fails it — see `--strict` below — because a documentation site
+# that rots silently is worse than none.
+name: docs
+
+on:
+  push:
+    branches: [staging]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # mike writes to gh-pages and needs the history to do it.
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # The generated pages are committed, so that the site can be built without
+      # a Node toolchain and so that a schema change shows up as a documentation
+      # diff in review rather than appearing silently at deploy time.
+      - name: Reference pages are up to date
+        run: |
+          pnpm docs:reference
+          git diff --exit-code docs/reference \
+            || { echo "::error::docs/reference is stale — run 'pnpm docs:reference' and commit"; exit 1; }
+
+      - name: The API document is up to date
+        run: |
+          pnpm openapi
+          git diff --exit-code apps/kernel/openapi.json \
+            || { echo "::error::openapi.json is stale — run 'pnpm openapi' and commit"; exit 1; }
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - run: pip install -r requirements-docs.txt
+
+      # --strict turns warnings into failures: broken internal links, missing
+      # anchors, pages absent from the nav.
+      - run: mkdocs build --strict
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: site/
+          retention-days: 14
+
+  # Deployment is deliberately gated on a repository variable rather than being
+  # unconditional. GitHub Pages on a private repository requires a paid plan;
+  # this repository is private and the organisation is on the free tier, so the
+  # deploy cannot run today. Set the variable DOCS_PUBLISH to "true" once Pages
+  # is available and this job starts working with no further change.
+  deploy:
+    needs: build
+    if: >-
+      github.event_name == 'push'
+      && github.ref == 'refs/heads/staging'
+      && vars.DOCS_PUBLISH == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements-docs.txt
+
+      - name: Publish
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mike deploy --push --update-aliases "${DOCS_VERSION}" latest
+          mike set-default --push latest
+        env:
+          # Versioned, so that kernel-v1.0.0 stays readable after v0.3 of the
+          # schema lands and the concepts pages move on.
+          DOCS_VERSION: dev

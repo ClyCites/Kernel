@@ -1,0 +1,132 @@
+site_name: ClyCites Kernel
+site_description: >-
+  The append-only record layer beneath ClyCites — what it records, what it
+  refuses, and what is not yet true of it.
+site_url: https://clycites.github.io/Kernel/
+repo_url: https://github.com/ClyCites/Kernel
+repo_name: ClyCites/Kernel
+edit_uri: edit/staging/docs/
+copyright: ClyCites — internal documentation
+
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  language: en
+  icon:
+    repo: fontawesome/brands/github
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - toc.follow
+    - content.code.copy
+    - content.action.edit
+    - search.highlight
+    - search.suggest
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/weather-night
+        name: Dark
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/weather-sunny
+        name: Light
+
+plugins:
+  - search
+  - render_swagger:
+      allow_arbitrary_locations: false
+
+# Copies the generated OpenAPI document in beside the API page. See the module
+# docstring for why it is not committed under docs/.
+hooks:
+  - scripts/mkdocs_hooks.py
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+# A broken internal link is a documentation bug and fails the build in CI.
+# Files outside the nav are deliberate: the forty ADRs are indexed from one
+# page rather than listed in the sidebar.
+validation:
+  omitted_files: info
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn
+
+extra:
+  version:
+    provider: mike
+    alias: true
+
+nav:
+  - Home: index.md
+  - Getting started:
+      - Running locally: getting-started/running-locally.md
+      - The dry run: getting-started/dry-run.md
+      - Reading the output: getting-started/reading-the-output.md
+  - Concepts:
+      - The record model: concepts/record-model.md
+      - Provenance and the trust ladder: concepts/provenance.md
+      - The quantity problem: concepts/quantity.md
+      - Append-only and supersession: concepts/append-only.md
+      - The inference quarantine: concepts/inference-quarantine.md
+      - "Datasets: seed and live": concepts/datasets.md
+      - Lawful basis and consent: concepts/lawful-basis.md
+  - Flows:
+      - Write path: flows/write-path.md
+      - Read path: flows/read-path.md
+      - Offline sync: flows/offline-sync.md
+      - Corrections and forks: flows/corrections.md
+      - Two-sided confirmation: flows/confirmation.md
+      - Anchoring: flows/anchoring.md
+      - Subject access and objection: flows/subject-access.md
+  - Building on the kernel:
+      - The authorisation model: building/authorisation.md
+      - Obtaining a grant: building/grant.md
+      - What you cannot do: building/cannot.md
+      - API reference: building/api.md
+  - Operations:
+      - Migrations: operations/migrations.md
+      - Backup and restore: operations/backup-and-restore.md
+      - Metrics: operations/metrics.md
+      - Runbook: runbook.md
+  - Compliance:
+      - Statutory mapping: compliance/statutory-mapping.md
+      - What is not yet true: compliance/not-yet-true.md
+  - Decisions: decisions/index.md
+  - Reference:
+      - Schema: reference/schema.md
+      - Enumerations: reference/enumerations.md
+      - Quality flags: reference/quality-flags.md
+      - Data sources: data-sources.md
+      - Field validation kit: field-validation-kit.md

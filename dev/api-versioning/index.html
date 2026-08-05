@@ -10,24 +10,28 @@
       
       
       
-        <link rel="canonical" href="https://clycites.github.io/Kernel/dev/decisions/0024-registry-read-api/">
+        <link rel="canonical" href="https://clycites.github.io/Kernel/dev/api-versioning/">
       
       
+        <link rel="prev" href="../building/cannot/">
       
       
-      <link rel="icon" href="../../assets/images/favicon.png">
+        <link rel="next" href="../building/api/">
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.21">
     
     
       
-        <title>0024 — the registry is public, and the sample is stored - ClyCites Kernel</title>
+        <title>API versioning - ClyCites Kernel</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.2a3383ac.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.2a3383ac.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
       
       
 
@@ -46,7 +50,7 @@
       
     
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -72,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#0024-the-registry-is-public-and-the-sample-is-stored" class="md-skip">
+        <a href="#api-versioning-and-deprecation" class="md-skip">
           Skip to content
         </a>
       
@@ -92,7 +96,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="ClyCites Kernel" class="md-header__button md-logo" aria-label="ClyCites Kernel" data-md-component="logo">
+    <a href=".." title="ClyCites Kernel" class="md-header__button md-logo" aria-label="ClyCites Kernel" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -112,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              0024 — the registry is public, and the sample is stored
+              API versioning
             
           </span>
         </div>
@@ -230,7 +234,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="ClyCites Kernel" class="md-nav__button md-logo" aria-label="ClyCites Kernel" data-md-component="logo">
+    <a href=".." title="ClyCites Kernel" class="md-nav__button md-logo" aria-label="ClyCites Kernel" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -260,7 +264,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href=".." class="md-nav__link">
         
   
   
@@ -333,7 +337,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting-started/running-locally/" class="md-nav__link">
+      <a href="../getting-started/running-locally/" class="md-nav__link">
         
   
   
@@ -356,7 +360,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting-started/dry-run/" class="md-nav__link">
+      <a href="../getting-started/dry-run/" class="md-nav__link">
         
   
   
@@ -379,7 +383,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting-started/reading-the-output/" class="md-nav__link">
+      <a href="../getting-started/reading-the-output/" class="md-nav__link">
         
   
   
@@ -468,7 +472,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../concepts/record-model/" class="md-nav__link">
+      <a href="../concepts/record-model/" class="md-nav__link">
         
   
   
@@ -491,7 +495,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../concepts/provenance/" class="md-nav__link">
+      <a href="../concepts/provenance/" class="md-nav__link">
         
   
   
@@ -514,7 +518,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../concepts/quantity/" class="md-nav__link">
+      <a href="../concepts/quantity/" class="md-nav__link">
         
   
   
@@ -537,7 +541,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../concepts/append-only/" class="md-nav__link">
+      <a href="../concepts/append-only/" class="md-nav__link">
         
   
   
@@ -560,7 +564,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../concepts/inference-quarantine/" class="md-nav__link">
+      <a href="../concepts/inference-quarantine/" class="md-nav__link">
         
   
   
@@ -583,7 +587,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../concepts/datasets/" class="md-nav__link">
+      <a href="../concepts/datasets/" class="md-nav__link">
         
   
   
@@ -606,7 +610,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../concepts/lawful-basis/" class="md-nav__link">
+      <a href="../concepts/lawful-basis/" class="md-nav__link">
         
   
   
@@ -695,7 +699,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../flows/write-path/" class="md-nav__link">
+      <a href="../flows/write-path/" class="md-nav__link">
         
   
   
@@ -718,7 +722,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../flows/read-path/" class="md-nav__link">
+      <a href="../flows/read-path/" class="md-nav__link">
         
   
   
@@ -741,7 +745,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../flows/offline-sync/" class="md-nav__link">
+      <a href="../flows/offline-sync/" class="md-nav__link">
         
   
   
@@ -764,7 +768,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../flows/corrections/" class="md-nav__link">
+      <a href="../flows/corrections/" class="md-nav__link">
         
   
   
@@ -787,7 +791,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../flows/confirmation/" class="md-nav__link">
+      <a href="../flows/confirmation/" class="md-nav__link">
         
   
   
@@ -810,7 +814,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../flows/anchoring/" class="md-nav__link">
+      <a href="../flows/anchoring/" class="md-nav__link">
         
   
   
@@ -833,7 +837,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../flows/subject-access/" class="md-nav__link">
+      <a href="../flows/subject-access/" class="md-nav__link">
         
   
   
@@ -860,8 +864,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -884,11 +890,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
           <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
@@ -904,7 +910,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             Building on the kernel
@@ -918,7 +924,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../building/authorisation/" class="md-nav__link">
+      <a href="../building/authorisation/" class="md-nav__link">
         
   
   
@@ -941,7 +947,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../building/grant/" class="md-nav__link">
+      <a href="../building/grant/" class="md-nav__link">
         
   
   
@@ -964,7 +970,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../building/cannot/" class="md-nav__link">
+      <a href="../building/cannot/" class="md-nav__link">
         
   
   
@@ -984,10 +990,32 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../api-versioning/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    API versioning
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -998,6 +1026,53 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      Compatibility
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deprecation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deprecation
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#enforcement" class="md-nav__link">
+    <span class="md-ellipsis">
+      Enforcement
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1010,7 +1085,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../building/api/" class="md-nav__link">
+      <a href="../building/api/" class="md-nav__link">
         
   
   
@@ -1093,7 +1168,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../operations/migrations/" class="md-nav__link">
+      <a href="../operations/migrations/" class="md-nav__link">
         
   
   
@@ -1116,7 +1191,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../operations/backup-and-restore/" class="md-nav__link">
+      <a href="../operations/backup-and-restore/" class="md-nav__link">
         
   
   
@@ -1139,7 +1214,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../operations/metrics/" class="md-nav__link">
+      <a href="../operations/metrics/" class="md-nav__link">
         
   
   
@@ -1162,7 +1237,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../runbook/" class="md-nav__link">
+      <a href="../runbook/" class="md-nav__link">
         
   
   
@@ -1241,7 +1316,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../compliance/statutory-mapping/" class="md-nav__link">
+      <a href="../compliance/statutory-mapping/" class="md-nav__link">
         
   
   
@@ -1264,7 +1339,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../compliance/not-yet-true/" class="md-nav__link">
+      <a href="../compliance/not-yet-true/" class="md-nav__link">
         
   
   
@@ -1294,7 +1369,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../" class="md-nav__link">
+      <a href="../decisions/" class="md-nav__link">
         
   
   
@@ -1371,7 +1446,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/schema/" class="md-nav__link">
+      <a href="../reference/schema/" class="md-nav__link">
         
   
   
@@ -1394,7 +1469,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/enumerations/" class="md-nav__link">
+      <a href="../reference/enumerations/" class="md-nav__link">
         
   
   
@@ -1417,7 +1492,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/quality-flags/" class="md-nav__link">
+      <a href="../reference/quality-flags/" class="md-nav__link">
         
   
   
@@ -1440,7 +1515,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../data-sources/" class="md-nav__link">
+      <a href="../data-sources/" class="md-nav__link">
         
   
   
@@ -1463,7 +1538,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../field-validation-kit/" class="md-nav__link">
+      <a href="../field-validation-kit/" class="md-nav__link">
         
   
   
@@ -1513,96 +1588,27 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#the-problem" class="md-nav__link">
+  <a href="#compatibility" class="md-nav__link">
     <span class="md-ellipsis">
-      The problem
+      Compatibility
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-was-actually-stored" class="md-nav__link">
+  <a href="#deprecation" class="md-nav__link">
     <span class="md-ellipsis">
-      What was actually stored
+      Deprecation
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#decisions" class="md-nav__link">
+  <a href="#enforcement" class="md-nav__link">
     <span class="md-ellipsis">
-      Decisions
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Decisions">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#the-sample-is-rows-not-a-json-column" class="md-nav__link">
-    <span class="md-ellipsis">
-      The sample is rows, not a JSON column
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#a-superseding-row-not-a-backfill" class="md-nav__link">
-    <span class="md-ellipsis">
-      A superseding row, not a backfill
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#the-registry-is-unauthenticated-and-ungated" class="md-nav__link">
-    <span class="md-ellipsis">
-      The registry is unauthenticated and ungated
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#collections-do-not-carry-samples" class="md-nav__link">
-    <span class="md-ellipsis">
-      Collections do not carry samples
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#rate-limiting-and-what-it-is-not" class="md-nav__link">
-    <span class="md-ellipsis">
-      Rate limiting, and what it is not
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#consequence-for-the-export-guard" class="md-nav__link">
-    <span class="md-ellipsis">
-      Consequence for the export guard
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#consequence-for-the-lender-view" class="md-nav__link">
-    <span class="md-ellipsis">
-      Consequence for the lender view
+      Enforcement
     </span>
   </a>
   
@@ -1624,7 +1630,7 @@
 
 
   
-    <a href="https://github.com/ClyCites/Kernel/edit/staging/docs/decisions/0024-registry-read-api.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/ClyCites/Kernel/edit/staging/docs/api-versioning.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -1632,98 +1638,39 @@
   
 
 
-<h1 id="0024-the-registry-is-public-and-the-sample-is-stored">0024 — the registry is public, and the sample is stored<a class="headerlink" href="#0024-the-registry-is-public-and-the-sample-is-stored" title="Permanent link">&para;</a></h1>
-<p>Status: accepted
-Date: 2026-08-03
-Supersedes: nothing. Extends 0012 (conversion provenance).</p>
-<h2 id="the-problem">The problem<a class="headerlink" href="#the-problem" title="Permanent link">&para;</a></h2>
-<p>The kernel could write conversion provenance and could not read it back out.</p>
-<p>A delivery record says <code>12 bag -&gt; 1200 kg</code> and cites a <code>conversion_id</code>. That
-citation is the mechanism the whole platform rests on: it is what lets a lender
-distinguish a quantity somebody weighed from a quantity somebody assumed. But
-until now there was no route that resolved a conversion id to anything. The
-apparatus was write-only.</p>
-<p>That is not a missing endpoint. It breaks the thesis. The claim is that a third
-party can verify a record <em>without trusting ClyCites</em>. A weight they cannot
-dereference to a factor, a basis and a sample is a weight they have to take on
-faith, which is the situation the platform exists to end.</p>
-<h2 id="what-was-actually-stored">What was actually stored<a class="headerlink" href="#what-was-actually-stored" title="Permanent link">&para;</a></h2>
-<p>Correction to a premise that had been circulating: migration 0012 did <strong>not</strong>
-record twelve weighings. It added <code>sample_size</code>, <code>sample_min</code>, <code>sample_max</code>,
-<code>sample_stddev</code>, <code>condition</code> and <code>local_label</code> — six summary columns. The twelve
-numbers behind them existed in the seed fixture and in an English sentence in
-<code>source</code>. <code>measured_by</code>, <code>measured_at</code> and <code>instrument</code> did not exist at all.</p>
-<p>Four statistics cannot be recomputed into the sample they came from. So an
-endpoint that returned everything the registry held would still not have let
-anybody check the summary, because there was nothing to check it against.
-Migration 0015 therefore had to create the storage before the read path could be
-worth having.</p>
-<h2 id="decisions">Decisions<a class="headerlink" href="#decisions" title="Permanent link">&para;</a></h2>
-<h3 id="the-sample-is-rows-not-a-json-column">The sample is rows, not a JSON column<a class="headerlink" href="#the-sample-is-rows-not-a-json-column" title="Permanent link">&para;</a></h3>
-<p><code>registry.unit_conversion_sample</code>, one row per weighing, keyed
-<code>(conversion, ordinal)</code>, immutable under the same <code>refuse_mutation</code> trigger as
-every other registry table, with a trigger refusing an ordinal beyond the
-declared <code>sample_size</code> and refusing any row against a factor that declares no
-sample. A JSON blob would have made "the summary restates the sample" an
-assertion in application code. As rows it is a database constraint.</p>
-<p><code>condition</code> is per sample, not per factor. Two of coop A's twelve bags were
-weighed damp; that is not noise to be tidied away, it is the explanation for a
-2.68 kg standard deviation, and a single factor-level <code>dried,tight</code> would have
-concealed it.</p>
-<h3 id="a-superseding-row-not-a-backfill">A superseding row, not a backfill<a class="headerlink" href="#a-superseding-row-not-a-backfill" title="Permanent link">&para;</a></h3>
-<p>The provenance was attached to a <strong>new</strong> conversion
-<code>019fc600-…-000000000051</code>, superseding <code>…0050</code>, rather than added to <code>…0050</code>.</p>
-<p>Two reasons, and the second is the real one:</p>
-<ol>
-<li>The immutability trigger refuses <code>update</code> on <code>registry.unit_conversion</code> even
-   to the schema owner. Working around it would have meant disabling it.</li>
-<li>Records already cite <code>…0050</code>. Attaching evidence to that row would
-   retroactively give those records provenance they did not have when they were
-   written. A record must keep the meaning it had at the moment of writing.
-   <code>…0050</code> remains readable, and says what replaced it.</li>
-</ol>
-<h3 id="the-registry-is-unauthenticated-and-ungated">The registry is unauthenticated and ungated<a class="headerlink" href="#the-registry-is-unauthenticated-and-ungated" title="Permanent link">&para;</a></h3>
-<p><code>GET /v1/registry/**</code> takes no subject header, passes through no consent guard,
-and is served with <code>Cache-Control: public, max-age=86400, immutable</code>.</p>
-<p>The registry holds unit conversions, crop codes, administrative boundaries and
-grading vocabularies. There is no data subject anywhere in it. Gating it would
-be theatre — and worse than theatre, because verification that requires our
-permission is not verification. This is the first surface where the kernel's
-openness is a feature rather than a risk, and the reason it is safe is
-structural: the controller can inject <code>RegistryRepository</code> and nothing else, and
-that repository holds <code>select</code> on the <code>registry</code> schema and nothing else. A test
-in <code>test/ops/exposure.test.ts</code> fails if the controller ever reaches a record
-service.</p>
-<h3 id="collections-do-not-carry-samples">Collections do not carry samples<a class="headerlink" href="#collections-do-not-carry-samples" title="Permanent link">&para;</a></h3>
-<p>A single-conversion fetch returns the sample. A collection does not. A lender
-filtering a list does not need twelve rows per factor; a scraper would like them
-very much. One fetch by id gets them.</p>
-<h3 id="rate-limiting-and-what-it-is-not">Rate limiting, and what it is not<a class="headerlink" href="#rate-limiting-and-what-it-is-not" title="Permanent link">&para;</a></h3>
-<p>The public surface is limited per address by an in-process fixed window
-(<code>REGISTRY_RATE_LIMIT</code>, default 600 per minute). This is stated in
-<code>rate-limit.middleware.ts</code> as a finding rather than hidden: the counter lives in
-one process, so it is per replica, it resets on deploy, and behind N instances
-the effective limit is N times the configured one. It is adequate for a
-single-instance kernel and is not a substitute for a limit at the edge. When the
-gateway grows one, this becomes the second line.</p>
-<h2 id="consequence-for-the-export-guard">Consequence for the export guard<a class="headerlink" href="#consequence-for-the-export-guard" title="Permanent link">&para;</a></h2>
-<p><code>test/ops/exposure.test.ts</code> forbids bulk export. A registry collection endpoint
-is bulk, and the guard did not fire on it — its route-name regex does not match
-<code>conversions</code>. Rather than add an exception, the guard was read again and
-narrowed to what it always meant: no bulk export of <strong>personal data</strong>. The s.16(4)
-reasoning it encodes — that an export makes the recipient an independent holder
-we owe correction notices to indefinitely — has no purchase on data with no
-subject.</p>
-<p>Its real defect was elsewhere. The second test checked a hardcoded list of three
-controllers, so a fourth would have been silently exempt. That list is now
-derived from the directory.</p>
-<h2 id="consequence-for-the-lender-view">Consequence for the lender view<a class="headerlink" href="#consequence-for-the-lender-view" title="Permanent link">&para;</a></h2>
-<p>The report now resolves every cited factor and prints <code>measured (n=12)</code> beside
-<code>assumed_default</code>, with the twelve weights, the officer, the date and the
-instrument underneath the first and "a convention, not a measurement" underneath
-the second. Both cooperatives quote 100 kg per bag. Only one of them has ever
-checked.</p>
-<p>That contrast is the artifact this kernel exists to produce.</p>
+<h1 id="api-versioning-and-deprecation">API versioning and deprecation<a class="headerlink" href="#api-versioning-and-deprecation" title="Permanent link">&para;</a></h1>
+<p>The version in <code>/v1</code> is a compatibility promise. A new implementation may add
+capability within that version, but it must not reinterpret a contract that a
+consumer already uses.</p>
+<h2 id="compatibility">Compatibility<a class="headerlink" href="#compatibility" title="Permanent link">&para;</a></h2>
+<p>A change is <strong>breaking</strong> when it removes a field or endpoint, narrows a type,
+adds a required request field, changes the meaning of an existing enum value,
+or tightens validation for an input the API previously accepted. Breaking
+changes require a new API version unless the exceptional process below is
+explicitly approved.</p>
+<p>A new optional response field, a new endpoint, or a new enum value is
+<strong>additive</strong>. Consumers are contractually required to degrade gracefully when
+they receive an unknown enum value. Exhaustive enum handling without an
+unknown-value branch is therefore a consumer defect, not a reason to prevent
+enum growth.</p>
+<h2 id="deprecation">Deprecation<a class="headerlink" href="#deprecation" title="Permanent link">&para;</a></h2>
+<p>Deprecated endpoints and fields carry a <code>Deprecation</code> header and a <code>Sunset</code>
+header as specified by RFC 8594. The minimum notice period is 180 days. A
+replacement and migration note must be published when deprecation begins.</p>
+<p>The kernel supports N-1 API versions: the current version and one prior version
+remain live throughout the notice period. A version may be removed only after
+its sunset date and after its successor has been available for the full notice
+period.</p>
+<h2 id="enforcement">Enforcement<a class="headerlink" href="#enforcement" title="Permanent link">&para;</a></h2>
+<p>CI compares <code>apps/kernel/openapi.json</code> with the document at the pull request's
+merge base. Any change beneath a pre-existing path or schema fails the gate;
+new path and schema keys pass. This deliberately requires review even for some
+additive edits to an existing shape, because accidental contract mutation is
+more costly than an explicit exception.</p>
+<p>An intentional exception requires the pull request label <code>breaking-change</code>.
+CI maps that label to <code>BREAKING_CHANGE_APPROVED=1</code>. The label records approval;
+it does not make a breaking change compatible or remove the obligation to
+version and deprecate it.</p>
 
 
 
@@ -1782,10 +1729,10 @@ checked.</p>
     
     
       
-      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.top", "navigation.indexes", "toc.follow", "content.code.copy", "content.action.edit", "search.highlight", "search.suggest"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.top", "navigation.indexes", "toc.follow", "content.code.copy", "content.action.edit", "search.highlight", "search.suggest"], "search": "../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      <script src="../assets/javascripts/bundle.f55a23d4.min.js"></script>
       
     
   </body>

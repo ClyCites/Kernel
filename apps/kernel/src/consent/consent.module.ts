@@ -11,13 +11,14 @@ import { ObjectionService } from './objection.service.js';
 import { RetentionNoticeRepository } from './retention-notice.repository.js';
 import { RetentionNoticeService } from './retention-notice.service.js';
 import { SubjectAccessService } from './subject-access.service.js';
+import { IdentityModule } from '../identity/identity.module.js';
 
 /** Global so that no read path can be written without the guard in reach. */
 @Global()
 @Module({
   // Subject access reads the log itself. Not a cycle: the guard reaches this
   // module through @Global rather than through an import.
-  imports: [RecordsModule],
+  imports: [RecordsModule, IdentityModule],
   providers: [
     ConsentRepository,
     ConsentService,

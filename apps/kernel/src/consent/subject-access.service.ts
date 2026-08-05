@@ -10,6 +10,10 @@ import { toDocument, type Dataset, type RecordDocument } from '../records/record
 import { PARTY_SUBJECT_FIELDS, subjectFields } from '../records/subjects.js';
 import { ConsentRepository, type ConsentGrantRow } from './consent.repository.js';
 import { ObjectionRepository, type ObjectionRow } from './objection.repository.js';
+import {
+  ClientRepository,
+  type ClientAuthorisationRow,
+} from '../identity/client.repository.js';
 
 /**
  * s.24(9). The clock the request starts, carried in the response so the
@@ -61,6 +65,7 @@ export interface SubjectAccessResponse {
   /** s.24(1)(c): who has had access, and on what permission. */
   disclosures: DisclosureRow[];
   consents: ConsentGrantRow[];
+  client_authorisations: ClientAuthorisationRow[];
   objections: ObjectionRow[];
   /** True when the answer hit `MAX_RECORDS` and is therefore incomplete. */
   truncated: boolean;
@@ -92,6 +97,7 @@ export class SubjectAccessService {
     @Inject(DisclosureRepository) private readonly disclosures: DisclosureRepository,
     @Inject(ConsentRepository) private readonly consent: ConsentRepository,
     @Inject(ObjectionRepository) private readonly objections: ObjectionRepository,
+    @Inject(ClientRepository) private readonly clients: ClientRepository,
     @Inject(AuditService) private readonly audit: AuditService,
   ) {}
 
@@ -111,7 +117,7 @@ export class SubjectAccessService {
   ): Promise<SubjectAccessResponse> {
     const started = Date.now();
 
-    const [held, disclosures, consents, objections] = await Promise.all([
+    const [held, disclosures, consents, objections, clientAuthorisations] = await Promise.all([
       this.records.list({
         subject: { id: subject, fields: subjectFields() },
         // A superseded or retracted record is still held, and a subject asking
@@ -124,6 +130,7 @@ export class SubjectAccessService {
       this.disclosures.disclosuresTo(subject, dataset),
       this.consent.grantsBySubject(subject, dataset),
       this.objections.objectionsBySubject(subject, dataset),
+      this.clients.authorisationsByParty(subject),
     ]);
 
     const truncated = held.length > MAX_RECORDS;
@@ -179,6 +186,7 @@ export class SubjectAccessService {
       records,
       disclosures,
       consents,
+      client_authorisations: clientAuthorisations,
       objections,
       truncated,
       notice: [...NOTICE],

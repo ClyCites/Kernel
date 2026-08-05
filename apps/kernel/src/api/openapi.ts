@@ -9,10 +9,15 @@ import {
 import { NOTICE_CHANNELS } from '../consent/retention-notice.repository.js';
 import { VERDICTS } from '../inference/inference.repository.js';
 import { ENTITY_SCHEMAS } from '../records/entity-registry.js';
-import { SUBJECT_HEADER } from './subject.js';
+import {
+  ACTING_FOR_HEADER,
+  CLIENT_HEADER,
+  SUBJECT_HEADER,
+} from './subject.js';
 import { DATASET_HEADER, LAWFUL_BASIS_HEADER } from './dataset.js';
 import { DATASETS } from '../records/record.js';
 import { LAWFUL_BASES } from '../records/lawful-basis.js';
+import { CLIENT_SCOPES } from '../identity/client.repository.js';
 
 /**
  * OpenAPI 3.1 generated from the Zod schemas. Brief §5 phase 4: generated, not
@@ -112,6 +117,22 @@ const subjectHeader: JsonSchema = {
   in: 'header',
   description:
     'The authenticated party, set by the gateway. Reads without it are refused.',
+  schema: { type: 'string', format: 'uuid' },
+};
+
+const clientHeader: JsonSchema = {
+  name: CLIENT_HEADER,
+  in: 'header',
+  description:
+    'The Authentik OAuth client identifier, set by the trusted gateway from the validated token.',
+  schema: { type: 'string', minLength: 1, maxLength: 200 },
+};
+
+const actingForHeader: JsonSchema = {
+  name: ACTING_FOR_HEADER,
+  in: 'header',
+  description:
+    'Exactly one party represented by the OAuth client. Repeated or list-valued forms are refused.',
   schema: { type: 'string', format: 'uuid' },
 };
 
@@ -853,6 +874,35 @@ export function buildOpenApiDocument(): OpenApiDocument {
     },
   };
 
+  schemas['Client'] = {
+    type: 'object',
+    required: ['id', 'client_id', 'display_name', 'owner_party', 'scopes', 'status', 'recorded_at'],
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      client_id: { type: 'string', minLength: 1, maxLength: 200 },
+      display_name: { type: 'string', minLength: 1, maxLength: 200 },
+      owner_party: { type: 'string', format: 'uuid' },
+      scopes: { type: 'array', items: { type: 'string', enum: [...CLIENT_SCOPES] } },
+      status: { type: 'string', enum: ['active', 'suspended', 'retired'] },
+      recorded_at: { type: 'string', format: 'date-time' },
+    },
+  };
+
+  schemas['ClientAuthorisation'] = {
+    type: 'object',
+    required: ['id', 'party', 'client_id', 'scopes', 'granted_at', 'granted_via'],
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      party: { type: 'string', format: 'uuid' },
+      client_id: { type: 'string' },
+      scopes: { type: 'array', items: { type: 'string', enum: [...CLIENT_SCOPES] } },
+      granted_at: { type: 'string', format: 'date-time' },
+      expires_at: { type: ['string', 'null'], format: 'date-time' },
+      granted_via: { type: 'string' },
+      revoked_at: { type: ['string', 'null'], format: 'date-time' },
+    },
+  };
+
   schemas['Objection'] = {
     type: 'object',
     required: ['id', 'subject', 'lodged_at', 'lodged_via', 'lodged_by'],
@@ -1022,7 +1072,7 @@ export function buildOpenApiDocument(): OpenApiDocument {
 
   schemas['SubjectAccessResponse'] = {
     type: 'object',
-    required: ['subject', 'dataset', 'prepared_at', 'due_by', 'held', 'records', 'disclosures', 'consents', 'objections', 'truncated', 'notice'],
+    required: ['subject', 'dataset', 'prepared_at', 'due_by', 'held', 'records', 'disclosures', 'consents', 'client_authorisations', 'objections', 'truncated', 'notice'],
     description:
       'Everything held about one subject, assembled for them under s.24. Not a record read: the consent guard answers whether one party may see another’s record, and a subject asking for their own data is not that question.',
     properties: {
@@ -1047,6 +1097,10 @@ export function buildOpenApiDocument(): OpenApiDocument {
           's.24(1)(c). Third parties only: the subject’s own reads are not disclosures, and a refused request disclosed nothing.',
       },
       consents: { type: 'array', items: ref('ConsentGrant') },
+      client_authorisations: {
+        type: 'array',
+        items: ref('ClientAuthorisation'),
+      },
       objections: { type: 'array', items: ref('Objection') },
       truncated: {
         type: 'boolean',
@@ -1236,6 +1290,8 @@ export function buildOpenApiDocument(): OpenApiDocument {
             },
             { name: 'cursor', in: 'query', schema: { type: 'string' } },
             subjectHeader,
+            clientHeader,
+            actingForHeader,
           ],
           responses: {
             '200': {
@@ -1263,6 +1319,8 @@ export function buildOpenApiDocument(): OpenApiDocument {
               schema: { type: 'string', format: 'uuid' },
             },
             subjectHeader,
+            clientHeader,
+            actingForHeader,
           ],
           responses: {
             '200': {
@@ -1289,6 +1347,8 @@ export function buildOpenApiDocument(): OpenApiDocument {
               schema: { type: 'string', format: 'uuid' },
             },
             subjectHeader,
+            clientHeader,
+            actingForHeader,
           ],
           responses: {
             '200': {
@@ -1315,6 +1375,8 @@ export function buildOpenApiDocument(): OpenApiDocument {
               schema: { type: 'string', format: 'uuid' },
             },
             subjectHeader,
+            clientHeader,
+            actingForHeader,
           ],
           responses: {
             '200': {
@@ -2342,6 +2404,63 @@ export function buildOpenApiDocument(): OpenApiDocument {
               content: { 'application/json': { schema: ref('PartyLink') } },
             },
             '404': problemResponse('No live link with that id.'),
+          },
+        },
+      },
+      '/clients/authorisations': {
+        get: {
+          tags: ['identity'],
+          operationId: 'listClientAuthorisations',
+          summary: 'List this party’s client authorisations',
+          responses: {
+            '200': {
+              description: 'Authorisations, including revoked ones.',
+              content: { 'application/json': { schema: { type: 'object', required: ['authorisations'], properties: { authorisations: { type: 'array', items: ref('ClientAuthorisation') } } } } },
+            },
+          },
+        },
+        post: {
+          tags: ['identity'],
+          operationId: 'authoriseClient',
+          summary: 'Authorise a client to act for this party',
+          requestBody: {
+            required: true,
+            content: { 'application/json': { schema: {
+              type: 'object',
+              required: ['client_id', 'scopes', 'granted_via'],
+              properties: {
+                client_id: { type: 'string' },
+                scopes: { type: 'array', minItems: 1, items: { type: 'string', enum: [...CLIENT_SCOPES] } },
+                expires_at: { type: ['string', 'null'], format: 'date-time' },
+                granted_via: { type: 'string' },
+              },
+            } } },
+          },
+          responses: {
+            '201': { description: 'Authorised.', content: { 'application/json': { schema: ref('ClientAuthorisation') } } },
+            '403': problemResponse('Client authorisation is not permitted.'),
+          },
+        },
+      },
+      '/clients/authorisations/{id}': {
+        delete: {
+          tags: ['identity'],
+          operationId: 'revokeClientAuthorisation',
+          summary: 'Revoke a client authorisation',
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+          requestBody: {
+            content: { 'application/json': { schema: {
+              type: 'object',
+              properties: {
+                on_behalf_of: { type: 'string', format: 'uuid' },
+                delegation: { type: 'string', format: 'uuid' },
+                reason: { type: ['string', 'null'], maxLength: 500 },
+              },
+            } } },
+          },
+          responses: {
+            '200': { description: 'Revoked.' },
+            '404': problemResponse('No authorisation of this party with that id.'),
           },
         },
       },

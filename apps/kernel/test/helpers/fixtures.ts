@@ -34,6 +34,7 @@ import { DEFAULT_SUPERSESSION_MAX_DEPTH } from '../../src/records/lineage.js';
 import type { KernelConfig } from '../../src/config.js';
 import type { Reader } from '../../src/records/read.service.js';
 import type { Dataset } from '../../src/records/record.js';
+import { ClientRepository } from '../../src/identity/client.repository.js';
 
 /**
  * Fixtures modelled on Appendix A of the specification — a farmer delivering
@@ -130,6 +131,7 @@ export const subjectAccessServiceFor = (pool: Pool): SubjectAccessService =>
     new DisclosureRepository(pool),
     new ConsentRepository(pool),
     new ObjectionRepository(pool),
+    new ClientRepository(pool),
     auditServiceFor(pool),
   );
 

@@ -114,6 +114,7 @@ nav:
       - The authorisation model: building/authorisation.md
       - Obtaining a grant: building/grant.md
       - What you cannot do: building/cannot.md
+      - API versioning: api-versioning.md
       - API reference: building/api.md
   - Operations:
       - Migrations: operations/migrations.md

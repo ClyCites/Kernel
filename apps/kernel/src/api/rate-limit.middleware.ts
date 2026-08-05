@@ -2,6 +2,7 @@ import { Inject, Injectable, type NestMiddleware } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
 
 import { KERNEL_CONFIG, type KernelConfig } from '../config.js';
+import { CLIENT_HEADER } from './subject.js';
 
 /**
  * A fixed-window limiter for the one surface that has no authenticated caller.
@@ -33,7 +34,13 @@ export class RateLimitMiddleware implements NestMiddleware {
     const limit = this.config.REGISTRY_RATE_LIMIT;
     const windowMs = this.config.REGISTRY_RATE_WINDOW_SECONDS * 1000;
     const now = Date.now();
-    const key = request.ip ?? 'unknown';
+    const clientId = request.header(CLIENT_HEADER);
+    const anonymousRegistry = request.path.startsWith('/v1/registry/');
+    if (clientId === undefined && !anonymousRegistry) {
+      next();
+      return;
+    }
+    const key = clientId === undefined ? `ip:${request.ip ?? 'unknown'}` : `client:${clientId}`;
 
     if (this.hits.size > 10_000) this.evict(now);
 
@@ -59,7 +66,7 @@ export class RateLimitMiddleware implements NestMiddleware {
         type: '/problems/429',
         title: 'Too many requests',
         status: 429,
-        detail: `The registry accepts ${limit} requests per ${this.config.REGISTRY_RATE_WINDOW_SECONDS}s from one address. It is immutable reference data — cache it rather than polling it.`,
+        detail: `This caller has exceeded ${limit} requests per ${this.config.REGISTRY_RATE_WINDOW_SECONDS}s.`,
         instance: request.originalUrl,
       });
       return;

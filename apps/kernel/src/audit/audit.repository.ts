@@ -36,6 +36,8 @@ export class AuditRepository {
       dataset: entry.dataset,
       reason: entry.reason ?? null,
       actor: entry.actor ?? null,
+      client_id: entry.clientId ?? null,
+      acting_for: entry.actingFor ?? null,
       purpose: entry.purpose ?? null,
       subjects: boundedIds(entry.subjects),
       records: boundedIds(entry.records),
@@ -46,9 +48,9 @@ export class AuditRepository {
 
     await this.pool.query(
       `insert into audit.entry (
-         id, occurred_at, action, outcome, dataset, reason, actor, purpose,
-         subjects, records, record_types, detail, correlation_id
-       ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+         id, occurred_at, action, outcome, dataset, reason, actor, client_id,
+         acting_for, purpose, subjects, records, record_types, detail, correlation_id
+       ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
       [
         row.id,
         row.occurred_at,
@@ -57,6 +59,8 @@ export class AuditRepository {
         row.dataset,
         row.reason,
         row.actor,
+        row.client_id,
+        row.acting_for,
         row.purpose,
         row.subjects,
         row.records,
@@ -79,6 +83,8 @@ export interface ShippedEntry {
   dataset: string;
   reason: string | null;
   actor: string | null;
+  client_id: string | null;
+  acting_for: string | null;
   purpose: string | null;
   subjects: string[];
   records: string[];

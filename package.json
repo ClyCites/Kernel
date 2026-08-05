@@ -18,6 +18,8 @@
     "migrate": "pnpm --filter @clycites/kernel run migrate",
     "seed": "pnpm --filter @clycites/kernel run seed",
     "openapi": "pnpm --filter @clycites/kernel run openapi",
+    "openapi:check-breaking": "node scripts/check-openapi-breaking.mjs",
+    "openapi:check-breaking:test": "node --test scripts/check-openapi-breaking.test.mjs",
     "docs:reference": "pnpm --filter @clycites/kernel run docs:reference",
     "docs": ".venv-docs/bin/mkdocs serve",
     "docs:build": ".venv-docs/bin/mkdocs build --strict"

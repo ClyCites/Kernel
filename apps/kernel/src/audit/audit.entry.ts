@@ -91,6 +91,10 @@ export interface AuditEntry {
   reason?: string | null | undefined;
   /** The verified subject claim. Null when none reached the kernel. */
   actor?: string | null | undefined;
+  /** OAuth client that made the request, distinct from the recipient party. */
+  clientId?: string | null | undefined;
+  /** Party the client represented and to whom the disclosure was made. */
+  actingFor?: string | null | undefined;
   purpose?: string | null | undefined;
   /** Who the data was about. Answers DPPA s.24(1)(c). */
   subjects?: readonly string[] | undefined;

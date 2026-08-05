@@ -25,6 +25,8 @@ import { verifiedSubject } from './subject.js';
 import { correlationOf } from './correlation.middleware.js';
 import { requestedDataset, declaredLawfulBasis } from './dataset.js';
 import { KERNEL_CONFIG, type KernelConfig } from '../config.js';
+import { ClientService } from '../identity/client.service.js';
+import { actingFor, verifiedClient } from './subject.js';
 
 /**
  * Query parameters are the kernel's own surface, not record contents, so they
@@ -50,6 +52,7 @@ export class RecordsController {
   constructor(
     @Inject(IngestService) private readonly ingest: IngestService,
     @Inject(ReadService) private readonly read: ReadService,
+    @Inject(ClientService) private readonly clients: ClientService,
     @Inject(KERNEL_CONFIG)
     private readonly config: Pick<KernelConfig, 'SEED_INGEST_ENABLED'> = {
       SEED_INGEST_ENABLED: false,
@@ -104,7 +107,7 @@ export class RecordsController {
         limit: parsed.data.limit,
         cursor: parsed.data.cursor,
       },
-      this.reader(request, parsed.data.purpose),
+      await this.reader(request, parsed.data.purpose),
     );
   }
 
@@ -118,7 +121,7 @@ export class RecordsController {
     @Query() query: unknown,
     @Req() request: Request,
   ): Promise<unknown> {
-    const view = await this.read.get(this.id(id), this.reader(request, this.purpose(query)));
+    const view = await this.read.get(this.id(id), await this.reader(request, this.purpose(query)));
     if (view === null) throw new NotFoundException(`no record ${id}`);
     return view;
   }
@@ -131,7 +134,7 @@ export class RecordsController {
   ): Promise<unknown> {
     const records = await this.read.chain(
       this.id(id),
-      this.reader(request, this.purpose(query)),
+      await this.reader(request, this.purpose(query)),
     );
     if (records.length === 0) throw new NotFoundException(`no record ${id}`);
     return { records };
@@ -145,7 +148,7 @@ export class RecordsController {
   ): Promise<unknown> {
     const view = await this.read.getInference(
       this.id(id),
-      this.reader(request, this.purpose(query)),
+      await this.reader(request, this.purpose(query)),
     );
     if (view === null) throw new NotFoundException(`no inference ${id}`);
     return view;
@@ -157,12 +160,21 @@ export class RecordsController {
     return parsed.data.purpose;
   }
 
-  private reader(
+  private async reader(
     request: Request,
     purpose?: (typeof CONSENT_PURPOSES)[number] | undefined,
-  ): Reader {
+  ): Promise<Reader> {
+    const subject = verifiedSubject(request);
+    const client = await this.clients.resolve(
+      subject,
+      verifiedClient(request),
+      actingFor(request),
+      'records:read',
+    );
     return {
-      requester: verifiedSubject(request),
+      requester: client?.requester ?? subject,
+      clientId: client?.clientId ?? null,
+      actingFor: client?.actingFor ?? null,
       purpose: purpose ?? null,
       dataset: requestedDataset(request, this.config.SEED_INGEST_ENABLED),
       correlationId: correlationOf(request),

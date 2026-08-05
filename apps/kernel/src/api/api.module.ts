@@ -25,6 +25,7 @@ import { AnchorsController } from './anchors.controller.js';
 import { RegistryController } from './registry.controller.js';
 import { RetentionController } from './retention.controller.js';
 import { SyncController } from './sync.controller.js';
+import { ClientsController } from './clients.controller.js';
 
 /**
  * The public API. Brief §2: no application ever reaches past this boundary —
@@ -46,6 +47,7 @@ import { SyncController } from './sync.controller.js';
     RetentionController,
     SubjectAccessController,
     OperationsController,
+    ClientsController,
   ],
   providers: [
     { provide: APP_FILTER, useClass: ProblemFilter },
@@ -56,8 +58,8 @@ export class ApiModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
     consumer.apply(CorrelationMiddleware).forRoutes('*path');
     consumer.apply(PurposeHeaderMiddleware).forRoutes('*path');
-    // Only the registry. Everywhere else a caller has a verified subject, so
-    // abuse has a name attached and is an access-control question.
-    consumer.apply(RateLimitMiddleware).forRoutes('v1/registry/*path');
+    // Anonymous registry traffic is keyed by IP. Authenticated traffic is
+    // keyed by the verified OAuth client identifier supplied by the gateway.
+    consumer.apply(RateLimitMiddleware).forRoutes('*path');
   }
 }

@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@v4
 
@@ -35,6 +37,14 @@ jobs:
       # applications are coding against a document that is no longer true.
       - run: pnpm openapi
       - run: git diff --exit-code apps/kernel/openapi.json
+
+      - run: pnpm --filter @clycites/api-client run generate
+      - run: git diff --exit-code packages/api-client/src/generated.ts
+
+      - run: pnpm openapi:check-breaking:test
+      - run: pnpm openapi:check-breaking
+        env:
+          BREAKING_CHANGE_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'breaking-change') && '1' || '0' }}
 
       # Integration tests start their own Postgres via Testcontainers, which
       # needs the Docker daemon the runner already provides. That includes the

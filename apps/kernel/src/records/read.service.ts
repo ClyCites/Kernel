@@ -64,6 +64,10 @@ function datasetOf(reader: Reader): Dataset {
 export interface Reader {
   /** The verified subject claim. Null when none reached the kernel. */
   requester: string | null;
+  /** OAuth client making the request, if this is an acting-for read. */
+  clientId?: string | null | undefined;
+  /** Party represented by the client and recipient of the disclosure. */
+  actingFor?: string | null | undefined;
   /** Null means “my own records”. Any purpose is denied by the stub. */
   purpose?: ConsentPurpose | null | undefined;
   /**
@@ -563,6 +567,8 @@ export class ReadService {
       dataset: datasetOf(reader),
       reason: 'objection_upheld',
       actor: reader.requester,
+      clientId: reader.clientId ?? null,
+      actingFor: reader.actingFor ?? null,
       purpose: reader.purpose ?? null,
       records: [...withheld],
       detail: { withheld: withheld.size, ...descriptor },
@@ -613,6 +619,8 @@ export class ReadService {
       dataset: datasetOf(reader),
       reason: decision.reason,
       actor: reader.requester,
+      clientId: reader.clientId ?? null,
+      actingFor: reader.actingFor ?? null,
       purpose: reader.purpose ?? null,
       subjects: facts.flatMap((fact) => fact.subjects),
       records: facts.map((fact) => fact.id),

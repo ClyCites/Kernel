@@ -1,0 +1,25 @@
+{
+  "name": "@clycites/api-client",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist", "src/generated.ts"],
+  "scripts": {
+    "generate": "node scripts/generate.mjs",
+    "check:generated": "pnpm generate && git diff --exit-code src/generated.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test test/**/*.test.ts"
+  },
+  "dependencies": {
+    "@clycites/schema": "workspace:*",
+    "openapi-fetch": "^0.15.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.2",
+    "openapi-typescript": "^7.10.1",
+    "tsx": "^4.23.4",
+    "typescript": "5.9.3"
+  }
+}

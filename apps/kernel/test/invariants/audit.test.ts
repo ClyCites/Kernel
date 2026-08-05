@@ -477,6 +477,8 @@ function entryShape() {
     dataset: 'live',
     reason: null,
     actor: null,
+    client_id: null,
+    acting_for: null,
     purpose: null,
     subjects: [],
     records: [],

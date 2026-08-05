@@ -1,0 +1,2755 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="The append-only record layer beneath ClyCites — what it records, what it refuses, and what is not yet true of it.">
+      
+      
+      
+        <link rel="canonical" href="https://clycites.github.io/Kernel/dev/runbook/">
+      
+      
+        <link rel="prev" href="../operations/metrics/">
+      
+      
+        <link rel="next" href="../compliance/statutory-mapping/">
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.21">
+    
+    
+      
+        <title>Runbook - ClyCites Kernel</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.2a3383ac.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#runbook" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="ClyCites Kernel" class="md-header__button md-logo" aria-label="ClyCites Kernel" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ClyCites Kernel
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Runbook
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Dark"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dark" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Light"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Light" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ClyCites/Kernel" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.0.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ClyCites/Kernel
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="ClyCites Kernel" class="md-nav__button md-logo" aria-label="ClyCites Kernel" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    ClyCites Kernel
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ClyCites/Kernel" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.0.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ClyCites/Kernel
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Getting started
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Getting started
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/running-locally/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Running locally
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/dry-run/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    The dry run
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/reading-the-output/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Reading the output
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Concepts
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Concepts
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/record-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    The record model
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/provenance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Provenance and the trust ladder
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/quantity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    The quantity problem
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/append-only/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Append-only and supersession
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/inference-quarantine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    The inference quarantine
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/datasets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Datasets: seed and live
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/lawful-basis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Lawful basis and consent
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Flows
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Flows
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../flows/write-path/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Write path
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../flows/read-path/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Read path
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../flows/offline-sync/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Offline sync
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../flows/corrections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Corrections and forks
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../flows/confirmation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Two-sided confirmation
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../flows/anchoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Anchoring
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../flows/subject-access/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Subject access and objection
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Building on the kernel
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Building on the kernel
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../building/authorisation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    The authorisation model
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../building/grant/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Obtaining a grant
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../building/cannot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    What you cannot do
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../building/api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    API reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Operations
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Operations
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operations/migrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Migrations
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operations/backup-and-restore/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Backup and restore
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operations/metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Metrics
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Runbook
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Runbook
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-data-breach-s23" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Data breach — s.23
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Data breach — s.23">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#do-these-concurrently-not-in-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      Do these concurrently, not in sequence
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#do-not-delete-anything" class="md-nav__link">
+    <span class="md-ellipsis">
+      Do not delete anything
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-authority-decides-whether-data-subjects-are-notified" class="md-nav__link">
+    <span class="md-ellipsis">
+      The Authority decides whether data subjects are notified
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#contacts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Contacts
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#record-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      Record it
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-restore-from-backup" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Restore from backup
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Restore from backup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#verify-a-backup-without-touching-production" class="md-nav__link">
+    <span class="md-ellipsis">
+      Verify a backup without touching production
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#restore-production" class="md-nav__link">
+    <span class="md-ellipsis">
+      Restore production
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-the-verification-does-not-cover" class="md-nav__link">
+    <span class="md-ellipsis">
+      What the verification does not cover
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#recovery-objectives" class="md-nav__link">
+    <span class="md-ellipsis">
+      Recovery objectives
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-rotate-a-secret" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Rotate a secret
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Rotate a secret">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#kernel_app-password" class="md-nav__link">
+    <span class="md-ellipsis">
+      kernel_app password
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clycites_owner-password" class="md-nav__link">
+    <span class="md-ellipsis">
+      clycites_owner password
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#backup_passphrase" class="md-nav__link">
+    <span class="md-ellipsis">
+      BACKUP_PASSPHRASE
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#after-any-rotation" class="md-nav__link">
+    <span class="md-ellipsis">
+      After any rotation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-roll-back-a-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Roll back a migration
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-deploy" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Deploy
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-monthly-verification-s202" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Monthly verification — s.20(2)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Monthly verification — s.20(2)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#verification-log" class="md-nav__link">
+    <span class="md-ellipsis">
+      Verification log
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-anchoring-has-stopped" class="md-nav__link">
+    <span class="md-ellipsis">
+      7. Anchoring has stopped
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Anchoring has stopped">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-it-means" class="md-nav__link">
+    <span class="md-ellipsis">
+      What it means
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#diagnose" class="md-nav__link">
+    <span class="md-ellipsis">
+      Diagnose
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#repair" class="md-nav__link">
+    <span class="md-ellipsis">
+      Repair
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#do-not" class="md-nav__link">
+    <span class="md-ellipsis">
+      Do not
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-incident-log" class="md-nav__link">
+    <span class="md-ellipsis">
+      8. Incident log
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-known-gaps" class="md-nav__link">
+    <span class="md-ellipsis">
+      9. Known gaps
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Compliance
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            Compliance
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../compliance/statutory-mapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Statutory mapping
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../compliance/not-yet-true/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    What is not yet true
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Decisions
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Reference
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Schema
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/enumerations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Enumerations
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/quality-flags/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Quality flags
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../data-sources/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Data sources
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../field-validation-kit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Field validation kit
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-data-breach-s23" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Data breach — s.23
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Data breach — s.23">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#do-these-concurrently-not-in-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      Do these concurrently, not in sequence
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#do-not-delete-anything" class="md-nav__link">
+    <span class="md-ellipsis">
+      Do not delete anything
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-authority-decides-whether-data-subjects-are-notified" class="md-nav__link">
+    <span class="md-ellipsis">
+      The Authority decides whether data subjects are notified
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#contacts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Contacts
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#record-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      Record it
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-restore-from-backup" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Restore from backup
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Restore from backup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#verify-a-backup-without-touching-production" class="md-nav__link">
+    <span class="md-ellipsis">
+      Verify a backup without touching production
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#restore-production" class="md-nav__link">
+    <span class="md-ellipsis">
+      Restore production
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-the-verification-does-not-cover" class="md-nav__link">
+    <span class="md-ellipsis">
+      What the verification does not cover
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#recovery-objectives" class="md-nav__link">
+    <span class="md-ellipsis">
+      Recovery objectives
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-rotate-a-secret" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Rotate a secret
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Rotate a secret">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#kernel_app-password" class="md-nav__link">
+    <span class="md-ellipsis">
+      kernel_app password
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clycites_owner-password" class="md-nav__link">
+    <span class="md-ellipsis">
+      clycites_owner password
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#backup_passphrase" class="md-nav__link">
+    <span class="md-ellipsis">
+      BACKUP_PASSPHRASE
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#after-any-rotation" class="md-nav__link">
+    <span class="md-ellipsis">
+      After any rotation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-roll-back-a-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Roll back a migration
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-deploy" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Deploy
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-monthly-verification-s202" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Monthly verification — s.20(2)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Monthly verification — s.20(2)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#verification-log" class="md-nav__link">
+    <span class="md-ellipsis">
+      Verification log
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-anchoring-has-stopped" class="md-nav__link">
+    <span class="md-ellipsis">
+      7. Anchoring has stopped
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Anchoring has stopped">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-it-means" class="md-nav__link">
+    <span class="md-ellipsis">
+      What it means
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#diagnose" class="md-nav__link">
+    <span class="md-ellipsis">
+      Diagnose
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#repair" class="md-nav__link">
+    <span class="md-ellipsis">
+      Repair
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#do-not" class="md-nav__link">
+    <span class="md-ellipsis">
+      Do not
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-incident-log" class="md-nav__link">
+    <span class="md-ellipsis">
+      8. Incident log
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-known-gaps" class="md-nav__link">
+    <span class="md-ellipsis">
+      9. Known gaps
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/ClyCites/Kernel/edit/staging/docs/runbook.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="runbook">Runbook<a class="headerlink" href="#runbook" title="Permanent link">&para;</a></h1>
+<p>Operational procedures for the ClyCites kernel. Written to be followed by
+somebody who did not build it, at three in the morning, under pressure.</p>
+<p>References to sections are to the Data Protection and Privacy Act, 2019
+(Act 9 of 2019).</p>
+<blockquote>
+<p><strong>The contact rows in §1 are empty. That is a real gap, not a template
+placeholder.</strong> Fill them before they are needed, because the one thing §1 does
+not permit is time spent looking up who to call.</p>
+</blockquote>
+<hr />
+<h2 id="1-data-breach-s23">1. Data breach — s.23<a class="headerlink" href="#1-data-breach-s23" title="Permanent link">&para;</a></h2>
+<p><strong>Trigger:</strong> any belief that personal data has been accessed, altered,
+disclosed, or destroyed without authorisation. Belief, not proof. A suspicious
+access pattern, a leaked credential, a lost laptop with a database password on
+it, an unexplained gap in the audit log.</p>
+<p><strong>s.23(1) requires notification to the Personal Data Protection Office
+immediately.</strong> Not within seventy-two hours. Not once the investigation
+concludes. Immediately, on belief.</p>
+<h3 id="do-these-concurrently-not-in-sequence">Do these concurrently, not in sequence<a class="headerlink" href="#do-these-concurrently-not-in-sequence" title="Permanent link">&para;</a></h3>
+<p>Containment does not wait for notification, and notification does not wait for
+containment. Two people, two tracks. If there is only one person, notify first —
+it is the shorter task.</p>
+<table>
+<thead>
+<tr>
+<th>Track</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Contain</td>
+<td>Rotate the credentials that could have been used (§3). Revoke sessions. Block the source if it is identifiable.</td>
+</tr>
+<tr>
+<td>Notify</td>
+<td>Contact the Authority. See below.</td>
+</tr>
+<tr>
+<td>Preserve</td>
+<td>Snapshot logs and the audit schema <strong>now</strong>, before rotation destroys the evidence.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="do-not-delete-anything">Do not delete anything<a class="headerlink" href="#do-not-delete-anything" title="Permanent link">&para;</a></h3>
+<p><strong>s.36 makes unlawful destruction of personal data a criminal offence.</strong> The
+append-only log is the evidence of what happened and when. Deleting affected
+records to "limit exposure" converts a data breach into a second offence and
+destroys the only account of the first.</p>
+<p>The log cannot be deleted from anyway — decision 0001 removed DELETE from the
+application role — but nothing stops somebody dropping a schema as the owner.
+Do not.</p>
+<h3 id="the-authority-decides-whether-data-subjects-are-notified">The Authority decides whether data subjects are notified<a class="headerlink" href="#the-authority-decides-whether-data-subjects-are-notified" title="Permanent link">&para;</a></h3>
+<p><strong>s.23(2).</strong> Not us. Prepare the notification text so it can go out the moment
+it is authorised, and do not send it unilaterally. Notifying subjects before the
+Authority has ruled can prejudice an investigation and is not within our
+discretion to choose.</p>
+<h3 id="contacts">Contacts<a class="headerlink" href="#contacts" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Name</th>
+<th>Phone</th>
+<th>Email</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Incident owner (decides, and is accountable)</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Deputy (when the owner is unreachable)</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Personal Data Protection Office</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Legal counsel</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Infrastructure / hosting provider</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="record-it">Record it<a class="headerlink" href="#record-it" title="Permanent link">&para;</a></h3>
+<p>Every breach, and every belief of one that turned out to be nothing, gets an
+entry in §7. Under <strong>s.33(2)</strong> a documented, dated record of how we responded
+forms part of a reasonable-care defence. An undocumented correct response is
+worth less than a documented imperfect one.</p>
+<hr />
+<h2 id="2-restore-from-backup">2. Restore from backup<a class="headerlink" href="#2-restore-from-backup" title="Permanent link">&para;</a></h2>
+<h3 id="verify-a-backup-without-touching-production">Verify a backup without touching production<a class="headerlink" href="#verify-a-backup-without-touching-production" title="Permanent link">&para;</a></h3>
+<p>This is the drill. Run it monthly (§6). It never touches the live database.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">BACKUP_PASSPHRASE</span><span class="o">=</span>...<span class="w">        </span><span class="c1"># from the secret store, never from a file</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>scripts/restore.sh<span class="w"> </span>backups/&lt;stamp&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span>postgres://clycites_owner:...@localhost:5433/clycites_restore
+</code></pre></div>
+<p>Exit 0 means every row count, every primary-key fingerprint, every constraint
+(including its validated flag), and every table grant matches the database that
+was dumped. Anything else prints a diff and exits non-zero.</p>
+<p><code>restore.sh</code> <strong>drops and recreates its target</strong>, and refuses any database whose
+name does not contain <code>restore</code>, <code>test</code>, or <code>scratch</code>.</p>
+<h3 id="restore-production">Restore production<a class="headerlink" href="#restore-production" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Stop the kernel. Writes during a restore are lost silently and there is no
+   reconciliation path afterwards.</li>
+<li>Restore into a scratch database first and confirm it verifies. Do not restore
+   straight over production — a corrupt backup then leaves you with nothing.</li>
+<li>Rename or point the connection at the verified scratch database.</li>
+<li>Run <code>pnpm migrate</code>. It is idempotent and will report <code>already applied</code>.</li>
+<li>Start the kernel and check <code>/ready</code>, then <code>/metrics</code>.</li>
+<li>Note the actual RPO and RTO in §7 while it is fresh.</li>
+</ol>
+<h3 id="what-the-verification-does-not-cover">What the verification does not cover<a class="headerlink" href="#what-the-verification-does-not-cover" title="Permanent link">&para;</a></h3>
+<p>The manifest is one we wrote ourselves. It proves the restored database matches
+the dump; it cannot prove the dump matched reality at the moment it was taken.</p>
+<p>Once anchoring ships (work order I), completeness becomes checkable against
+published Merkle roots, which is independently strong because we do not control
+them. That is the intended upgrade to this section.</p>
+<h3 id="recovery-objectives">Recovery objectives<a class="headerlink" href="#recovery-objectives" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Target</th>
+<th>Last measured</th>
+<th>Date</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RPO — data we accept losing</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>RTO — time to serving again</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>Measure these during the monthly drill. A target with no measurement beside it
+is a hope.</p>
+<hr />
+<h2 id="3-rotate-a-secret">3. Rotate a secret<a class="headerlink" href="#3-rotate-a-secret" title="Permanent link">&para;</a></h2>
+<p>Rotate on any breach belief, on any staff departure with access, and on any
+credential that has ever existed in a file, a terminal history, or a chat.</p>
+<h3 id="kernel_app-password"><code>kernel_app</code> password<a class="headerlink" href="#kernel_app-password" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Change it in the secret store.</li>
+<li><code>ALTER ROLE kernel_app WITH PASSWORD '&lt;new&gt;'</code> as the owner.</li>
+<li>Update <code>KERNEL_APP_PASSWORD</code> and <code>DATABASE_URL</code> in the deployment
+   environment.</li>
+<li>Restart the kernel. Confirm <code>/ready</code> returns 200 — it fails when Postgres is
+   unreachable, which is exactly what a half-rotated password looks like.</li>
+</ol>
+<h3 id="clycites_owner-password"><code>clycites_owner</code> password<a class="headerlink" href="#clycites_owner-password" title="Permanent link">&para;</a></h3>
+<p>Same, plus <code>MIGRATOR_DATABASE_URL</code>, plus anywhere <code>scripts/backup.sh</code> runs.</p>
+<h3 id="backup_passphrase"><code>BACKUP_PASSPHRASE</code><a class="headerlink" href="#backup_passphrase" title="Permanent link">&para;</a></h3>
+<p><strong>Backups taken under the old passphrase stay readable only with the old
+passphrase.</strong> Keep it until every backup encrypted with it has aged out of
+retention, and record the date it becomes safe to destroy. Losing the old
+passphrase while old backups are still the only copies means losing the data.</p>
+<p>After rotating, take a fresh backup and verify it (§2) before relying on it.</p>
+<h3 id="after-any-rotation">After any rotation<a class="headerlink" href="#after-any-rotation" title="Permanent link">&para;</a></h3>
+<p>Run <code>bash scripts/check-secrets.sh</code>. It scans everything git tracks.</p>
+<hr />
+<h2 id="4-roll-back-a-migration">4. Roll back a migration<a class="headerlink" href="#4-roll-back-a-migration" title="Permanent link">&para;</a></h2>
+<p><strong>There is no down-migration, by design.</strong> Decision 0001 makes the log
+append-only; a mechanism able to undo a schema change would also be a mechanism
+able to reach the data behind it.</p>
+<ul>
+<li><strong>A schema change to undo:</strong> write a new forward migration that undoes it.
+  Migrations are immutable once applied — the migrator refuses a file whose
+  checksum changed — so editing the original is not an option and will fail
+  loudly if attempted.</li>
+<li><strong>A migration that failed mid-run:</strong> it ran in its own transaction and rolled
+  back. The database is on the last complete migration. Fix the file and re-run.</li>
+<li><strong>Record data that is wrong:</strong> this is not a deployment problem. Supersede or
+  retract through the API, which is what those record types exist for. If the
+  data is wrong because of a defect, it is an incident (§1), not a rollback.</li>
+</ul>
+<hr />
+<h2 id="5-deploy">5. Deploy<a class="headerlink" href="#5-deploy" title="Permanent link">&para;</a></h2>
+<ol>
+<li><code>pnpm typecheck &amp;&amp; pnpm lint &amp;&amp; pnpm test</code> — all three, no exceptions.</li>
+<li><code>pnpm openapi &amp;&amp; git diff --exit-code apps/kernel/openapi.json</code>. A drifted
+   contract means applications are coding against a document that is no longer
+   true.</li>
+<li><strong>Take a backup and verify it</strong> (§2) before running migrations.</li>
+<li><code>pnpm migrate</code>.</li>
+<li>Deploy, then check <code>/ready</code> and <code>/metrics</code>.</li>
+</ol>
+<p>Watch after a deploy:</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>What a change means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kernel_assumed_conversion_share</code></td>
+<td>Tonnage resting on an unverified conversion factor</td>
+</tr>
+<tr>
+<td><code>kernel_thin_sample_kg_total</code></td>
+<td>Tonnage on a <code>measured</code> factor with a thin sample (0018)</td>
+</tr>
+<tr>
+<td><code>kernel_records_by_lawful_basis{basis="unstated"}</code></td>
+<td>Should only ever be pre-0013 rows. Growth means a write path is bypassing the basis check</td>
+</tr>
+<tr>
+<td><code>kernel_financial_records_without_special_consent</code></td>
+<td>Should be zero for anything written after 0013</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="6-monthly-verification-s202">6. Monthly verification — s.20(2)<a class="headerlink" href="#6-monthly-verification-s202" title="Permanent link">&para;</a></h2>
+<p><strong>s.20(2) requires regularly verifying that safeguards are effectively
+implemented.</strong> A one-off hardening pass does not satisfy it. This table, dated
+and signed, is what does — and under s.33(2) it forms part of a reasonable-care
+defence.</p>
+<p>Run on the first working day of each month.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Check</th>
+<th>How</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>A backup from the last 24h exists</td>
+<td><code>ls backups/</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td>That backup restores and verifies</td>
+<td>§2, into a scratch database</td>
+</tr>
+<tr>
+<td>3</td>
+<td>RPO and RTO measured and recorded</td>
+<td>§2</td>
+</tr>
+<tr>
+<td>4</td>
+<td>No credential in the tree</td>
+<td><code>bash scripts/check-secrets.sh</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td>Config guards pass</td>
+<td><code>pnpm test</code> — <code>test/ops/</code></td>
+</tr>
+<tr>
+<td>6</td>
+<td>No data-tier port reachable from off-host</td>
+<td><code>nmap</code> or <code>nc -vz</code> from another machine</td>
+</tr>
+<tr>
+<td>7</td>
+<td>OS security updates applied</td>
+<td><code>unattended-upgrades</code> log</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Access list still correct</td>
+<td>Who holds DB, host, and secret-store access — remove departures</td>
+</tr>
+<tr>
+<td>9</td>
+<td>§1 contacts still correct</td>
+<td>Ring one of them</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Audit log shipping off-box</td>
+<td><code>AUDIT_SHIP_URL</code> is set, and the collector holds entries dated within the last 24h</td>
+</tr>
+<tr>
+<td>11</td>
+<td>Audit log is still write-only to the app</td>
+<td><code>select privilege_type from information_schema.role_table_grants where grantee='kernel_app' and table_schema='audit'</code> returns INSERT and nothing else</td>
+</tr>
+<tr>
+<td>12</td>
+<td>No unexplained DDL</td>
+<td><code>select occurred_at, reason, detail-&gt;&gt;'object', detail-&gt;&gt;'role' from audit.entry where action='schema.ddl' and occurred_at &gt; now() - interval '1 month'</code> — every row should match a deploy in §5</td>
+</tr>
+<tr>
+<td>13</td>
+<td>Denial rate has not shifted</td>
+<td><code>select date_trunc('day', occurred_at) d, reason, count(*) from audit.entry where outcome='denied' group by 1,2 order by 1</code> — a change is a signal, not noise</td>
+</tr>
+</tbody>
+</table>
+<h3 id="verification-log">Verification log<a class="headerlink" href="#verification-log" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Who</th>
+<th>1</th>
+<th>2</th>
+<th>3</th>
+<th>4</th>
+<th>5</th>
+<th>6</th>
+<th>7</th>
+<th>8</th>
+<th>9</th>
+<th>10</th>
+<th>11</th>
+<th>12</th>
+<th>13</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="7-anchoring-has-stopped">7. Anchoring has stopped<a class="headerlink" href="#7-anchoring-has-stopped" title="Permanent link">&para;</a></h2>
+<p><strong>Alert:</strong> <code>kernel_anchor_stale == 1</code>, or <code>scripts/anchor-cron.sh check</code> exiting
+non-zero.</p>
+<blockquote>
+<p><strong>Not live yet.</strong> No topic exists and no root has been published, so this
+section does not currently fire — it describes the state to run in once
+<code>ANCHOR_TOPIC_ID</code> (or <code>ANCHOR_PUBLISH_URL</code>) is set. Until then, tamper
+evidence is not a property this deployment has, and must not be described as
+one to a lender, a regulator or a farmer. See 0038.</p>
+</blockquote>
+<h3 id="what-it-means">What it means<a class="headerlink" href="#what-it-means" title="Permanent link">&para;</a></h3>
+<p>No Merkle root has been published in three days on a kernel configured to
+publish one. Every record written since the last root has no public commitment,
+so nothing about it can be shown to predate today. The data is intact; the
+<em>evidence</em> that it is intact is not being produced.</p>
+<p>This is the only failure in the kernel that is silent by construction.
+Everything else breaks in front of somebody — a refused write is a 4xx a caller
+sees, a broken read is a support ticket. A batch that stops running produces
+nothing at all, and the absence is normally noticed the first time someone asks
+for a proof, which is exactly the moment it cannot be repaired. That is why the
+alert is wired to the absence of an expected root and not to a job's exit code:
+a scheduler that was uninstalled leaves no failed run behind it.</p>
+<h3 id="diagnose">Diagnose<a class="headerlink" href="#diagnose" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>scripts/anchor-cron.sh check
+</code></pre></div>
+<p>Read the line it prints:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>configured=false</code></td>
+<td>No topic. Not a fault — the alert is gated on this and will not fire. If you expected a topic, the environment is wrong, not the job.</td>
+</tr>
+<tr>
+<td><code>last_root=none</code></td>
+<td>A topic is set and nothing has ever been published. The first run has never succeeded. Check credentials before anything else.</td>
+</tr>
+<tr>
+<td><code>age_days</code> large</td>
+<td>Anchoring ran once and stopped. Check the crontab first: <code>crontab -l \| grep anchor</code>.</td>
+</tr>
+<tr>
+<td><code>pending</code> &gt; 0</td>
+<td>Batches were built but never reached the topic. Credentials, network, or an operator account out of hbar.</td>
+</tr>
+<tr>
+<td><code>failed</code> &gt; 0</td>
+<td>Publication exhausted its retries. Read <code>last_error</code> on <code>kernel.anchor_batch</code>.</td>
+</tr>
+<tr>
+<td><code>unanchored_age_days</code> large with a fresh <code>last_root</code></td>
+<td>The quieter failure. The batch is running and covering almost nothing. Do not close this as healthy because a root exists.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="repair">Repair<a class="headerlink" href="#repair" title="Permanent link">&para;</a></h3>
+<p>Missed days are not lost. Each day is its own batch keyed on <code>batch_date</code>, and
+a day already anchored is a no-op, so the fix is to run the missing days:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>cd apps/kernel
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>for d in 2026-07-30 2026-07-31 2026-08-01; do
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>  ./node_modules/.bin/tsx src/anchoring/anchor-cli.ts --date &quot;$d&quot;
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>done
+</code></pre></div>
+<p>Then confirm:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>scripts/anchor-cron.sh check
+</code></pre></div>
+<p>Roots published late are still roots. What was lost is the <em>tightness</em> of the
+bound — a record from 30 July anchored on 5 August is proved to predate 5
+August, not 31 July. Say so plainly if anyone asks; do not backdate a batch to
+close the gap, and note the window in the incident log below.</p>
+<h3 id="do-not">Do not<a class="headerlink" href="#do-not" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Do not widen <code>ANCHOR_STALE_AFTER_DAYS</code> to silence the alert. It is in
+  <code>anchor.service.ts</code> and not in configuration precisely so that the person who
+  can quiet the alarm has to change the code and be seen doing it.</li>
+<li>Do not delete a <code>failed</code> batch to make the metric read zero. The leaves are
+  the record of what was in that day's tree.</li>
+</ul>
+<hr />
+<h2 id="8-incident-log">8. Incident log<a class="headerlink" href="#8-incident-log" title="Permanent link">&para;</a></h2>
+<p>Every incident, every drill, every restore. Append only — correct an entry by
+adding another, which is the same discipline the log itself keeps.</p>
+<table>
+<thead>
+<tr>
+<th>Date</th>
+<th>What</th>
+<th>Data subjects affected</th>
+<th>Authority notified</th>
+<th>RPO/RTO observed</th>
+<th>Outcome</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="9-known-gaps">9. Known gaps<a class="headerlink" href="#9-known-gaps" title="Permanent link">&para;</a></h2>
+<p>Recorded here rather than left implicit, because a gap somebody wrote down is a
+decision and a gap nobody wrote down is a surprise.</p>
+<table>
+<thead>
+<tr>
+<th>Gap</th>
+<th>Blocked on</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>§1 contact rows are empty</td>
+<td>Nothing. Fill them.</td>
+</tr>
+<tr>
+<td>Answering a s.24(1)(c) request has no tooling</td>
+<td>Nothing. The data and the grants are right (0025); a person runs the query as the owner.</td>
+</tr>
+<tr>
+<td>Un-shipped audit entries are lost if the process dies</td>
+<td>A shipper outside this process, which needs its own role. See 0025 finding 1.</td>
+</tr>
+<tr>
+<td>Retention expiry and destruction, s.18(4)</td>
+<td>The 2021 Regulations, and counsel</td>
+</tr>
+<tr>
+<td>Cross-border transfer position</td>
+<td>Counsel</td>
+</tr>
+<tr>
+<td>External penetration test</td>
+<td>Budget. Before the first real farmer record.</td>
+</tr>
+<tr>
+<td>Restore completeness verified independently</td>
+<td>Work order I (anchoring)</td>
+</tr>
+<tr>
+<td>Seed plot area, crop mix and delivery frequency are invented</td>
+<td>The UNPS microdata, which is behind a manually approved login. See <code>docs/data-sources.md</code>.</td>
+</tr>
+<tr>
+<td><code>UG.KIRYANDONGO</code> and <code>UG.NEBBI</code> are not in <code>registry.admin_region</code></td>
+<td>Nothing. The seed uses both district codes anyway; the season calendar could not be scoped to them.</td>
+</tr>
+<tr>
+<td>Three observation types carry no citation</td>
+<td>A field request for any of them, or their eventual withdrawal. See 0028.</td>
+</tr>
+<tr>
+<td>A farmer cannot read their own Planting, Harvest or Observation</td>
+<td>Closed. Those types reach a party through one declared hop — <code>plot</code> for Planting and Harvest, <code>subject_ref</code> for Observation. Where the hop resolves to nobody the read is denied as <code>subject_unresolvable</code>. See 0029.</td>
+</tr>
+<tr>
+<td>A cooperative can classify as member body on records it is not a party to</td>
+<td>Nothing, but know both bounds: every party the record resolves to must be its member at <code>occurred_at</code>, <strong>and</strong> it must have asserted the record or hold the delegation it was written under. A harvest a farmer recorded independently stays third party. See 0029.</td>
+</tr>
+<tr>
+<td>Whether s.9(3)(c) reaches a member's data unrelated to the body's own dealings</td>
+<td>Counsel, with the s.9 flag question. The nexus condition assumes not, which is the conservative reading. If counsel says the provision is broader, the nexus limb comes out of <code>classify</code>. See 0029.</td>
+</tr>
+<tr>
+<td>Erasure under s.16 and s.18 is not implemented</td>
+<td>Counsel, open decision D3. An objection is not erasure and the response says so in as many words, so nobody is told their records are gone when they are not.</td>
+</tr>
+<tr>
+<td>A subject-access answer is capped at 1000 records and reports <code>truncated</code></td>
+<td>An export path for subjects above the cap. Nobody has one today, and the flag is the only thing keeping the shortfall visible. See 0031.</td>
+</tr>
+<tr>
+<td><code>audit.disclosures_to</code> is the application's only read of the audit log</td>
+<td>Nothing, but it is the thing to look at first if the audit grants are ever revisited. A compromised app can call it per subject; it cannot read the log. See 0031.</td>
+</tr>
+<tr>
+<td>A party whose <code>kind</code> is unrecorded is redacted as a person</td>
+<td>Party records for every counterparty. Over-redaction is recoverable, under-redaction is a disclosure, so the default is set that way. See 0031.</td>
+</tr>
+<tr>
+<td>Parties who already received data are not notified when an objection is lodged</td>
+<td>Nothing here. J4 landed notification for corrections and retractions, which is what s.16(4) reaches; an objection is neither. A party who read a record before the subject objected is not told, and the objection response says the objection stops future disclosure only. See 0032.</td>
+</tr>
+<tr>
+<td>Nothing sends a disclosure notification</td>
+<td>An adapter, outside the kernel. J4 raises the obligation and counts it; <code>kernel_disclosure_notifications_outstanding</code> will sit above zero and climb until something discharges it, which is the intended reading. See 0032.</td>
+</tr>
+<tr>
+<td><code>audit.recipients_of</code> is the second application read of the audit log</td>
+<td>Nothing, but it is now two functions rather than one that would have to be reviewed if the audit grants are revisited. Neither can read the log; each is scoped to one subject or one record. See 0032.</td>
+</tr>
+<tr>
+<td>A party reached only through a hop may be notified about a correction they are close to</td>
+<td>Nothing. The exclusion list is what the two records name directly, because a spurious notification is noise and a missing one is a breach. See 0032.</td>
+</tr>
+<tr>
+<td><code>S9_CONSENT_REQUIRED_FOR_MEMBER_BODY</code> is set true on a guess</td>
+<td>Counsel. One question: does s.9(3)(c) permit a cooperative to process its members' financial information without separate explicit consent? The answer sets one flag. See 0029.</td>
+</tr>
+<tr>
+<td>Aggregate and anonymised access has no rule at all</td>
+<td>Counsel, and a de-identification standard. Tangled with s.37 on selling personal data. The next consent question, not part of 0029.</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      ClyCites — internal documentation
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.top", "navigation.indexes", "toc.follow", "content.code.copy", "content.action.edit", "search.highlight", "search.suggest"], "search": "../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>

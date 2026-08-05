@@ -1,0 +1,1929 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="The append-only record layer beneath ClyCites — what it records, what it refuses, and what is not yet true of it.">
+      
+      
+      
+        <link rel="canonical" href="https://clycites.github.io/Kernel/dev/decisions/0039-schema-v0.3/">
+      
+      
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.21">
+    
+    
+      
+        <title>0039 — Schema v0.3 - ClyCites Kernel</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.2a3383ac.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#0039-schema-v03" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="ClyCites Kernel" class="md-header__button md-logo" aria-label="ClyCites Kernel" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ClyCites Kernel
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              0039 — Schema v0.3
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Dark"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dark" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Light"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Light" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ClyCites/Kernel" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.0.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ClyCites/Kernel
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="ClyCites Kernel" class="md-nav__button md-logo" aria-label="ClyCites Kernel" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    ClyCites Kernel
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ClyCites/Kernel" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.0.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ClyCites/Kernel
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Getting started
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Getting started
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/running-locally/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Running locally
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/dry-run/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    The dry run
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/reading-the-output/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Reading the output
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Concepts
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Concepts
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/record-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    The record model
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/provenance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Provenance and the trust ladder
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/quantity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    The quantity problem
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/append-only/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Append-only and supersession
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/inference-quarantine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    The inference quarantine
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/datasets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Datasets: seed and live
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/lawful-basis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Lawful basis and consent
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Flows
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Flows
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../flows/write-path/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Write path
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../flows/read-path/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Read path
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../flows/offline-sync/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Offline sync
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../flows/corrections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Corrections and forks
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../flows/confirmation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Two-sided confirmation
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../flows/anchoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Anchoring
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../flows/subject-access/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Subject access and objection
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Building on the kernel
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Building on the kernel
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../building/authorisation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    The authorisation model
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../building/grant/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Obtaining a grant
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../building/cannot/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    What you cannot do
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../building/api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    API reference
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Operations
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Operations
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/migrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Migrations
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/backup-and-restore/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Backup and restore
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Metrics
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../runbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Runbook
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Compliance
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            Compliance
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../compliance/statutory-mapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Statutory mapping
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../compliance/not-yet-true/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    What is not yet true
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Decisions
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    Reference
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Schema
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/enumerations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Enumerations
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/quality-flags/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Quality flags
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../data-sources/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Data sources
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../field-validation-kit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Field validation kit
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#why-one-bump-and-not-six" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why one bump and not six
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-six" class="md-nav__link">
+    <span class="md-ellipsis">
+      The six
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The six">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-stale-is-gone-from-the-inference-body" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. stale is gone from the inference body
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-subjecttyperegion-resolves-against-registryadmin_region" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. SubjectType.region resolves against registry.admin_region
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-conversionbasis-gains-definitional" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. ConversionBasis gains definitional
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-special_data_member_body-stays-absent-and-now-says-why-in-the-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. special_data_member_body stays absent, and now says why in the schema
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-lawful_basis-is-promoted-to-the-envelope" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. lawful_basis is promoted to the envelope
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-the-comment-adjective-on-agreement" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. The comment adjective on Agreement
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-counterparty_confirmed_at-is-gone-from-delivery-and-there-is-a-record-instead" class="md-nav__link">
+    <span class="md-ellipsis">
+      7. counterparty_confirmed_at is gone from Delivery, and there is a record instead
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#migrations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Migrations
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-still-open-after-this" class="md-nav__link">
+    <span class="md-ellipsis">
+      What is still open after this
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/ClyCites/Kernel/edit/staging/docs/decisions/0039-schema-v0.3.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="0039-schema-v03">0039 — Schema v0.3<a class="headerlink" href="#0039-schema-v03" title="Permanent link">&para;</a></h1>
+<p><strong>Status:</strong> accepted
+<strong>Date:</strong> 2026-08-05
+<strong>Supersedes nothing. Amends:</strong> 0002 (derived fields), 0022 (lineage), 0029 (member body), 0038 (anchoring).</p>
+<h2 id="why-one-bump-and-not-six">Why one bump and not six<a class="headerlink" href="#why-one-bump-and-not-six" title="Permanent link">&para;</a></h2>
+<p>Six changes had accumulated against <code>@clycites/schema</code> since v0.2.0 was frozen.
+None of them individually justified moving a version that every application
+pins, and each of them individually would have cost a release, a re-pin and a
+round of upgrade coordination across seven applications. Batched, they cost one.</p>
+<p>The package has been treated as read-only since the kernel was started, which
+was the right default and is why the list got to six. It is not a permanent
+policy. This is the first deliberate bump, and the discipline being adopted is:
+the schema moves rarely, in one motion, with the reasoning written down.</p>
+<h2 id="the-six">The six<a class="headerlink" href="#the-six" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p>Seven, since the confirmation finding. The heading is left as it was written
+so the numbering below keeps matching the work order that produced it.</p>
+</blockquote>
+<h3 id="1-stale-is-gone-from-the-inference-body">1. <code>stale</code> is gone from the inference body<a class="headerlink" href="#1-stale-is-gone-from-the-inference-body" title="Permanent link">&para;</a></h3>
+<p>Spec §8 rule 5 says superseding an observation "sets <code>stale</code>" on the inferences
+computed from it. In an append-only log nothing is ever set. Correcting the
+flag would take a second record asserting the first is stale — a fact about our
+bookkeeping rather than about the world — and it would be wrong again the moment
+another input moved.</p>
+<p>The kernel has always derived staleness at read time from the inputs' current
+tips (<code>src/records/staleness.ts</code>) and has always discarded a client-supplied
+value on ingest. The stored boolean was never read. A field that is always
+computed and never trusted is not part of the record, and leaving it in the
+schema advertised a guarantee the kernel deliberately did not honour.</p>
+<p>This closes the open question from 0022 about whether <code>stale</code> should be written
+into the body the way <code>Lot.custodian</code> is. The answer is no, and the two are not
+alike: <code>custodian</code> is derived but <em>stable</em> — it changes only when a custody
+record is written — whereas staleness changes whenever any transitive input
+moves, so there is no moment at which writing it down would be correct for
+longer than the next append.</p>
+<p>The read path is unchanged. <code>stale</code> still appears in every inference the API
+serves, in the derived-labels block beside <code>superseded_by</code>, which is where a
+computed field belongs.</p>
+<h3 id="2-subjecttyperegion-resolves-against-registryadmin_region">2. <code>SubjectType.region</code> resolves against <code>registry.admin_region</code><a class="headerlink" href="#2-subjecttyperegion-resolves-against-registryadmin_region" title="Permanent link">&para;</a></h3>
+<p>Five of the six subject types resolve against the fact log: a <code>subject_id</code> of
+type <code>plot</code>, <code>lot</code>, <code>party</code>, <code>facility</code> or <code>planting</code> is the id of a record in
+<code>facts.record</code>. <code>region</code> never did, and v0.2 did not say what it resolved
+against instead. A region subject was an id pointing at nothing checkable, so a
+yield inference over a district could not be verified to be about a district
+that exists.</p>
+<p>A region is not an observed thing. Nobody records the event of a district
+existing; it is a registry entry. So a <code>region</code> subject resolves against
+<code>registry.admin_region</code> and nowhere else.</p>
+<p>This is enforceable rather than merely documented because registry rows carry
+UUIDv7 ids drawn from the same space as record ids. The kernel can take a bare
+<code>subject_id</code>, look at <code>subject_type</code>, and know which table to ask. v0.3 adds
+<code>RECORD_SUBJECT_TYPES</code>, <code>REGISTRY_SUBJECT_TYPES</code> and <code>subjectResolvesAgainst()</code>
+so the split is data rather than a comment.</p>
+<p>The registry is versioned, so a region subject is a claim about a boundary as
+the registry defines it <em>now</em>. Where the vintage matters — as it does for
+conversions — the record carries <code>region_vintage</code> alongside. That asymmetry is
+deliberate and is the same one the conversion table already makes.</p>
+<h3 id="3-conversionbasis-gains-definitional">3. <code>ConversionBasis</code> gains <code>definitional</code><a class="headerlink" href="#3-conversionbasis-gains-definitional" title="Permanent link">&para;</a></h3>
+<p>Until v0.3 the strongest available basis was <code>measured</code>, so kg→kg, tonne→kg and
+gram→kg were all recorded as measurements. That is false. Nobody weighed a
+kilogram to discover it was a kilogram. They are true by the definition of the
+SI base unit.</p>
+<p>Three consequences followed from the misclassification, and all three were the
+kind of small wrongness that quietly corrupts a number a lender looks at:</p>
+<ul>
+<li><code>unit_conversion_measured_shows_sample</code> had to carry a permanent exemption for
+  three hard-coded ids, because a measurement with no sample size is otherwise
+  refused. A constraint with an exception list is a constraint that has been
+  told the model is wrong.</li>
+<li><code>tonnageByConversionBasis()</code> reported identity and SI conversions as
+  measured tonnage. "What proportion of our volume rests on an actual weighing"
+  is a question a credit committee will ask, and the answer was inflated by
+  every record denominated in kilogrammes.</li>
+<li>It flattened a real distinction. <code>published_standard</code> is the next rung down
+  and is <em>not</em> the same thing: a standard body's 60 kg coffee bag is a
+  convention that could have been chosen otherwise and could change. The SI
+  kilogram could not.</li>
+</ul>
+<p><code>definitional</code> is placed first in the enum. The values now read strongest to
+weakest, which is also the order a reader should trust them in.</p>
+<p>A definitional conversion is exact: no sample, no region, no vintage, no expiry.
+<code>isExactConversion()</code> says so in one place rather than in each caller.</p>
+<p><strong>Not yet chained.</strong> Migration 0031 supersedes the three SI rows as
+<code>published_standard</code>, following work order Q1.1 to the letter, and the SI
+Brochure is defensibly a published standard. <code>definitional</code> is the more precise
+answer and a further supersession is available, but chaining it was not done
+without a word first, because superseding a row twice in one afternoon leaves a
+lineage that looks like indecision to anyone reading it later. Flagged for
+instruction.</p>
+<h3 id="4-special_data_member_body-stays-absent-and-now-says-why-in-the-schema">4. <code>special_data_member_body</code> stays absent, and now says why in the schema<a class="headerlink" href="#4-special_data_member_body-stays-absent-and-now-says-why-in-the-schema" title="Permanent link">&para;</a></h3>
+<p>s.9(3)(c) permits a body to process its own members' special personal data. It
+is not a lawful basis value and will not become one.</p>
+<p>A record asserting <code>special_data_member_body</code> would be asserting the
+classification that governs access to itself — the record would be its own
+warrant. The check would be circular, and any application that could write a
+record could widen its own reach by writing one.</p>
+<p>Membership is a fact about a party at a moment. It lives in the membership
+records and is resolved per request, so access ends when membership ends. A
+basis frozen at collection would keep granting access to a cooperative after the
+farmer had left it, which is precisely the failure the section exists to
+prevent.</p>
+<p>This was decided in 0029 and was recorded only there. Its absence from the enum
+looked like an oversight to every reader who met the enum first, so the
+reasoning now sits beside the values it explains. Documenting an absence is
+worth doing when the absence is load-bearing.</p>
+<p>The open counsel questions on s.9(3)(c) — whether it permits a cooperative to
+process members' financial information without separate explicit consent, and
+whether it reaches a member's data unrelated to the body's own dealings — are
+untouched by this and remain open. <code>S9_CONSENT_REQUIRED_FOR_MEMBER_BODY</code> still
+defaults to the conservative answer.</p>
+<h3 id="5-lawful_basis-is-promoted-to-the-envelope">5. <code>lawful_basis</code> is promoted to the envelope<a class="headerlink" href="#5-lawful_basis-is-promoted-to-the-envelope" title="Permanent link">&para;</a></h3>
+<p>The largest of the six.</p>
+<p>The ground a record is held on was an out-of-band field on the ingest context,
+supplied by an <code>x-clycites-lawful-basis</code> header, stored in a column, and absent
+from the record itself. Four things were wrong with that:</p>
+<ol>
+<li>
+<p><strong>The anchoring digest did not commit to it.</strong> Since 0038, a record's leaf
+   hash is computed over the document. The lawful basis was not in the document,
+   so the published Merkle root proved the delivery weight and said nothing
+   about the authority under which the delivery was recorded. An operator could
+   have changed a stored basis and every anchor proof would still verify. That
+   is a hole in the tamper-evidence claim, not merely an inelegance.</p>
+</li>
+<li>
+<p><strong>A disclosure could not show it.</strong> A lender or a regulator reading a record
+   got the claim without the warrant, and answering "under what authority do you
+   hold this" took a second lookup against a table they have no access to.</p>
+</li>
+<li>
+<p><strong>It was a contract callers had to discover from a rejection.</strong> Every
+   application that writes a record must supply a basis. An enum only the kernel
+   could see meant the way to learn the permitted values was to send a bad one.</p>
+</li>
+<li>
+<p><strong>It sat beside <code>dataset</code> while being nothing like it.</strong> <code>dataset</code> is
+   correctly out of the envelope: it is not a claim anybody is making, and a
+   client that could assert it could mark its own records <code>seed</code> to slip past
+   anchoring. <code>lawful_basis</code> was <em>always</em> client-asserted — the header came from
+   the same caller as the body, across the same trust boundary — so keeping it
+   out of the envelope bought no safety at all. It only hid the assertion.</p>
+</li>
+</ol>
+<p>The basis now sits in the envelope beside <code>asserted_by</code> and <code>supersedes</code>,
+because it answers the same class of question: under what authority does this
+record exist. It is required and has no default. s.7(3) decides whether a
+farmer's objection can stop processing by looking at the ground relied on at
+collection, and this log is append-only, so a record that arrives without one
+can never acquire one.</p>
+<p><strong>Compatibility.</strong> The header still works and is folded into the envelope on
+ingest, so an application that upgrades its kernel before its client does not
+start failing writes. Where both are present they must agree: a new
+<code>lawful_basis_conflict</code> rejection refuses the write rather than preferring one.
+Silently preferring either would mean the basis the record shows is not
+necessarily the basis the write was authorised under, which is the one question
+the field exists to answer.</p>
+<p>The absence check runs before schema validation, so a missing ground is still
+reported as <code>lawful_basis_required</code> and not as one more malformed field. The
+distinction matters to the caller: a malformed record is a bug in their
+serialiser, an absent lawful basis is a gap in their authority to send it.</p>
+<p><code>LAWFUL_BASES</code>, <code>objectionStops()</code> and <code>isLawfulBasis()</code> remain exported from
+<code>src/records/lawful-basis.ts</code> and now delegate to the schema, so no call site
+moved. The kernel keeps <code>checkBasis()</code> — which basis suffices for which record
+type is a kernel policy, not a shape.</p>
+<h3 id="6-the-comment-adjective-on-agreement">6. The comment adjective on <code>Agreement</code><a class="headerlink" href="#6-the-comment-adjective-on-agreement" title="Permanent link">&para;</a></h3>
+<p><code>packages/schema/src/entities/index.ts</code> described the buyer in a forward
+commitment with the standard lending adjective for a party already assessed as
+good for the money, in the sentence explaining why the entity is core.</p>
+<p>That assessment is precisely what this system exists to make possible for
+people who have never had one. Helping oneself to it as a given property of the
+buyer is an assumption about who already counts — and the invariant test in
+<code>test/invariants/naming.test.ts</code> bans the vocabulary outright, which is why this
+paragraph does not use the word either. The comment now says <code>solvent</code>: the
+buyer can pay. Same meaning, no judgement smuggled in.</p>
+<p>A comment, and only a comment. It is changed because comments are how the next
+person learns what this is for.</p>
+<h3 id="7-counterparty_confirmed_at-is-gone-from-delivery-and-there-is-a-record-instead">7. <code>counterparty_confirmed_at</code> is gone from <code>Delivery</code>, and there is a record instead<a class="headerlink" href="#7-counterparty_confirmed_at-is-gone-from-delivery-and-there-is-a-record-instead" title="Permanent link">&para;</a></h3>
+<p><code>Delivery</code> carried <code>counterparty_confirmed_at</code> and <code>counterparty_confirmed_by</code>.
+Only the party recording the delivery could set them, which made a nullable
+timestamp on the seller's own record into a self-attestation by the party with
+the incentive to overstate. One-sided data wearing a two-sided name, and the
+credit thesis rests on that field being two-sided — so it was worse than not
+having the field at all.</p>
+<p>The fix is the pattern already used three times in this schema. Confirmation is
+not a correction, so §8 rule 1 correctly refuses to let the counterparty edit
+the delivery. It is a <strong>distinct act by a distinct party</strong>, so it gets its own
+append-only record: <code>DeliveryConfirmation</code>, asserted by the confirming party,
+naming the delivery.</p>
+<p>Which makes <code>counterparty_confirmed_at</code> <strong>derived</strong>, like <code>Lot.custodian</code> and
+like fulfilment — dead in the schema for exactly the reason <code>stale</code> was dead,
+and removed for the same reason.</p>
+<p>Four rules travel with it, and they are enforced at ingest rather than
+documented:</p>
+<ol>
+<li>Only a party named on the delivery may confirm it, and not the party who
+   recorded it. A confirmation by the wrong party is not weak evidence, it is
+   not evidence, so this is a structural rejection and not a flag.</li>
+<li>A delegated confirmation is <strong>labelled as such</strong> — <code>confirmed_under_delegation</code>,
+   and <code>confirmed_by_organisational_bylaw</code> where the delegation rests on a
+   cooperative's own rules. A coop confirming on a farmer's behalf under bylaw
+   authority is weaker evidence than the farmer confirming, because the whole
+   point is independence and a delegated confirmation is not independent. The
+   lender view distinguishes the two, and <code>/v1/records</code> exposes
+   <code>independently_confirmed</code> separately from <code>confirmed</code>.</li>
+<li>A confirmation names one version. Confirming a delivery that is later
+   corrected leaves the confirmation attached to the version confirmed, flagged
+   <code>confirms_superseded_version</code>; it does not carry forward.</li>
+<li>The endpoint is USSD-shaped. The party whose confirmation carries the most
+   evidential weight is a smallholder with a feature phone and a PIN, so
+   <code>ConfirmationChannel</code> leads with <code>ussd_pin</code> and the gateway is an adapter in
+   front of <code>POST /v1/deliveries/{id}/confirmation</code>, not a second code path.</li>
+</ol>
+<p><code>CORE_ENTITIES</code> gains <code>delivery_confirmation</code>, taking it to seventeen. No
+migration: the database does not enumerate record types, and partitions are by
+date.</p>
+<p>The confirmation inherits the delivery's <code>lawful_basis</code> rather than accepting
+one from the caller. A confirmation is held for exactly the reason the delivery
+is held, and letting a caller state a different one would let a s.9 delivery
+grow a s.7 shadow.</p>
+<h2 id="migrations">Migrations<a class="headerlink" href="#migrations" title="Permanent link">&para;</a></h2>
+<p>Migrations are immutable; the migrator refuses a changed checksum. Nothing in
+v0.3 edits an applied migration.</p>
+<p>Nothing in v0.3 requires a new one either. <code>lawful_basis</code> has been a column on
+<code>facts.record</code> and <code>inference.record</code> since the first hardening pass, with
+<code>facts_lawful_basis_known</code> already constraining it to the nine values. The
+promotion moves where the value is <em>read from</em> on the write path, not where it
+is stored. <code>ConversionBasis.definitional</code> is a schema value with no row using it
+yet; <code>unit_conversion_basis_check</code> will need widening in the migration that
+first writes one, which is the migration that chains the SI rows, which is
+waiting on the instruction in item 3.</p>
+<p>The "one checksum update" the work order asks for is
+<code>test/schema-pin.test.ts</code>, which asserts the version the kernel was built
+against. There is no separate schema checksum artefact, and this note exists so
+the next reader does not go looking for one.</p>
+<h2 id="what-is-still-open-after-this">What is still open after this<a class="headerlink" href="#what-is-still-open-after-this" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Whether to chain the three SI conversions on to <code>definitional</code> (item 3).</li>
+<li><code>facts_lawful_basis_stated</code> and <code>inference_lawful_basis_stated</code> are still
+  <code>NOT VALID</code>. Promotion to the envelope makes them more nearly true — every
+  new record must state a ground — but validating them requires a pass over the
+  existing rows and is a separate exercise.</li>
+<li>The region limb of the read-scope check is still unreachable (spec §13
+  question). Item 2 settles what a region subject <em>means</em>; it does not settle
+  who may read one.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      ClyCites — internal documentation
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.top", "navigation.indexes", "toc.follow", "content.code.copy", "content.action.edit", "search.highlight", "search.suggest"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+    
+  </body>
+</html>

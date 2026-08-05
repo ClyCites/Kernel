@@ -1045,9 +1045,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#you-cannot-compute-a-credit-score-here" class="md-nav__link">
+  <a href="#you-cannot-judge-a-borrower-here" class="md-nav__link">
     <span class="md-ellipsis">
-      You cannot compute a credit score here
+      You cannot judge a borrower here
     </span>
   </a>
   
@@ -1662,9 +1662,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#you-cannot-compute-a-credit-score-here" class="md-nav__link">
+  <a href="#you-cannot-judge-a-borrower-here" class="md-nav__link">
     <span class="md-ellipsis">
-      You cannot compute a credit score here
+      You cannot judge a borrower here
     </span>
   </a>
   
@@ -1788,15 +1788,15 @@ licensing, capital and supervision that follows. Obligations are <em>recorded</e
 settlements are <em>referenced</em> — <code>settlement_reference</code> points at a payment that
 happened on a rail somebody else operates. The money moves elsewhere.</p>
 <hr />
-<h2 id="you-cannot-compute-a-credit-score-here">You cannot compute a credit score here<a class="headerlink" href="#you-cannot-compute-a-credit-score-here" title="Permanent link">&para;</a></h2>
-<p>Not a score, not a rating, not a risk grade, not a creditworthiness assessment.
-A naming invariant test scans the codebase and fails on <code>credit score</code>,
-<code>credit rating</code>, <code>creditworthiness</code> and <code>risk score</code> in any spacing or casing.</p>
-<p><strong>Why.</strong> Two reasons. A score is a judgement, and judgements belong to whoever
-carries the risk of being wrong — a lender, who must be able to explain a
-decline. And a score computed in the kernel would be an inference stored beside
-observations, which is exactly what the
-<a href="../../concepts/inference-quarantine/">quarantine</a> exists to prevent.</p>
+<h2 id="you-cannot-judge-a-borrower-here">You cannot judge a borrower here<a class="headerlink" href="#you-cannot-judge-a-borrower-here" title="Permanent link">&para;</a></h2>
+<p>No judgement of anyone's worth as a borrower — under any of the four names the
+industry gives it. A naming invariant scans code, documentation and the
+generated contract, and fails the build on all four in any spacing or casing.
+This page tripped it on first run, which is the invariant doing its job.</p>
+<p><strong>Why.</strong> Two reasons. Such a judgement belongs to whoever carries the risk of
+being wrong — a lender, who must be able to explain a decline. And computing it
+in the kernel would put an inference beside observations, which is exactly what
+the <a href="../../concepts/inference-quarantine/">quarantine</a> exists to prevent.</p>
 <p>The kernel supplies the evidence and its flags. What that is worth is somebody
 else's decision, made in the open, under their own regulator.</p>
 <hr />

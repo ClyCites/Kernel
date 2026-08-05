@@ -22,6 +22,7 @@ import {
   AgreementKind,
   AgreementRole,
   AttributionBasis,
+  ConfirmationChannel,
   DelegationBasis,
   FacilityKind,
   MembershipRole,
@@ -255,10 +256,12 @@ export type CustodyTransfer = z.infer<typeof CustodyTransfer>;
  * The two will differ — moisture loss, spillage, disputed weights, deliberate
  * shorting — and that difference is signal, not error.
  *
- * `counterparty_confirmed_at` is the most valuable nullable field in the
- * schema. A delivery affirmed independently by both sides is underwritable
- * evidence; one affirmed by neither is a story. The entire credit thesis
- * reduces to how large a corpus of two-sided confirmations can be accumulated.
+ * A delivery affirmed independently by both sides is underwritable evidence;
+ * one affirmed by neither is a story. That affirmation is NOT a field here.
+ * It was, and a nullable timestamp the seller could set on their own record is
+ * a self-attestation by the party with the incentive to overstate — one-sided
+ * data wearing a two-sided name. Confirmation is a distinct act by the other
+ * party, so it is a distinct record: see `DeliveryConfirmation`.
  */
 export const Delivery = factRecord("delivery", {
   from_party: PartyId,
@@ -270,11 +273,34 @@ export const Delivery = factRecord("delivery", {
   grade: Grade.nullable().default(null),
   location: z.union([FacilityId, GeoPoint]),
   agreed_price: Money.nullable().default(null),
-  counterparty_confirmed_at: Timestamp.nullable().default(null),
-  counterparty_confirmed_by: PartyId.nullable().default(null),
   evidence: z.array(MediaRef).default([]),
 });
 export type Delivery = z.infer<typeof Delivery>;
+
+/**
+ * The other side of a delivery, saying it happened.
+ *
+ * Append-only and asserted by the confirming party, because that is what makes
+ * it evidence. `delivery` names one exact version: a correction is a new
+ * record with a new id, so a confirmation of a 1164 kg delivery does not
+ * follow the weight when it is corrected to 1200 kg. Nobody confirmed 1200.
+ *
+ * A confirmation made under delegation — a coop confirming for a member under
+ * bylaw authority — is recorded through the envelope's `on_behalf_of` and
+ * carries a flag saying so. It is weaker evidence than the member confirming,
+ * because the whole value of this record is that it comes from somebody else,
+ * and a lender must be able to see which kind they are looking at.
+ */
+export const DeliveryConfirmation = factRecord("delivery_confirmation", {
+  delivery: DeliveryId,
+  /** The counterparty named on that delivery. Checked, never taken on trust. */
+  confirming_party: PartyId,
+  channel: ConfirmationChannel,
+  /** What they said, in their words, if the channel captured any. */
+  note: z.string().max(500).nullable().default(null),
+  evidence: z.array(MediaRef).default([]),
+});
+export type DeliveryConfirmation = z.infer<typeof DeliveryConfirmation>;
 
 /**
  * Spec §5.12. A commitment to transact in future.
@@ -376,6 +402,7 @@ export const CORE_ENTITIES = [
   "lot",
   "custody_transfer",
   "delivery",
+  "delivery_confirmation",
   "agreement",
   "obligation",
   "settlement_reference",

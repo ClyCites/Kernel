@@ -1,5 +1,7 @@
 import { DATASET_HEADER } from '../api/dataset.js';
 import { SUBJECT_HEADER } from '../api/subject.js';
+import { FLAG_GLOSSARY } from '../records/lender-report.js';
+import { DEFAULT_MASS_BALANCE_TOLERANCE } from '../records/mass-balance.js';
 import type { RecordView } from '../records/read.service.js';
 import type { UnitConversionDetail } from '../registry/types.js';
 import { COOPS } from './fixtures.js';
@@ -45,28 +47,7 @@ interface Fetched {
 const PURPOSE = 'credit_assessment';
 
 /** One line each, in the words a credit officer would need. */
-const GLOSSARY: Record<string, string> = {
-  measurement_below_underwritable:
-    'the quantity rests on a factor nobody has verified — usable for operations, not for lending against',
-  conversion_unresolved:
-    'the record cites no conversion, or one the registry does not hold; the kilogram figure cannot be checked at all',
-  conversion_mismatch:
-    'the stated kilograms do not equal the raw quantity times the cited factor — the two disagree and the record kept both',
-  conversion_scope_mismatch:
-    'the factor was registered for a different commodity or a different district than the record it is used in — the kilogram figure is derived from the wrong rule',
-  region_unresolvable:
-    'the factor is specific to a district and the record does not say which district it happened in; whether it applies cannot be determined either way',
-  quantity_not_normalized:
-    'no kilogram figure was derived; the raw count stands alone',
-  occurred_after_recorded:
-    'the event is dated later than the moment it was written down — a clock problem, not necessarily a dishonest one',
-  mass_balance_discrepancy:
-    'a lot released more or less than it took in, beyond the tolerance, after declared losses',
-  delegated_authority:
-    'somebody other than the subject asserted this, under a recorded delegation',
-  delegated_by_organisational_bylaw:
-    'asserted by a cooperative officer under the cooperative’s own rules rather than an individual mandate',
-};
+const GLOSSARY: Record<string, string> = FLAG_GLOSSARY;
 
 export async function lenderView(plan: SeedPlan, baseUrl: string): Promise<string> {
   const base = baseUrl.replace(/\/$/, '');
@@ -164,6 +145,19 @@ export async function lenderView(plan: SeedPlan, baseUrl: string): Promise<strin
     lines.push('  reconcile rather than refusing the record, so the reader decides.');
     lines.push('');
   }
+
+  // Printed whether or not a discrepancy appears above. A reader who sees none
+  // should know how large one would have had to be to show up at all.
+  lines.push('='.repeat(76));
+  lines.push('THRESHOLDS USED');
+  lines.push('='.repeat(76));
+  lines.push(
+    `  mass balance tolerance: ${(DEFAULT_MASS_BALANCE_TOLERANCE * 100).toFixed(1)}% of intake.`,
+  );
+  lines.push('  A lot whose releases differ from its intake by less than this, after');
+  lines.push('  declared losses, is not flagged. Losses in drying and handling are real');
+  lines.push('  and a threshold of zero would flag every honest lot.');
+  lines.push('');
 
   lines.push('-'.repeat(76));
   lines.push('The two files are the same shape, and that is the problem a lender had');
@@ -339,13 +333,25 @@ function section(
     const conversion = id === '' ? null : conversions.get(id);
     if (kg !== null) totalKg += kg;
     if (kg !== null && conversion?.basis === 'measured') verifiedKg += kg;
-    const isConfirmed = record['counterparty_confirmed_at'] !== null;
-    if (isConfirmed) confirmed += 1;
+    // Derived from the counterparty's own `delivery_confirmation` records, not
+    // read off a field the seller could set. `independent` is the one that
+    // counts: a delegated confirmation is somebody asserting that the
+    // counterparty agrees, which is the same shape of claim as the delivery.
+    const confirmation = view.confirmation;
+    const isConfirmed = confirmation?.confirmed === true;
+    const isIndependent = confirmation?.independent === true;
+    if (isIndependent) confirmed += 1;
     for (const flag of view.quality_flags) {
       flags.set(flag, (flags.get(flag) ?? 0) + 1);
       flagsSeen.add(flag);
     }
     if (id !== '') cited.add(id);
+
+    const confirmationLabel = !isConfirmed
+      ? 'unconfirmed'
+      : isIndependent
+        ? 'confirmed'
+        : 'confirmed (delegated)';
 
     lines.push(
       `    ${String(record['occurred_at']).slice(0, 10)}  ` +
@@ -353,7 +359,7 @@ function section(
         `-> ${(kg === null ? 'NOT NORMALISED' : `${kg.toFixed(1)} kg`).padStart(13)}` +
         `   ${describeBasis(conversion).padEnd(18)}` +
         `${String(quantity['measurement_method'] ?? 'unstated').padEnd(20)}` +
-        `${isConfirmed ? 'confirmed' : 'unconfirmed'}` +
+        `${confirmationLabel.padEnd(22)}` +
         (view.quality_flags.length > 0 ? `  [${view.quality_flags.join(', ')}]` : ''),
     );
   }

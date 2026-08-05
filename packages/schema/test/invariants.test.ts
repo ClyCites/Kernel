@@ -10,6 +10,7 @@ import {
   Quantity,
   Money,
   Delivery,
+  DeliveryConfirmation,
   Harvest,
   Party,
   Inference,
@@ -276,20 +277,32 @@ describe("delivery — spec §5.11", () => {
     agreed_price: { amount_minor: 1150, currency: "UGX" },
   };
 
-  test("an unconfirmed delivery is valid but unconfirmed", () => {
+  test("a delivery carries no confirmation of its own", () => {
     const r = Delivery.safeParse(base);
     assert.equal(r.success, true, JSON.stringify(r.error?.issues));
-    assert.equal(r.success && r.data.counterparty_confirmed_at, null);
+    // The seller cannot record the buyer's agreement on the seller's record.
+    assert.equal(
+      "counterparty_confirmed_at" in (r.success ? r.data : {}),
+      false,
+    );
   });
 
-  test("a two-sided confirmation is what makes it evidence", () => {
-    const r = Delivery.safeParse({
-      ...base,
-      counterparty_confirmed_at: "2026-07-18T14:35:02+03:00",
-      counterparty_confirmed_by: uuid(101),
+  test("a confirmation is the counterparty's own record, naming one version", () => {
+    const r = DeliveryConfirmation.safeParse({
+      id: uuid(200),
+      type: "delivery_confirmation",
+      record_class: "observation",
+      schema_version: "0.3.0",
+      occurred_at: "2026-07-18T14:35:02+03:00",
+      occurred_at_precision: "second",
+      asserted_by: uuid(101),
+      lawful_basis: "special_data_consent",
+      delivery: uuid(1),
+      confirming_party: uuid(101),
+      channel: "ussd_pin",
     });
     assert.equal(r.success, true, JSON.stringify(r.error?.issues));
-    assert.notEqual(r.success && r.data.counterparty_confirmed_at, null);
+    assert.equal(r.success && r.data.delivery, uuid(1));
   });
 
   test("there is no wallet, balance, or fund-holding entity in the schema", async () => {

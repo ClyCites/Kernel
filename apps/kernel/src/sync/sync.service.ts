@@ -151,13 +151,22 @@ export class SyncService {
     reader: Reader,
   ): Promise<Changes> {
     if (reader.requester === null) {
-      const decision = await this.consent.decide({
-        records: [],
-        requester: null,
-        purpose: reader.purpose ?? null,
-        dataset: reader.dataset ?? 'live',
-        at: new Date().toISOString(),
-      });
+      // Stated as `no_verified_subject` rather than left to the general
+      // classifier, which given an empty record set answers a question about
+      // records nobody asked. The caller's problem is that they said who they
+      // were nowhere, and that is the one refusal a caller may be told about:
+      // it describes their own request and discloses nothing about anybody.
+      const decision = {
+        ...(await this.consent.decide({
+          records: [],
+          requester: null,
+          purpose: reader.purpose ?? null,
+          dataset: reader.dataset ?? 'live',
+          at: new Date().toISOString(),
+        })),
+        reason: 'no_verified_subject' as const,
+        detail: 'this endpoint discloses records and cannot be called anonymously',
+      };
       // Recorded before the throw. An unauthenticated pull against the widest
       // disclosure surface in the kernel is exactly the event that matters, and
       // it is the one a log written on the success path would never see.

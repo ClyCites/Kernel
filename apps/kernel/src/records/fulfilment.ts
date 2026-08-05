@@ -11,6 +11,8 @@
 export interface DeliveryTally {
   deliveries: number;
   confirmed: number;
+  /** Confirmed by the counterparty themselves, not by someone acting for them. */
+  independently_confirmed: number;
   /** Deliveries whose quantity never reached kilograms. */
   unconvertible: number;
   /** Deliveries under an unresolved correction, added to nothing. See 0021. */
@@ -35,6 +37,7 @@ export interface Fulfilment extends DeliveryTally {
 export const EMPTY_TALLY: DeliveryTally = {
   deliveries: 0,
   confirmed: 0,
+  independently_confirmed: 0,
   unconvertible: 0,
   forked: 0,
   delivered_kg: 0,

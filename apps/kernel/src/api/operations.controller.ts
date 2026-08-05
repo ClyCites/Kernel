@@ -60,13 +60,14 @@ export class OperationsController {
   @Get('metrics')
   @Header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
   async metrics(): Promise<string> {
-    const [byBasis, thinKg, census, delegations, objections, outstanding, anchors] =
+    const [byBasis, thinKg, census, delegations, objections, effects, outstanding, anchors] =
       await Promise.all([
         this.registry.tonnageByConversionBasis(),
         this.registry.tonnageOnThinSample(THIN_SAMPLE),
         this.records.lawfulBasisCensus(),
         this.records.delegationBasisCensus(),
         this.objections.standingCensus(),
+        this.objections.effectCensus(),
         this.notifications.outstanding(),
         this.anchors.freshness(),
       ]);
@@ -144,6 +145,21 @@ export class OperationsController {
     );
     for (const row of objections) {
       lines.push(`kernel_standing_objections{scope="${row.scope}"} ${row.objections}`);
+    }
+
+    // And what they achieved, which is the harder question. An objection that
+    // stops nothing is not an error, appears in no error rate, and is
+    // invisible unless counted on purpose. A rising
+    // `stopped_nothing_consent_only` means the interface is offering people a
+    // button marked "I object" when the act that would work is withdrawal --
+    // that is a misleading interface operating at scale, and this is where it
+    // shows up first.
+    lines.push(
+      '# HELP kernel_objections_by_effect Objections lodged under s.7(3) by what they actually stopped.',
+      '# TYPE kernel_objections_by_effect counter',
+    );
+    for (const row of effects) {
+      lines.push(`kernel_objections_by_effect{effect="${row.effect}"} ${row.objections}`);
     }
 
     // s.24(9) gives thirty days. Latency is worth watching long before it

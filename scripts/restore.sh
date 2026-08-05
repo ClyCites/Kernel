@@ -21,7 +21,7 @@ if [ -z "${BACKUP_PASSPHRASE:-}" ]; then
   echo "restore: BACKUP_PASSPHRASE is not set" >&2
   exit 2
 fi
-for f in kernel.dump.enc manifest.txt; do
+for f in kernel.dump.enc manifest.txt objects.txt; do
   [ -f "$DIR/$f" ] || { echo "restore: $DIR/$f is missing" >&2; exit 2; }
 done
 
@@ -184,15 +184,37 @@ SQL
 echo "restore: regenerating the manifest"
 printf '%s\n' "$MANIFEST_SQL" | psql --quiet "$TARGET" > "$WORK/manifest.txt"
 
-if diff -u "$DIR/manifest.txt" "$WORK/manifest.txt" > "$WORK/manifest.diff"; then
-  echo "restore: verified — $(wc -l < "$DIR/manifest.txt" | tr -d ' ') manifest lines match"
+# The object section is not SQL and cannot be regenerated from the database, so
+# it is lifted out before the diff and checked on its own. Its absence is a
+# refusal: a manifest with no object line was written by something that did not
+# take an inventory, and a restore verified against it would prove only that
+# Postgres came back.
+OBJECT_LINE="$(grep '^object_inventory ' "$DIR/manifest.txt" || true)"
+if [ -z "$OBJECT_LINE" ]; then
+  echo "restore: FAILED — this backup's manifest has no object section, so it" >&2
+  echo "         cannot say whether the objects were ever backed up. Refusing" >&2
+  echo "         to report a verified restore on half the data." >&2
+  exit 1
+fi
+grep -v '^object_inventory ' "$DIR/manifest.txt" > "$WORK/manifest.expected"
 
-  # The bucket, if there is one. The manifest above proves the database came
-  # back; this proves the objects it names came back too. A restore that
-  # passed the first and failed the second is the specific silent failure
-  # work order H asked for: every MediaRef resolving to a key that is not
-  # there.
-  if [ -n "${MEDIA_S3_ENDPOINT:-}" ]; then
+if diff -u "$WORK/manifest.expected" "$WORK/manifest.txt" > "$WORK/manifest.diff"; then
+  echo "restore: verified — $(wc -l < "$WORK/manifest.expected" | tr -d ' ') manifest lines match"
+
+  # The bucket. The manifest above proves the database came back; this proves
+  # the objects it names came back too. A restore that passed the first and
+  # failed the second is the specific silent failure work order H asked for:
+  # every MediaRef resolving to a key that is not there.
+  OBJECT_STATE="$(printf '%s' "$OBJECT_LINE" | awk '{print $2}')"
+  echo "restore: backup recorded objects as $OBJECT_STATE"
+
+  if [ "$OBJECT_STATE" = "declared-absent" ]; then
+    if [ -n "${MEDIA_S3_ENDPOINT:-}" ]; then
+      echo "restore: FAILED — the backup declared no object store, but one is" >&2
+      echo "         configured here. The objects in it are not from this backup." >&2
+      exit 1
+    fi
+  elif [ -n "${MEDIA_S3_ENDPOINT:-}" ]; then
     echo "restore: verifying the object inventory"
     ( cd "$(dirname "$0")/../apps/kernel" \
       && BACKUP_DATABASE_URL="$TARGET" \
@@ -200,9 +222,21 @@ if diff -u "$DIR/manifest.txt" "$WORK/manifest.txt" > "$WORK/manifest.diff"; the
       echo "restore: FAILED — the database came back but the objects did not" >&2
       exit 1
     }
-  elif [ -f "$DIR/objects.txt" ]; then
+  elif [ "${RESTORE_OBJECTS_DEFERRED:-}" = "true" ]; then
+    # The same split the backup needs: object verification wants the Node
+    # toolchain, and this script wants pg_restore and psql. Where those live in
+    # different places the object half has to run elsewhere — but it must never
+    # be possible for that to look like success. Exit 3 is the honest answer:
+    # the database is verified, the objects are not, and nobody may call this
+    # restore checked until the deferred step has run and passed.
+    echo "restore: database verified; OBJECTS NOT VERIFIED (deferred)"
+    echo "         run: apps/kernel tsx src/media/inventory-cli.ts verify"
+    echo "         against this database, with MEDIA_S3_ENDPOINT set."
+    DEFERRED_OBJECTS=1
+  else
     echo "restore: FAILED — the backup holds an object inventory but no store" >&2
-    echo "         is configured to check it against. Set MEDIA_S3_ENDPOINT." >&2
+    echo "         is configured to check it against. Set MEDIA_S3_ENDPOINT," >&2
+    echo "         or RESTORE_OBJECTS_DEFERRED=true to run that step elsewhere." >&2
     exit 1
   fi
 
@@ -223,6 +257,11 @@ if diff -u "$DIR/manifest.txt" "$WORK/manifest.txt" > "$WORK/manifest.diff"; the
       exit 1
     }
   fi
+
+  # 3, not 0. The database is verified and the objects are not, and that is
+  # neither success nor failure — the same distinction the anchoring CLI draws
+  # for a root computed but unpublished.
+  [ "${DEFERRED_OBJECTS:-0}" -eq 1 ] && exit 3
 
   exit 0
 fi

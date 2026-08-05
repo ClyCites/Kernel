@@ -19,8 +19,8 @@ describe('vendored schema', () => {
     assert.equal(SCHEMA_VERSION, '0.3.0');
   });
 
-  test('carries the sixteen core record types', () => {
-    assert.equal(CORE_ENTITIES.length, 16);
+  test('carries the seventeen core record types', () => {
+    assert.equal(CORE_ENTITIES.length, 17);
   });
 
   test('is the only definition of an entity the kernel uses', () => {

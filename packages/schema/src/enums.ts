@@ -98,6 +98,21 @@ export type PartyKind = z.infer<typeof PartyKind>;
 export const AccountStatus = z.enum(["active", "suspended", "retired"]);
 export type AccountStatus = z.infer<typeof AccountStatus>;
 
+/**
+ * How a counterparty confirmed a delivery.
+ *
+ * `ussd_pin` is the one that matters. The party whose confirmation carries the
+ * most evidential weight is a smallholder with a feature phone, and a
+ * confirmation path that assumes a smartphone confirms nothing about her.
+ */
+export const ConfirmationChannel = z.enum([
+  "ussd_pin",
+  "in_person",
+  "written",
+  "app",
+]);
+export type ConfirmationChannel = z.infer<typeof ConfirmationChannel>;
+
 export const MembershipRole = z.enum(["member", "officer", "agent", "supplier"]);
 export type MembershipRole = z.infer<typeof MembershipRole>;
 

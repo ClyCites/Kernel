@@ -5,6 +5,7 @@ import {
   CustodyTransfer,
   Delegation,
   Delivery,
+  DeliveryConfirmation,
   Facility,
   Harvest,
   Lot,
@@ -30,6 +31,10 @@ import {
  * the kernel is two lookup tables — which fields name a record's subject
  * (`subjects.ts`) and which plausibility checks apply (`quality.ts`) — not
  * branches in the pipeline.
+ *
+ * `delivery_confirmation` is the one exception to that last claim, and it is a
+ * narrow one: who may assert it is decided by another record's contents, so
+ * ingest checks it. See `checkConfirmationRight`.
  */
 export const ENTITY_SCHEMAS = {
   party: Party,
@@ -44,6 +49,7 @@ export const ENTITY_SCHEMAS = {
   lot: Lot,
   custody_transfer: CustodyTransfer,
   delivery: Delivery,
+  delivery_confirmation: DeliveryConfirmation,
   agreement: Agreement,
   obligation: Obligation,
   settlement_reference: SettlementReference,

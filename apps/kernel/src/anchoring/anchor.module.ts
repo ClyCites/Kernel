@@ -4,7 +4,12 @@ import { AuditModule } from '../audit/audit.module.js';
 import { RecordsModule } from '../records/records.module.js';
 import { AnchorRepository } from './anchor.repository.js';
 import { AnchorService } from './anchor.service.js';
-import { HCS_PUBLISHER, HederaPublisher, type TopicPublisher } from './publisher.js';
+import {
+  HCS_PUBLISHER,
+  HieroPublisher,
+  HttpPublisher,
+  type TopicPublisher,
+} from './publisher.js';
 
 // Read straight from the environment rather than through `loadConfig()`, for
 // the same reason `TrainingModule` and `MediaModule` do: a factory that calls
@@ -23,8 +28,9 @@ function publisherFromEnvironment(): TopicPublisher | null {
   const accountId = process.env['ANCHOR_OPERATOR_ID'];
   const privateKey = process.env['ANCHOR_OPERATOR_KEY'];
   const network = process.env['ANCHOR_NETWORK'] ?? 'testnet';
+  const endpoint = process.env['ANCHOR_PUBLISH_URL'];
 
-  if (!topicId || !accountId || !privateKey) return null;
+  if (!endpoint && (!topicId || !accountId || !privateKey)) return null;
 
   if (network !== 'testnet' && network !== 'mainnet') {
     throw new Error(`ANCHOR_NETWORK must be testnet or mainnet, not ${network}`);
@@ -43,7 +49,25 @@ function publisherFromEnvironment(): TopicPublisher | null {
     );
   }
 
-  return new HederaPublisher({ network, topicId, accountId, privateKey });
+  // The HTTP publisher wins where both are configured, and deliberately so:
+  // it is the one that does not require this process to hold an operator
+  // private key. If someone has set up both, the safer of the two is the one
+  // they should get.
+  if (endpoint) {
+    return new HttpPublisher({
+      network,
+      endpoint,
+      authorization: process.env['ANCHOR_PUBLISH_AUTHORIZATION'] ?? null,
+      timeoutMs: Number(process.env['ANCHOR_PUBLISH_TIMEOUT_MS'] ?? 15_000),
+    });
+  }
+
+  return new HieroPublisher({
+    network,
+    topicId: topicId!,
+    accountId: accountId!,
+    privateKey: privateKey!,
+  });
 }
 
 @Module({

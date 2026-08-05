@@ -155,6 +155,37 @@ export class ConsentRepository {
     );
   }
 
+  /**
+   * Which of these parties are natural persons.
+   *
+   * The DPPA protects individuals. A cooperative, business, institution or
+   * agency is a party to a record and not a data subject, so its agreement is
+   * not a thing consent can be sought for.
+   *
+   * A party with no record, or one whose `kind` is missing, is treated as a
+   * person — the same default the subject-access redaction takes, and the only
+   * safe direction to be wrong in.
+   */
+  async naturalPersons(
+    ids: readonly string[],
+    dataset: Dataset,
+  ): Promise<Set<string>> {
+    if (ids.length === 0) return new Set();
+
+    const unique = [...new Set(ids)];
+    const { rows } = await this.pool.query<{ id: string; kind: string | null }>(
+      `select id, body ->> 'kind' as kind
+         from facts.record
+        where type = 'party' and id = any($1::uuid[]) and dataset = $2`,
+      [unique, dataset],
+    );
+
+    const known = new Map(rows.map((row) => [row.id, row.kind]));
+    return new Set(
+      unique.filter((id) => (known.get(id) ?? 'person') === 'person'),
+    );
+  }
+
   /** Every grant this grantee holds over these subjects, revoked or not. */
   async grantsFor(
     grantee: string,

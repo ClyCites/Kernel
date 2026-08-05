@@ -6,6 +6,7 @@ import { startTestDatabase, type TestDatabase } from '../helpers/database.js';
 import {
   delegationDocument,
   deliveryDocument,
+  entityDocument,
   ingestServiceFor,
   type TestIngest,
 } from '../helpers/fixtures.js';
@@ -260,16 +261,29 @@ describe('flag, never reject (brief §4.4)', () => {
     assert.ok(result.record.quality_flags.includes('delivery_parties_identical'));
   });
 
-  test('a confirmation from someone who was not there is stored, with a flag', async () => {
-    const result = await ingest.ingest(
-      deliveryDocument({
-        counterparty_confirmed_at: '2026-07-18T14:35:02+03:00',
-        counterparty_confirmed_by: uuidv7(),
-      }),
-    );
+  /**
+   * This used to be a flag, because a confirmation was a field on the seller's
+   * own delivery and the kernel flags rather than rejects what parties assert.
+   * A confirmation is now its own record, and a confirmation by someone who
+   * was not there is not weak evidence — it is not evidence. So it is refused
+   * structurally, which is the narrow exception §4.4 allows.
+   */
+  test('a confirmation from someone who was not there is refused, not flagged', async () => {
+    const delivery = deliveryDocument();
+    await ingest.ingest(delivery);
 
-    assert.ok(
-      result.record.quality_flags.includes('confirmation_by_uninvolved_party'),
+    await assert.rejects(
+      ingest.ingest(
+        entityDocument('delivery_confirmation', {
+          id: uuidv7(),
+          asserted_by: delivery['asserted_by'] as string,
+          delivery: delivery['id'] as string,
+          confirming_party: uuidv7(),
+          channel: 'in_person',
+        }),
+      ),
+      (error: unknown) =>
+        error instanceof RecordRejected && error.code === 'confirmation_not_authorised',
     );
   });
 

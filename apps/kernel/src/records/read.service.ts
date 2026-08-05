@@ -11,6 +11,11 @@ import { schemaFor } from './entity-registry.js';
 import { QueryRejected } from './errors.js';
 import { resolveCustody, type Custody } from './custody.js';
 import {
+  resolveConfirmation,
+  UNCONFIRMED,
+  type Confirmation,
+} from './confirmation.js';
+import {
   DEFAULT_MASS_BALANCE_TOLERANCE,
   resolveMassBalance,
   type MassBalance,
@@ -87,6 +92,8 @@ export interface RecordView {
   balance?: MassBalance;
   /** Agreements only. What the deliveries pointing at it add up to. */
   fulfilment?: Fulfilment;
+  /** Deliveries only. Whether the other side of this exact version said so. */
+  confirmation?: Confirmation;
   /** Observations only. Whether `subject_ref` names anything, and what. */
   subject?: SubjectResolution;
   /** Obligations only. What settlement records say about this one obligation. */
@@ -352,9 +359,40 @@ export class ReadService {
     await Promise.all([
       this.deriveLot(views, dataset),
       this.deriveFulfilment(views, dataset),
+      this.deriveConfirmation(views, dataset),
       this.deriveSubject(views, dataset),
       this.deriveSettlement(views, dataset),
     ]);
+  }
+
+  /**
+   * Whether the counterparty confirmed this delivery.
+   *
+   * Was a nullable field on the Delivery, set by whoever wrote the delivery —
+   * which made the platform's central credit claim a self-attestation by the
+   * party with the incentive to overstate. It is now read from the
+   * counterparty's own records.
+   */
+  private async deriveConfirmation(
+    views: RecordView[],
+    dataset: Dataset,
+  ): Promise<void> {
+    const deliveries = views.filter(
+      (view) => view.record['type'] === 'delivery',
+    );
+    if (deliveries.length === 0) return;
+
+    const rows = await this.repository.confirmationsFor(
+      deliveries.map((view) => view.record['id'] as string),
+      dataset,
+    );
+
+    for (const view of deliveries) {
+      const id = view.record['id'] as string;
+      const mine = rows.filter((row) => row.delivery === id);
+      view.confirmation =
+        mine.length === 0 ? UNCONFIRMED : resolveConfirmation(mine);
+    }
   }
 
   /**

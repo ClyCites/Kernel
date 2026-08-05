@@ -3,6 +3,7 @@ import type { Pool, PoolClient } from 'pg';
 
 import { KERNEL_POOL } from '../storage/pool.js';
 import { containment, type SubjectTarget } from './subjects.js';
+import type { ConfirmationRow } from './confirmation.js';
 import type { DeliveryTally } from './fulfilment.js';
 import type { DeclaredLoss, WeighedTransfer } from './mass-balance.js';
 import type { SettlementGroup } from './settlement.js';
@@ -113,6 +114,37 @@ const DERIVED = `coalesce(
     '{}'
   ) as superseded_by,
   ${RETRACTED} as retracted`;
+
+/**
+ * Whether a live `delivery_confirmation` names `r`, the delivery in hand.
+ *
+ * Matched on the delivery's id, not on its parties, so a confirmation never
+ * follows a correction. `CONFIRMED_DIRECTLY` additionally excludes
+ * confirmations made by somebody acting for the counterparty: those are worth
+ * counting, and worth counting separately, because a coop confirming under
+ * bylaw authority is not the independent second voice the number implies.
+ */
+const confirmationExists = (extra: string): string => `exists (
+  select 1 from facts.record c
+   where c.type = 'delivery_confirmation'
+     and c.dataset = r.dataset
+     and c.body ->> 'delivery' = r.id::text${extra}
+     and not exists (
+       select 1 from facts.record cs
+        where cs.supersedes = c.id and cs.dataset = c.dataset
+     )
+     and not exists (
+       select 1 from facts.record ct
+        where ct.type = 'retraction'
+          and ct.body ->> 'target' = c.id::text
+          and ct.dataset = c.dataset
+     )
+)`;
+
+const CONFIRMED_BY_ANYONE = confirmationExists('');
+const CONFIRMED_DIRECTLY = confirmationExists(
+  `\n     and not (c.quality_flags @> array['confirmed_under_delegation'])`,
+);
 
 export interface DerivedRecord extends StoredRecord {
   superseded_by: string[];
@@ -496,9 +528,11 @@ export class RecordRepository {
       `select r.body ->> 'fulfils' as agreement,
               count(*) filter (where not ${FORKED})::int as deliveries,
               count(*) filter (
-                where r.body ->> 'counterparty_confirmed_at' is not null
-                  and not ${FORKED}
+                where not ${FORKED} and ${CONFIRMED_BY_ANYONE}
               )::int as confirmed,
+              count(*) filter (
+                where not ${FORKED} and ${CONFIRMED_DIRECTLY}
+              )::int as independently_confirmed,
               count(*) filter (
                 where r.body -> 'quantity' ->> 'normalized_kg' is null
                   and not ${FORKED}
@@ -521,6 +555,40 @@ export class RecordRepository {
     return new Map(
       rows.map(({ agreement, ...tally }) => [agreement, tally]),
     );
+  }
+
+  /**
+   * Confirmations naming these exact delivery ids.
+   *
+   * On the id and never on the parties, so a confirmation cannot leak across a
+   * correction: the corrected delivery has a different id and nobody has
+   * confirmed it. Retracted and superseded confirmations drop out — a
+   * withdrawn confirmation is not a confirmation.
+   */
+  async confirmationsFor(
+    deliveryIds: readonly string[],
+    dataset: Dataset,
+  ): Promise<ConfirmationRow[]> {
+    if (deliveryIds.length === 0) return [];
+    const { rows } = await this.pool.query<ConfirmationRow>(
+      `select r.body ->> 'delivery'         as delivery,
+              r.body ->> 'confirming_party' as confirming_party,
+              r.asserted_by                 as asserted_by,
+              r.body ->> 'channel'          as channel,
+              r.quality_flags @> array['confirmed_under_delegation'] as delegated,
+              r.quality_flags @> array['confirmed_by_organisational_bylaw'] as by_bylaw,
+              to_char(r.occurred_at at time zone 'UTC',
+                      'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as occurred_at
+         from facts.record r
+        where r.type = 'delivery_confirmation'
+          and r.body ->> 'delivery' = any($1::text[])
+          and r.dataset = $2
+          and not ${SUPERSEDED}
+          and not ${RETRACTED}
+        order by r.occurred_at, r.recorded_at, r.id`,
+      [[...new Set(deliveryIds)], dataset],
+    );
+    return rows;
   }
 
   /**

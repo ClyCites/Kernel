@@ -18,6 +18,9 @@ the schema moves rarely, in one motion, with the reasoning written down.
 
 ## The six
 
+> Seven, since the confirmation finding. The heading is left as it was written
+> so the numbering below keeps matching the work order that produced it.
+
 ### 1. `stale` is gone from the inference body
 
 Spec §8 rule 5 says superseding an observation "sets `stale`" on the inferences
@@ -201,6 +204,55 @@ buyer can pay. Same meaning, no judgement smuggled in.
 
 A comment, and only a comment. It is changed because comments are how the next
 person learns what this is for.
+
+### 7. `counterparty_confirmed_at` is gone from `Delivery`, and there is a record instead
+
+`Delivery` carried `counterparty_confirmed_at` and `counterparty_confirmed_by`.
+Only the party recording the delivery could set them, which made a nullable
+timestamp on the seller's own record into a self-attestation by the party with
+the incentive to overstate. One-sided data wearing a two-sided name, and the
+credit thesis rests on that field being two-sided — so it was worse than not
+having the field at all.
+
+The fix is the pattern already used three times in this schema. Confirmation is
+not a correction, so §8 rule 1 correctly refuses to let the counterparty edit
+the delivery. It is a **distinct act by a distinct party**, so it gets its own
+append-only record: `DeliveryConfirmation`, asserted by the confirming party,
+naming the delivery.
+
+Which makes `counterparty_confirmed_at` **derived**, like `Lot.custodian` and
+like fulfilment — dead in the schema for exactly the reason `stale` was dead,
+and removed for the same reason.
+
+Four rules travel with it, and they are enforced at ingest rather than
+documented:
+
+1. Only a party named on the delivery may confirm it, and not the party who
+   recorded it. A confirmation by the wrong party is not weak evidence, it is
+   not evidence, so this is a structural rejection and not a flag.
+2. A delegated confirmation is **labelled as such** — `confirmed_under_delegation`,
+   and `confirmed_by_organisational_bylaw` where the delegation rests on a
+   cooperative's own rules. A coop confirming on a farmer's behalf under bylaw
+   authority is weaker evidence than the farmer confirming, because the whole
+   point is independence and a delegated confirmation is not independent. The
+   lender view distinguishes the two, and `/v1/records` exposes
+   `independently_confirmed` separately from `confirmed`.
+3. A confirmation names one version. Confirming a delivery that is later
+   corrected leaves the confirmation attached to the version confirmed, flagged
+   `confirms_superseded_version`; it does not carry forward.
+4. The endpoint is USSD-shaped. The party whose confirmation carries the most
+   evidential weight is a smallholder with a feature phone and a PIN, so
+   `ConfirmationChannel` leads with `ussd_pin` and the gateway is an adapter in
+   front of `POST /v1/deliveries/{id}/confirmation`, not a second code path.
+
+`CORE_ENTITIES` gains `delivery_confirmation`, taking it to seventeen. No
+migration: the database does not enumerate record types, and partitions are by
+date.
+
+The confirmation inherits the delivery's `lawful_basis` rather than accepting
+one from the caller. A confirmation is held for exactly the reason the delivery
+is held, and letting a caller state a different one would let a s.9 delivery
+grow a s.7 shadow.
 
 ## Migrations
 

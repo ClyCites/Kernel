@@ -219,7 +219,7 @@ took 7
 banner 10 "back up and restore"
 mark
 
-step "object inventory, before"
+step "object inventory, taken where the Node toolchain lives"
 ( cd apps/kernel && ./node_modules/.bin/tsx src/media/inventory-cli.ts manifest ) 2>&1 |
   tee "$WORK/objects-before.txt" | tail -6 | sed 's/^/    /'
 
@@ -234,6 +234,7 @@ docker run --rm \
   --network "container:clycites-kernel-db" \
   -v "$ROOT:/repo" -w /repo \
   -e BACKUP_PASSPHRASE=dry_run_dev_only \
+  -e BACKUP_OBJECTS_FILE=/repo/tmp/dry-run/objects-before.txt \
   "$DB_IMAGE" bash scripts/backup.sh "$OWNER_URL_NET" /repo/tmp/dry-run/backups 2>&1 |
   tail -12 | sed 's/^/    /'
 
@@ -249,25 +250,30 @@ docker run --rm \
   --network "container:clycites-kernel-db" \
   -v "$ROOT:/repo" -w /repo \
   -e BACKUP_PASSPHRASE=dry_run_dev_only \
+  -e RESTORE_OBJECTS_DEFERRED=true \
   "$DB_IMAGE" bash scripts/restore.sh "/repo/tmp/dry-run/backups/$(basename "$DIR")" "$SCRATCH_URL_NET" 2>&1 |
   tail -14 | sed 's/^/    /'
 RESTORE=${PIPESTATUS[0]}
-[ "$RESTORE" -eq 0 ] || die "the restore manifest did not match"
-step "restore verified: manifest matched line for line"
+# 3 means the database verified and the object half was deferred to the host,
+# which happens below. Anything else is a failure.
+[ "$RESTORE" -eq 0 ] || [ "$RESTORE" -eq 3 ] || die "the restore manifest did not match"
+step "restore verified: manifest matched line for line (objects: deferred)"
 
 step ""
-step "Note what the dump said: \"no object store configured — objects NOT"
-step "backed up\". That is not a misconfiguration in this rehearsal, it is a"
-step "shape problem in the tooling. scripts/backup.sh needs pg_dump, psql and"
-step "openssl in one place, and it also needs the Node toolchain to take the"
-step "object inventory. The database container has the first three and no"
-step "Node; this laptop has Node and none of the first three. There is no"
-step "single environment in which the script does the whole of its job."
+step "The tooling problem this used to report is now solved rather than"
+step "narrated. scripts/backup.sh needs pg_dump, psql and openssl in one"
+step "place, and the object inventory needs the Node toolchain. The database"
+step "container has the first three and no Node; this laptop has Node and"
+step "none of the first three. There is no single environment in which one"
+step "script does the whole job — so the inventory is now its own step, run"
+step "above where Node lives, and handed to the backup as BACKUP_OBJECTS_FILE."
 step ""
-step "The inventory either side of the dump — taken separately, above and"
-step "below — is what closes the gap here. In production it would not be"
-step "closed at all, and the failure mode is a restore that looks perfect"
-step "and resolves no photographs."
+step "What matters is that the manifest records that the step ran. A backup"
+step "that skips objects can no longer exit 0: it either has an inventory or"
+step "it has a written declaration that there is no object store. And"
+step "restore.sh refuses to verify against a manifest with no object line,"
+step "because the failure mode being prevented is a restore that verifies"
+step "every row perfectly and resolves no photographs."
 step ""
 step "bringing the kernel back, and proving a MediaRef still resolves"
 (

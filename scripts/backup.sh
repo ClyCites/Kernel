@@ -188,20 +188,47 @@ echo "backup: $(wc -l < "$OUT/manifest.txt" | tr -d ' ') manifest lines"
 # time, so a later restore has something to be checked against rather than
 # being taken on trust.
 #
-# Skipped, loudly, when no store is configured. A kernel with no media path is
-# a legitimate deployment; a kernel with a media path whose objects were never
-# backed up is not, and the difference must be visible in the output rather
-# than inferred from its absence.
+# FINDING, fixed here: this used to print "objects NOT backed up" and exit 0.
+# That is the worst available failure mode — in production it produces a
+# restore that verifies every manifest line perfectly and resolves no
+# photographs. There is now no path through this script that skips objects and
+# succeeds. Either an inventory exists, or the absence of a store was declared
+# in writing, or the backup fails.
+#
+# The inventory itself is scripts/backup-objects.sh, because it needs the Node
+# toolchain and this script needs pg_dump, psql and openssl. Run it wherever
+# those live and pass the result in as BACKUP_OBJECTS_FILE; if the toolchain
+# happens to be here too, this runs it directly.
 # ─────────────────────────────────────────────────────────────────────────────
-if [ -n "${MEDIA_S3_ENDPOINT:-}" ]; then
-  echo "backup: taking the object inventory"
-  ( cd "$(dirname "$0")/../apps/kernel" \
-    && ./node_modules/.bin/tsx src/media/inventory-cli.ts manifest \
-  ) > "$OUT/objects.txt"
-  cat "$OUT/objects.txt"
-  ( cd "$OUT" && sha256sum objects.txt >> checksums.sha256 )
+if [ -n "${BACKUP_OBJECTS_FILE:-}" ]; then
+  if [ ! -s "$BACKUP_OBJECTS_FILE" ]; then
+    echo "backup: BACKUP_OBJECTS_FILE=$BACKUP_OBJECTS_FILE is missing or empty" >&2
+    exit 1
+  fi
+  cp "$BACKUP_OBJECTS_FILE" "$OUT/objects.txt"
+  echo "backup: object inventory taken from $BACKUP_OBJECTS_FILE"
 else
-  echo "backup: no object store configured — objects NOT backed up"
+  "$(dirname "$0")/backup-objects.sh" "$OUT/objects.txt"
 fi
 
+if [ "$(head -n 1 "$OUT/objects.txt")" = "no-object-store" ]; then
+  OBJECT_STATE="declared-absent"
+  OBJECT_COUNT=0
+else
+  OBJECT_STATE="present"
+  OBJECT_COUNT="$(wc -l < "$OUT/objects.txt" | tr -d ' ')"
+fi
+
+# The manifest records that this step ran. restore.sh refuses to verify against
+# a manifest with no object line, so an old-format backup — or one taken by a
+# script that skipped this — cannot be quietly accepted as complete.
+{
+  echo "object_inventory $OBJECT_STATE $OBJECT_COUNT"
+} >> "$OUT/manifest.txt"
+
+# Rewritten rather than appended to: manifest.txt changed above, so its earlier
+# checksum is of a file that no longer exists.
+( cd "$OUT" && sha256sum kernel.dump.enc manifest.txt objects.txt > checksums.sha256 )
+
+echo "backup: objects $OBJECT_STATE ($OBJECT_COUNT)"
 echo "backup: output=$OUT"

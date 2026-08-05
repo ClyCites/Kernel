@@ -233,6 +233,12 @@ Run on the first working day of each month.
 **Alert:** `kernel_anchor_stale == 1`, or `scripts/anchor-cron.sh check` exiting
 non-zero.
 
+> **Not live yet.** No topic exists and no root has been published, so this
+> section does not currently fire — it describes the state to run in once
+> `ANCHOR_TOPIC_ID` (or `ANCHOR_PUBLISH_URL`) is set. Until then, tamper
+> evidence is not a property this deployment has, and must not be described as
+> one to a lender, a regulator or a farmer. See 0038.
+
 ### What it means
 
 No Merkle root has been published in three days on a kernel configured to

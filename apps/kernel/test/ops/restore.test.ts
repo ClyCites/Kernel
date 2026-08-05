@@ -42,10 +42,24 @@ interface Ran {
   output: string;
 }
 
-const run = async (script: string, args: string[] = []): Promise<Ran> => {
+const run = async (
+  script: string,
+  args: string[] = [],
+  env: Record<string, string> = {},
+): Promise<Ran> => {
   const result = await db.container.exec(
     ['bash', `${IN_CONTAINER}/${script}`, ...args],
-    { env: { BACKUP_PASSPHRASE: PASSPHRASE } },
+    {
+      env: {
+        BACKUP_PASSPHRASE: PASSPHRASE,
+        // Declared, not inferred. There is no object store in this fixture and
+        // no Node toolchain in this container, and the backup now refuses to
+        // succeed having silently skipped objects — so the absence has to be
+        // stated, which is the whole point of the flag.
+        BACKUP_NO_OBJECT_STORE: 'true',
+        ...env,
+      },
+    },
   );
   return { exitCode: result.exitCode, output: result.output };
 };
@@ -68,6 +82,11 @@ before(async () => {
       target: `${IN_CONTAINER}/restore.sh`,
       mode: 0o755,
     },
+    {
+      source: `${SCRIPTS}/backup-objects.sh`,
+      target: `${IN_CONTAINER}/backup-objects.sh`,
+      mode: 0o755,
+    },
   ]);
 });
 
@@ -87,7 +106,33 @@ describe('a backup can be restored, and the restore is checked', () => {
     const listing = await db.container.exec(['ls', backupDir]);
     assert.match(listing.output, /kernel\.dump\.enc/);
     assert.match(listing.output, /manifest\.txt/);
+    assert.match(listing.output, /objects\.txt/);
     assert.match(listing.output, /checksums\.sha256/);
+
+    // The manifest records that the object step ran. Without this line a
+    // manifest cannot say whether objects were ever backed up, and restore.sh
+    // refuses to verify against one.
+    const manifest = await db.container.exec([
+      'grep', 'object_inventory', `${backupDir}/manifest.txt`,
+    ]);
+    assert.match(manifest.output, /object_inventory declared-absent 0/);
+  });
+
+  /**
+   * FINDING, fixed here: this used to print `objects NOT backed up` and exit 0.
+   * In production that produces a restore which verifies 1259 manifest lines
+   * perfectly and resolves no photographs — the worst available failure mode,
+   * because it reports success. There is now no path that skips objects and
+   * succeeds.
+   */
+  test('a backup that would skip objects fails rather than exiting 0', async () => {
+    const skipped = await db.container.exec(
+      ['bash', `${IN_CONTAINER}/backup.sh`, OWNER_URL, `${BACKUPS}-skipped`],
+      { env: { BACKUP_PASSPHRASE: PASSPHRASE } },
+    );
+
+    assert.notEqual(skipped.exitCode, 0, skipped.output);
+    assert.match(skipped.output, /BACKUP_NO_OBJECT_STORE/);
   });
 
   test('the dump on disk is not readable as a dump', async () => {

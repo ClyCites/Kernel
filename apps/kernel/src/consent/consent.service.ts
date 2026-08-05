@@ -202,6 +202,11 @@ export class ConsentService {
 
     const records = await this.resolveParties(request);
     const membership = await this.resolveMembership(requester, records, request);
+    // Who among those parties is a data subject at all. One query for the page.
+    const persons = await this.repository.naturalPersons(
+      records.flatMap((record) => record.parties.filter((id) => id !== requester)),
+      request.dataset,
+    );
 
     const grants: string[] = [];
     let strongest: AccessClass = 'self';
@@ -229,11 +234,27 @@ export class ConsentService {
 
       if (!this.needsGrant(record, access)) continue;
 
-      const counterparties = record.parties.filter((id) => id !== requester);
+      // FINDING, fixed here: this used to be every other party on the record,
+      // which made a farmer-to-cooperative delivery a record with two data
+      // subjects and refused it until the cooperative granted consent for its
+      // own trading activity. The DPPA protects individuals; a cooperative is
+      // a party, not a subject. Anyone asking a farmer for consent reasonably
+      // believes the farmer's grant is enough, and now it is.
+      const others = record.parties.filter((id) => id !== requester);
+      const subjects = others.filter((id) => persons.has(id));
+
+      // But a record with no natural person on it is not thereby open. It is
+      // simply not the DPPA's business — no individual is protected by
+      // refusing it — and what still gates it is the organisation's own
+      // authorisation. So the permission is sought from the data subjects
+      // where there are any, and from the remaining parties where there are
+      // none. A cooperative's lot is its own to permit; it was never its
+      // members' to consent to.
+      const counterparties = subjects.length > 0 ? subjects : others;
       if (counterparties.length === 0) {
         return deny(
           'no_attributable_party',
-          `${record.type} ${record.id} names no party who could grant consent for it`,
+          `${record.type} ${record.id} names no party who could permit it`,
         );
       }
       if (request.purpose === null) {

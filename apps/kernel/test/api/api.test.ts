@@ -67,7 +67,11 @@ async function call(
   method: string,
   path: string,
   body?: unknown,
-  options: { as?: string | null; basis?: string | null } = {},
+  options: {
+    as?: string | null;
+    basis?: string | null;
+    headers?: Record<string, string>;
+  } = {},
 ): Promise<Json> {
   const subject = options.as === undefined ? undefined : options.as;
   // Every write has to declare a DPPA ground — see docs/decisions/0019.
@@ -87,6 +91,7 @@ async function call(
       ...(body === undefined || basis === null
         ? {}
         : { [LAWFUL_BASIS_HEADER]: basis }),
+      ...(options.headers ?? {}),
     },
   });
   return {
@@ -245,13 +250,19 @@ describe('a Delivery round-trips through the public API', () => {
 /* ── consent ──────────────────────────────────────────────────────────── */
 
 describe('reads are refused without a lawful basis (spec §10)', () => {
-  test('an anonymous read of a real record is 403, not 200', async () => {
+  /**
+   * 401 and not 404, and it is the narrow exception. "You sent no subject"
+   * describes the caller's own request and leaks nothing about who holds
+   * what — and without it, a missing header is indistinguishable from having
+   * no grant, which sends an integrator looking in the wrong place.
+   */
+  test('an anonymous read of a real record is refused, not served', async () => {
     const submission = deliveryDocument();
     await call('POST', '/v1/records', submission);
 
     const response = await call('GET', `/v1/records/${submission['id']}`);
 
-    assert.equal(response.status, 403);
+    assert.equal(response.status, 401);
     conforms('Problem', response.body);
     assert.equal(
       (response.body as Record<string, unknown>)['code'],
@@ -259,7 +270,45 @@ describe('reads are refused without a lawful basis (spec §10)', () => {
     );
   });
 
-  test('a stranger cannot read someone else’s record', async () => {
+  /**
+   * 404 and nothing else. A 403 naming the record id, its type and another
+   * subject's party id is a disclosure: it confirms that party exists and
+   * asserted something. Media has always answered a bare 404 and records now
+   * do too; the reason goes to the audit log, where a question about a
+   * refusal should be answered from.
+   */
+  test('a stranger cannot read someone else’s record, and is told nothing', async () => {
+    const submission = deliveryDocument();
+    await call('POST', '/v1/records', submission);
+
+    const response = await call(
+      'GET',
+      `/v1/records/${submission['id']}?purpose=credit_assessment`,
+      undefined,
+      { as: uuidv7() },
+    );
+
+    assert.equal(response.status, 404);
+
+    const body = response.body as Record<string, unknown>;
+    assert.equal(body['code'], undefined);
+    const serialised = JSON.stringify(body);
+    // The record id is not checked for. It comes back in `instance`, which is
+    // the caller's own request URL — telling somebody what they just asked for
+    // discloses nothing they did not already have. What must not come back is
+    // anything they did not supply: who asserted it, and what kind of thing
+    // it is.
+    assert.ok(!serialised.includes(String(submission['asserted_by'])));
+    assert.ok(!serialised.includes('delivery'));
+  });
+
+  /**
+   * The one refusal that may still speak. Saying "you did not name a purpose"
+   * leaks nothing about who holds what — it is a statement about the request,
+   * not about the record — and it used to be indistinguishable from having no
+   * grant, which left a caller with a correctable mistake and no way to know.
+   */
+  test('a read with no purpose is told so, and is not confused with a refusal', async () => {
     const submission = deliveryDocument();
     await call('POST', '/v1/records', submission);
 
@@ -267,7 +316,28 @@ describe('reads are refused without a lawful basis (spec §10)', () => {
       as: uuidv7(),
     });
 
-    assert.equal(response.status, 403);
+    assert.equal(response.status, 400);
+
+    const body = response.body as Record<string, unknown>;
+    assert.equal(body['code'], 'purpose_required');
+    assert.ok(!JSON.stringify(body).includes(String(submission['asserted_by'])));
+  });
+
+  /**
+   * Purpose is a query parameter, decided in `purpose.middleware.ts`. A header
+   * that looks like it should work and is silently ignored is worse than one
+   * that is refused: it produces a request the caller believes named a purpose
+   * and the kernel believes did not.
+   */
+  test('a purpose sent as a header is an error, not a silent nothing', async () => {
+    const response = await call('GET', '/v1/records/' + uuidv7(), undefined, {
+      as: uuidv7(),
+      headers: { 'x-clycites-purpose': 'credit_assessment' },
+    });
+
+    assert.equal(response.status, 400);
+    const refusal = response.body as Record<string, unknown>;
+    assert.match(String(refusal['detail'] ?? ''), /query parameter/);
   });
 
   /**
@@ -527,7 +597,7 @@ describe('offline devices reach the log through the same API', () => {
   test('a device pulling without a verified subject gets nothing', async () => {
     const response = await call('GET', '/v1/sync/changes?limit=1');
 
-    assert.equal(response.status, 403);
+    assert.equal(response.status, 401);
     conforms('Problem', response.body);
   });
 

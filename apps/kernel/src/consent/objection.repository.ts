@@ -31,6 +31,8 @@ export interface NewObjection {
   delegation: string | null;
   evidence: unknown[];
   dataset: Dataset;
+  /** What the objection actually stopped, as told to the subject. */
+  effect: string;
 }
 
 export interface BasisCount {
@@ -59,8 +61,8 @@ export class ObjectionRepository {
     const { rows } = await this.pool.query<ObjectionRow>(
       `insert into kernel.objection
          (id, subject, scope, lodged_at, lodged_via, lodged_by, delegation,
-          evidence, dataset)
-       values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9)
+          evidence, dataset, effect)
+       values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10)
        returning id, subject, scope,
                  to_json(lodged_at) #>> '{}' as lodged_at,
                  lodged_via, lodged_by, delegation, evidence, dataset,
@@ -75,6 +77,7 @@ export class ObjectionRepository {
         objection.delegation,
         JSON.stringify(objection.evidence),
         objection.dataset,
+        objection.effect,
       ],
     );
 
@@ -205,6 +208,31 @@ export class ObjectionRepository {
     );
     return rows.map((row) => ({
       scope: row.scope,
+      objections: Number(row.objections),
+    }));
+  }
+
+  /**
+   * Objections by what they actually did, for /metrics.
+   *
+   * Read from `kernel.objection.effect` and not from the audit log: the
+   * application role cannot read `audit.entry` by design (0025), and granting
+   * it that access to power a counter would trade the integrity of the audit
+   * log for a graph.
+   *
+   * A rising `stopped_nothing_consent_only` is the signal: it means people are
+   * being offered a button that cannot do what its label says, at scale.
+   */
+  async effectCensus(): Promise<Array<{ effect: string; objections: number }>> {
+    const { rows } = await this.pool.query<{ effect: string; objections: string }>(
+      `select coalesce(o.effect, 'unrecorded') as effect, count(*) as objections
+         from kernel.objection o
+        where o.dataset = 'live'
+        group by 1
+        order by 1`,
+    );
+    return rows.map((row) => ({
+      effect: row.effect,
       objections: Number(row.objections),
     }));
   }

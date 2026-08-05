@@ -32,18 +32,33 @@ const STATUS_BY_CODE: Record<string, number> = {
   // authority to hold it, which is the caller's standing, not the payload's.
   lawful_basis_required: 403,
   lawful_basis_insufficient: 403,
+  confirmation_not_authorised: 403,
   id_conflict: 409,
   invalid_cursor: 400,
 };
 
 const TITLES: Record<number, string> = {
   400: 'Bad request',
+  401: 'Not authenticated',
   403: 'Not authorised',
   404: 'Not found',
   409: 'Conflict',
   422: 'Unprocessable record',
   500: 'Internal error',
   503: 'Not ready',
+};
+
+/**
+ * The only consent refusals a caller is told the reason for, and what they
+ * answer with.
+ *
+ * Both are about the request rather than about the data: they name no record,
+ * no type and no party, so answering them leaks nothing the caller did not
+ * already supply. Everything else becomes an indistinguishable 404.
+ */
+const SAYABLE_REFUSALS: Record<string, number> = {
+  purpose_required: 400,
+  no_verified_subject: 401,
 };
 
 @Catch()
@@ -77,12 +92,34 @@ export class ProblemFilter implements ExceptionFilter {
 
   private toProblem(exception: unknown): Problem {
     if (exception instanceof ConsentDenied) {
-      // The reason is machine-readable on purpose: it is what an integration
-      // quotes when it asks for the consent spec to be written.
+      // FINDING, fixed here: this used to answer 403 quoting the record id,
+      // its type and the party id of whoever's grant was missing. That is a
+      // disclosure. It confirms the record exists, says what kind it is, and
+      // names a person who asserted something — to a caller established as
+      // having no right to any of it.
+      //
+      // Media has always answered a bare 404 and media was right. So records
+      // now do too: no ids, no types, no reason. The reason is written to the
+      // audit log by the guard that raised this, which is where a question
+      // about a refusal should be answered from.
+      if (SAYABLE_REFUSALS[exception.decision.reason] === undefined) {
+        return {
+          type: '/problems/not_found',
+          title: TITLES[404]!,
+          status: 404,
+          detail: 'no such record, or not yours to read',
+        };
+      }
+
+      // The exceptions. A caller who stated no purpose, or who reached the
+      // kernel with no verified subject, learns nothing about who holds what
+      // from being told so — and without being told, a spelling mistake is
+      // indistinguishable from having no grant at all.
+      const status = SAYABLE_REFUSALS[exception.decision.reason]!;
       return {
         type: `/problems/${exception.decision.reason}`,
-        title: TITLES[403]!,
-        status: 403,
+        title: TITLES[status] ?? 'Error',
+        status,
         detail: exception.decision.detail,
         code: exception.decision.reason,
       };

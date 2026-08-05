@@ -27,7 +27,11 @@ export type RejectionCode =
    * v0.3 the ground lives in the envelope; the header is kept for clients that
    * have not moved yet. Two different answers is not a conflict the kernel may
    * resolve on the caller's behalf. */
-  | 'lawful_basis_conflict';
+  | 'lawful_basis_conflict'
+  /** A confirmation from somebody who is not the counterparty to the delivery,
+   * or who holds no delegation from them. Structural: a confirmation by the
+   * wrong party is not weak evidence, it is not evidence. */
+  | 'confirmation_not_authorised';
 
 export interface RejectionIssue {
   path: string;

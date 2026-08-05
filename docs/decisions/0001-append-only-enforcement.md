@@ -81,6 +81,11 @@ record is anchored, its permanence rests on our operational discipline; after it
 is anchored, it rests on a published root we cannot retract. Everything before
 that layer is defence in depth, not proof.
 
+**No record is anchored today.** Roots are computed and stored; none has been
+published, so the row above describes a layer that is built and not yet
+operating. Read it as the end state, not as the current one — every record in
+this system rests on operational discipline until that changes. See 0038.
+
 ### What is enforced at the database today
 
 Migration `0016_no_live_deletion.sql` adds a `before delete` trigger to

@@ -17,6 +17,8 @@ import { ProblemFilter } from './problem.filter.js';
 import { RateLimitMiddleware } from './rate-limit.middleware.js';
 import { RegistryCacheInterceptor } from './registry-cache.interceptor.js';
 import { RecordsController } from './records.controller.js';
+import { ConfirmationsController } from './confirmations.controller.js';
+import { PurposeHeaderMiddleware } from './purpose.middleware.js';
 import { InferencesController } from './inferences.controller.js';
 import { MediaController } from './media.controller.js';
 import { AnchorsController } from './anchors.controller.js';
@@ -32,6 +34,7 @@ import { SyncController } from './sync.controller.js';
   imports: [RecordsModule, InferenceModule, MediaModule, AnchoringModule, SyncModule, IdentityModule],
   controllers: [
     RecordsController,
+    ConfirmationsController,
     InferencesController,
     MediaController,
     AnchorsController,
@@ -52,6 +55,7 @@ import { SyncController } from './sync.controller.js';
 export class ApiModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
     consumer.apply(CorrelationMiddleware).forRoutes('*path');
+    consumer.apply(PurposeHeaderMiddleware).forRoutes('*path');
     // Only the registry. Everywhere else a caller has a verified subject, so
     // abuse has a name attached and is an access-control question.
     consumer.apply(RateLimitMiddleware).forRoutes('v1/registry/*path');

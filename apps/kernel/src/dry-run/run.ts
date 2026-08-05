@@ -471,8 +471,6 @@ async function phaseA(handoffPath: string): Promise<void> {
           grade: null,
           location: ids.facility,
           agreed_price: { amount_minor: 1150, currency: 'UGX' },
-          counterparty_confirmed_at: null,
-          counterparty_confirmed_by: null,
           evidence: [media.ref],
         },
       ),
@@ -496,72 +494,61 @@ async function phaseA(handoffPath: string): Promise<void> {
       await call('GET', `/v1/records/${ids.delivery}`, { as: ids.coop }),
       'reading the delivery back',
     );
-    const body = before.body['body'] as Record<string, unknown> | undefined;
-    say(`counterparty_confirmed_at  ${JSON.stringify(body?.['counterparty_confirmed_at'] ?? null)}`);
+    say(`confirmation  ${JSON.stringify(before.body['confirmation'] ?? null)}`);
     say();
     say('The farmer now confirms, by the USSD-shaped path: the party at the');
     say('keyboard is the farmer, and the act is theirs alone.');
     say();
 
-    // A confirmation is a change to a record the coop asserted, so the only
-    // append-only route is a supersession by the farmer. Whether the kernel
-    // permits that is the question this stage exists to ask.
-    const attempt = await call('POST', '/v1/records', {
-      as: ids.farmer,
-      basis: 'special_data_consent',
-      body: envelope(
-        {
-          id: uuidv7(),
-          type: 'delivery',
-          occurredAt: iso(38),
-          assertedBy: ids.farmer,
-          supersedes: ids.delivery,
-        },
-        {
-          from_party: ids.farmer,
-          to_party: ids.coop,
-          lot: null,
-          fulfils: null,
-          commodity: 'crop.maize.grain',
-          quantity: {
-            raw_value: 12,
-            raw_unit: 'bag',
-            raw_unit_label: 'kaveera',
-            normalized_kg: 1200,
-            conversion_id: CONVERSION_BAG_TO_KG,
-            measurement_method: 'counterparty_confirmed',
-          },
-          grade: null,
-          location: ids.facility,
-          agreed_price: { amount_minor: 1150, currency: 'UGX' },
-          counterparty_confirmed_at: iso(37, 18),
-          counterparty_confirmed_by: ids.farmer,
-          evidence: [],
-        },
-      ),
-    });
+    // The finding this stage found, now fixed. §8 rule 1 correctly refuses to
+    // let the farmer supersede the coop's delivery — but confirmation is not a
+    // correction. It is a distinct act by the other party, so it is a distinct
+    // record, asserted by her, on her own authority.
+    const confirmation = await call(
+      'POST',
+      `/v1/deliveries/${ids.delivery}/confirmation`,
+      { as: ids.farmer, body: { channel: 'ussd_pin', occurred_at: iso(37, 18) } },
+    );
 
-    if (attempt.status >= 200 && attempt.status < 300) {
-      say(`accepted: ${short(attempt.body['id'] as string)}`);
-      const after = expect(
-        await call('GET', `/v1/records/${ids.delivery}/chain`, { as: ids.coop }),
-        'reading the chain',
-      );
-      say(`chain tip now ${JSON.stringify(after.body['tip'] ?? after.body)}`);
+    if (confirmation.status < 200 || confirmation.status >= 300) {
+      say(`REFUSED  ${refusal(confirmation)}`);
+      say();
+      say('That is a regression: the confirmation path exists and should have');
+      say('accepted this. Stop and read the refusal rather than continuing.');
       return;
     }
 
-    say(`REFUSED  ${refusal(attempt)}`);
+    say(`accepted: ${short(confirmation.body['id'] as string)}`);
+
+    const after = expect(
+      await call('GET', `/v1/records/${ids.delivery}`, { as: ids.coop }),
+      'reading the delivery back after confirmation',
+    );
+    const resolved = after.body['confirmation'] as Record<string, unknown> | undefined;
+    say(`confirmed     ${JSON.stringify(resolved?.['confirmed'] ?? null)}`);
+    say(`independent   ${JSON.stringify(resolved?.['independent'] ?? null)}`);
+    say(`channel       ${JSON.stringify(resolved?.['channel'] ?? null)}`);
     say();
-    say('This is a finding, not a bug. Spec §8 rule 1 lets only the original');
-    say('asserter or their delegate supersede a record. The coop asserted the');
-    say('delivery, so the farmer cannot amend it — and there is no confirmation');
-    say('endpoint. The only way counterparty_confirmed_at is ever set today is');
-    say('the coop writing it at creation time, on the farmer\u2019s behalf.');
+
+    // The refusal that still matters. A confirmation is only evidence if the
+    // other side gave it, so the coop confirming its own delivery must fail —
+    // and it must fail structurally, not with a flag.
+    const selfConfirm = await call(
+      'POST',
+      `/v1/deliveries/${ids.delivery}/confirmation`,
+      { as: ids.coop, body: { channel: 'in_person' } },
+    );
+    say(
+      selfConfirm.status >= 400
+        ? `the coop confirming its own delivery: REFUSED  ${refusal(selfConfirm)}`
+        : 'FINDING: the coop confirmed its own delivery. That is the self-attestation this was built to remove.',
+    );
     say();
-    say('That is a self-attestation by the party with the incentive to overstate,');
-    say('recorded in the field the schema calls the entire credit thesis. The');
-    say('rehearsal stops short of pretending otherwise and continues.');
+    say('`counterparty_confirmed_at` is gone from the Delivery schema. A nullable');
+    say('timestamp the seller could set on their own record was a self-attestation');
+    say('by the party with the incentive to overstate — one-sided data wearing a');
+    say('two-sided name. The field above is derived, and it is derived from a');
+    say('record the farmer asserted herself.');
   });
 
   const grant = await stage(5, 'disclose', async () => {
@@ -594,18 +581,26 @@ async function phaseA(handoffPath: string): Promise<void> {
     });
     say(`  ${partial.status} ${partial.status === 200 ? 'disclosed' : refusal(partial)}`);
     say();
-    say('  A delivery has two data subjects: the farmer it came from and the');
-    say('  cooperative it went to. One subject\u2019s consent does not authorise');
-    say('  disclosing the other\u2019s dealings, so the read is refused even though');
-    say('  the farmer said yes. That is right, and it is not obvious \u2014 nothing');
-    say('  about asking a farmer for consent suggests a second party must agree');
-    say('  before anything can be shown.');
+    if (partial.status === 200) {
+      say('  The farmer\u2019s grant alone was enough, which is what anyone asking a');
+      say('  farmer for consent reasonably believes they are getting.');
+      say();
+      say('  This used to be refused. The delivery names two parties, and the');
+      say('  consent gate counted both as data subjects \u2014 so it waited for the');
+      say('  cooperative to consent to disclosure of its own trading activity.');
+      say('  The DPPA protects individuals; a cooperative is a party to a record');
+      say('  and not a data subject, and the gate now says so.');
+    } else {
+      say('  That is a regression. The farmer is the only natural person on this');
+      say('  delivery and the farmer has granted; nothing further should be');
+      say('  needed. Stop and read the refusal.');
+    }
     say();
 
     await grantFrom(ids.coop, 'coop');
     say();
 
-    say('the lender reads the delivery again, now that both subjects have agreed');
+    say('the lender reads the delivery again, now that the coop has also agreed');
     const allowed = await call('GET', `/v1/records/${ids.delivery}`, {
       as: ids.lender,
       purpose: 'credit_assessment',
@@ -625,11 +620,12 @@ async function phaseA(handoffPath: string): Promise<void> {
     say('  The refusal is printed beside the disclosure because it is the half a');
     say('  regulator asks to see, and the half no demonstration ever shows.');
     say();
-    say('  Note what it says, though. It names the record id, its type, and the');
-    say('  party id of a subject the caller may hold no relationship with. The');
-    say('  media endpoint refuses with a bare 404 for exactly the opposite');
-    say('  reason. Both cannot be right. Which one is correct is a decision and');
-    say('  not a bug, so it is reported here rather than patched.');
+    say('  It names nothing. A 403 quoting the record id, its type and the party');
+    say('  id of whoever\u2019s grant was missing is itself a disclosure \u2014 it confirms');
+    say('  that party exists and asserted a record about something. The media');
+    say('  endpoint always answered a bare 404 and media was right; records now');
+    say('  do the same, and the reason goes to the audit log where a question');
+    say('  about a refusal should be answered from.');
 
     return farmerGrant;
   });
@@ -669,8 +665,6 @@ async function phaseA(handoffPath: string): Promise<void> {
           grade: null,
           location: ids.facility,
           agreed_price: { amount_minor: 1150, currency: 'UGX' },
-          counterparty_confirmed_at: null,
-          counterparty_confirmed_by: null,
           evidence: [],
         },
       ),
@@ -916,13 +910,44 @@ async function phaseB(handoffPath: string): Promise<void> {
       await call('POST', '/v1/objections', {
         as: ids.farmer,
         body: {
-          scope: ['credit_assessment'],
+          scope: ['delivery'],
           lodged_via: 'ussd_confirmation',
         },
       }),
       'the objection',
     );
-    say(`objection ${short((lodged.body['id'] as string) ?? '')}  scope credit_assessment`);
+    say(`objection ${short((lodged.body['id'] as string) ?? '')}  scope delivery`);
+    say();
+    say('  FINDING, reported not patched. The scope above is a record type,');
+    say('  because that is what the field means. A farmer objecting does not');
+    say('  think in record types — she thinks “stop using my information for');
+    say('  credit assessment”, which is a purpose. Lodging the purpose she');
+    say('  means returns stopped_nothing_out_of_scope: technically accurate,');
+    say('  and it stops nothing because no record is of type credit_assessment.');
+    say('  Whether objection scope should be purposes, record types, or both is');
+    say('  a decision, not a bug. It is the same class as the other three: the');
+    say('  kernel is correct and behaves in a way the person it protects would');
+    say('  not predict.');
+    say();
+
+    // What she is told, in the words she is told it in. This is the artifact
+    // the finding was about: the objection response used to be two accurate
+    // lists and no answer.
+    say('what the kernel said back to her:');
+    say(`  ${String(lodged.body['headline'] ?? '(no headline — regression)')}`);
+    const withdrawable = (lodged.body['withdrawable'] ?? []) as Record<string, unknown>[];
+    if (withdrawable.length > 0) {
+      say();
+      say('  grants she can withdraw, which would stop it:');
+      for (const grant of withdrawable) {
+        say(
+          `    ${short(String(grant['grant']))}  to ${short(String(grant['grantee']))}` +
+            `  for ${String(grant['purpose'])}` +
+            `  covering ${(grant['record_types'] as string[]).join(', ')}`,
+        );
+      }
+    }
+    say(`  effect recorded, and counted on /metrics: ${String(lodged.body['effect'] ?? '?')}`);
     say();
 
     const standing = expect(
@@ -938,24 +963,26 @@ async function phaseB(handoffPath: string): Promise<void> {
       purpose: 'credit_assessment',
     });
     if (lenderRead.status === 200) {
-      say(`  the lender's credit_assessment read  200 — NOTHING STOPPED.`);
+      say(`  the lender's credit_assessment read  200 — nothing stopped.`);
       say();
-      say('  This is the design, and it is the finding. An objection under s.7(2)');
-      say('  reaches processing carried on under a s.7(2) ground — legitimate');
-      say('  interests, public task, and the rest. This delivery is processed on');
-      say('  special_data_consent, which is a s.9(3) ground, and consent is ended');
-      say('  by withdrawing it, not by objecting to it.');
+      say('  An objection under s.7(3) reaches processing carried on under a');
+      say('  s.7(2) ground — legitimate interests, public task, and the rest.');
+      say('  This delivery is processed on special_data_consent, a s.9(3)');
+      say('  ground, and consent is ended by withdrawing it, not by objecting.');
       say();
-      say('  Legally coherent. But the farmer pressed the button marked “I object');
-      say('  to my information being used for credit assessment”, and the lender');
-      say('  can still read her deliveries for credit assessment. She has no way');
-      say('  to know she used the wrong lever, and the kernel raised nothing to');
-      say('  tell her.');
+      say('  That was always true and it was not always said. She pressed a');
+      say('  button marked “I object to my information being used for credit');
+      say('  assessment”, nothing happened, and nothing told her. The response');
+      say('  above now names the act that does work and lists the grants it');
+      say('  applies to — offering the lever that works rather than reporting');
+      say('  that the one she pulled did not.');
       say();
-      say('  Reporting, not patching. Whether an objection whose scope names a');
-      say('  consented purpose should be read as a withdrawal of that consent is');
-      say('  a question for counsel and a decision doc, not a code change made');
-      say('  during a rehearsal.');
+      say('  The open question is unchanged and is for counsel: whether an');
+      say('  objection whose scope names a consented purpose should itself be');
+      say('  read as withdrawing that consent. Until that is decided, the');
+      say('  honest answer is the one printed above, and the count of');
+      say('  stopped_nothing_consent_only on /metrics is how anyone finds out');
+      say('  whether this interface is misleading people at scale.');
     } else {
       say(`  the lender's credit_assessment read  ${lenderRead.status} — refused`);
     }
@@ -971,6 +998,33 @@ async function phaseB(handoffPath: string): Promise<void> {
     say('the subject\u2019s own access is unaffected:');
     const own = await call('GET', '/v1/subject-access', { as: ids.farmer });
     say(`  subject access  ${own.status} — s.24 is not a consent-based right.`);
+    say();
+
+    // The other half of the finding, shown rather than described: the same
+    // farmer lodging the objection she actually means, in the words she means
+    // it in, and what she is told when it achieves nothing.
+    say('and now the objection she meant to lodge, in her own terms:');
+    const byPurpose = expect(
+      await call('POST', '/v1/objections', {
+        as: ids.farmer,
+        body: { scope: ['credit_assessment'], lodged_via: 'ussd_confirmation' },
+      }),
+      'the purpose-shaped objection',
+    );
+    say(`  ${String(byPurpose.body['headline'] ?? '(no headline — regression)')}`);
+    const offered = (byPurpose.body['withdrawable'] ?? []) as Record<string, unknown>[];
+    for (const grant of offered) {
+      say(
+        `    withdraw ${short(String(grant['grant']))}  from ${short(String(grant['grantee']))}` +
+          `  for ${String(grant['purpose'])}`,
+      );
+    }
+    say(`  effect: ${String(byPurpose.body['effect'] ?? '?')}`);
+    say();
+    say('  Nothing stopped, and she is told so, told why, and offered the act');
+    say('  that would work. Before this she was told two accurate lists and no');
+    say('  answer. A rising count of this effect on /metrics is the signal that');
+    say('  the interface is misleading people at scale.');
   });
 }
 

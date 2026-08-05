@@ -235,6 +235,10 @@ export class IngestService {
 
     const supersessionFlags = await this.checkSupersession(envelope, type, dataset);
     if (type === 'retraction') await this.checkRetraction(envelope, body, dataset);
+    const confirmationFlags =
+      type === 'delivery_confirmation'
+        ? await this.checkConfirmationRight(envelope, body, dataset)
+        : [];
     // A client-supplied `normalized_kg` the kernel cannot reproduce is exactly
     // what currently looks trustworthy and isn't. Per P6 this flags, never
     // rejects — the record is still someone's account of what happened.
@@ -246,6 +250,7 @@ export class IngestService {
     const derived = [
       ...conversionFlags,
       ...supersessionFlags,
+      ...confirmationFlags,
       ...(await this.subjectFlags(type, body, dataset)),
     ];
 
@@ -432,6 +437,99 @@ export class IngestService {
     return grant.basis === 'organisational_bylaw'
       ? ['corrected_under_delegation', 'corrected_under_organisational_bylaw']
       : ['corrected_under_delegation'];
+  }
+
+  /**
+   * Who may confirm a delivery: the other side of it, and nobody else.
+   *
+   * The counterparty is derived from the delivery, never taken from the
+   * request — a confirmation whose subject the confirmer chose is the
+   * self-attestation this record exists to replace. The party who claimed the
+   * delivery is excluded by construction, which is the whole point: the coop
+   * cannot confirm its own delivery note.
+   *
+   * Refusing rather than flagging is deliberate and narrow. Everywhere else
+   * the kernel flags, because a doubtful claim is still somebody's account of
+   * what happened. A confirmation by a party who is not a party to the
+   * delivery is not a doubtful account of anything.
+   */
+  private async checkConfirmationRight(
+    envelope: RecordDocument,
+    body: RecordDocument,
+    dataset: Dataset,
+  ): Promise<string[]> {
+    const deliveryId = asNullableString(body['delivery']) ?? '';
+    const delivery = await this.repository.findById(deliveryId);
+
+    if (!delivery || delivery.dataset !== dataset || delivery.type !== 'delivery') {
+      throw new RecordRejected(
+        'confirmation_not_authorised',
+        `delivery ${deliveryId} is not in the log`,
+        [{ path: 'delivery', message: 'no such delivery' }],
+      );
+    }
+
+    const claimedBy = delivery.on_behalf_of ?? delivery.asserted_by;
+    const sides = [delivery.body['from_party'], delivery.body['to_party']].filter(
+      (side): side is string => typeof side === 'string',
+    );
+    const confirming = asNullableString(body['confirming_party']);
+
+    if (confirming === null || !sides.includes(confirming)) {
+      throw new RecordRejected(
+        'confirmation_not_authorised',
+        'only a party named on the delivery may confirm it',
+        [{ path: 'confirming_party', message: 'not a party to this delivery' }],
+      );
+    }
+
+    if (confirming === claimedBy) {
+      throw new RecordRejected(
+        'confirmation_not_authorised',
+        'the party who recorded the delivery cannot confirm it — a confirmation is the other side saying so',
+        [{ path: 'confirming_party', message: 'this party recorded the delivery' }],
+      );
+    }
+
+    const claimant =
+      asNullableString(envelope['on_behalf_of']) ?? String(envelope['asserted_by']);
+    if (claimant !== confirming) {
+      throw new RecordRejected(
+        'confirmation_not_authorised',
+        `a confirmation must be asserted by ${confirming}, or by a party they have delegated delivery_confirmation to`,
+        [{ path: 'asserted_by', message: 'the confirmation comes from a different party' }],
+      );
+    }
+
+    const flags: string[] = [];
+
+    // Nobody confirmed the corrected version, so the confirmation must not
+    // silently attach to it. This is visible at ingest as well as on read
+    // because the confirming party deserves to know they are affirming a
+    // version that has already been overwritten.
+    const chain = await this.repository.findSupersessionChain(delivery.id);
+    if (chain.some((record) => record.supersedes === delivery.id)) {
+      flags.push('confirms_superseded_version');
+    }
+
+    if (envelope['on_behalf_of'] == null) return flags;
+
+    // Already authorised against the delegation by the caller; this only
+    // labels it. A coop confirming for a farmer under a bylaw is not the
+    // farmer confirming, and the lender view must not show them the same way.
+    const grant = await this.delegations.authorise({
+      delegation: String(envelope['delegation']),
+      delegator: confirming,
+      delegate: String(envelope['asserted_by']),
+      recordType: 'delivery_confirmation',
+      occurredAt: String(envelope['occurred_at']),
+    });
+
+    flags.push('confirmed_under_delegation');
+    if (grant.basis === 'organisational_bylaw') {
+      flags.push('confirmed_by_organisational_bylaw');
+    }
+    return flags;
   }
 
   /**

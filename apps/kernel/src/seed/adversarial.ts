@@ -116,6 +116,32 @@ export function appendAdversarial(plan: SeedPlan, ctx: AdversarialContext): void
 
   const corrected = deliveries.find((d) => d.coop === 'A')!;
   plan.markers.supersededDelivery = corrected.id;
+
+  // Confirmed before the correction, deliberately. A confirmation names one
+  // version: the farmer agreed to the weight she was shown, and the coop then
+  // re-weighed it. The confirmation does not carry forward to the new figure
+  // and the read path flags it `confirms_superseded_version` — which is the
+  // case a lender most needs to see, because it looks confirmed from a
+  // distance and is not.
+  push(
+    envelope(
+      {
+        id: ids.next(),
+        type: 'delivery_confirmation',
+        occurredAt: at(corrected.day, 14),
+        assertedBy: corrected.farmer,
+      },
+      {
+        delivery: corrected.id,
+        confirming_party: corrected.farmer,
+        channel: 'ussd_pin',
+        note: null,
+        evidence: [],
+      },
+    ),
+    'special_data_consent',
+  );
+
   plan.markers.supersedingDelivery = push(
     envelope(
       {
@@ -125,7 +151,7 @@ export function appendAdversarial(plan: SeedPlan, ctx: AdversarialContext): void
         assertedBy: coopParties.A,
         supersedes: corrected.id,
       },
-      deliveryBody(ctx, corrected, 11, true),
+      deliveryBody(ctx, corrected, 11),
     ),
     'special_data_consent',
   );
@@ -146,7 +172,7 @@ export function appendAdversarial(plan: SeedPlan, ctx: AdversarialContext): void
         assertedBy: coopParties.A,
         supersedes: forkParent.id,
       },
-      deliveryBody(ctx, forkParent, 13, true),
+      deliveryBody(ctx, forkParent, 13),
     ),
     'special_data_consent',
   );
@@ -159,7 +185,7 @@ export function appendAdversarial(plan: SeedPlan, ctx: AdversarialContext): void
         assertedBy: coopParties.A,
         supersedes: forkParent.id,
       },
-      deliveryBody(ctx, forkParent, 9, false),
+      deliveryBody(ctx, forkParent, 9),
     ),
     'special_data_consent',
   );
@@ -293,7 +319,7 @@ export function appendAdversarial(plan: SeedPlan, ctx: AdversarialContext): void
   push(
     envelope(
       { id: ids.next(), type: 'delivery', occurredAt: at(priced.day, 12), assertedBy: coopParties.A },
-      deliveryBody(ctx, priced, 5, false),
+      deliveryBody(ctx, priced, 5),
     ),
     'contract_performance',
     'rejected',
@@ -336,8 +362,6 @@ export function appendAdversarial(plan: SeedPlan, ctx: AdversarialContext): void
         },
         location: facilities.C,
         agreed_price: { amount_minor: 1150, currency: 'UGX' },
-        counterparty_confirmed_at: null,
-        counterparty_confirmed_by: null,
       },
     ),
     'special_data_consent',
@@ -375,8 +399,6 @@ export function appendAdversarial(plan: SeedPlan, ctx: AdversarialContext): void
         },
         location: facilities.D,
         agreed_price: null,
-        counterparty_confirmed_at: null,
-        counterparty_confirmed_by: null,
       },
     ),
     'special_data_consent',
@@ -410,9 +432,10 @@ export function appendAdversarial(plan: SeedPlan, ctx: AdversarialContext): void
 
   const overDeliverers = farmers.filter((f) => f.coop === 'A').slice(0, 4);
   for (const farmer of overDeliverers) {
+    const deliveryId = ids.next();
     push(
       envelope(
-        { id: ids.next(), type: 'delivery', occurredAt: at(DAY.deliveryFirst + 40, 9), assertedBy: coopParties.A },
+        { id: deliveryId, type: 'delivery', occurredAt: at(DAY.deliveryFirst + 40, 9), assertedBy: coopParties.A },
         {
           from_party: farmer.id,
           to_party: coopParties.A,
@@ -429,8 +452,24 @@ export function appendAdversarial(plan: SeedPlan, ctx: AdversarialContext): void
           },
           location: facilities.A,
           agreed_price: { amount_minor: 1200, currency: 'UGX' },
-          counterparty_confirmed_at: at(DAY.deliveryFirst + 40, 18),
-          counterparty_confirmed_by: farmer.id,
+        },
+      ),
+      'special_data_consent',
+    );
+    push(
+      envelope(
+        {
+          id: ids.next(),
+          type: 'delivery_confirmation',
+          occurredAt: at(DAY.deliveryFirst + 40, 18),
+          assertedBy: farmer.id,
+        },
+        {
+          delivery: deliveryId,
+          confirming_party: farmer.id,
+          channel: 'ussd_pin',
+          note: null,
+          evidence: [],
         },
       ),
       'special_data_consent',
@@ -496,7 +535,6 @@ function deliveryBody(
   ctx: AdversarialContext,
   source: DeliveryRecord,
   bags: number,
-  confirmed: boolean,
 ): Record<string, unknown> {
   const coop = COOPS.find((c) => c.key === source.coop)!;
   return {
@@ -515,7 +553,5 @@ function deliveryBody(
     },
     location: ctx.facilities[source.coop],
     agreed_price: { amount_minor: 1150, currency: 'UGX' },
-    counterparty_confirmed_at: confirmed ? at(source.day, 19) : null,
-    counterparty_confirmed_by: confirmed ? source.farmer : null,
   };
 }

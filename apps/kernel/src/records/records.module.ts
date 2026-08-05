@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { DelegationService } from './delegation.service.js';
+import { ConfirmationService } from './confirmation.service.js';
 import { IngestService } from './ingest.service.js';
 import { ReadService } from './read.service.js';
 import { RecordRepository } from './record.repository.js';
@@ -20,6 +21,7 @@ import { MediaRepository } from '../media/media.repository.js';
     DelegationService,
     IngestService,
     ReadService,
+    ConfirmationService,
   ],
   exports: [
     RecordRepository,
@@ -27,6 +29,7 @@ import { MediaRepository } from '../media/media.repository.js';
     DelegationService,
     IngestService,
     ReadService,
+    ConfirmationService,
   ],
 })
 export class RecordsModule {}

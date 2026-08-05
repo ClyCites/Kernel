@@ -764,8 +764,6 @@ export function generate(
                 : quantityFor(coop, bags),
               location: facilities[coop.key],
               agreed_price: { amount_minor: 1150, currency: 'UGX' },
-              counterparty_confirmed_at: confirmed ? at(day, 18) : null,
-              counterparty_confirmed_by: confirmed ? farmer.id : null,
             },
           ),
           // A priced delivery carries financial data about an identifiable
@@ -773,6 +771,31 @@ export function generate(
           // only ground the kernel exposes. See the finding in 0023.
           'special_data_consent',
         );
+
+        // The confirmation is the farmer's own record and not a field on the
+        // coop's. It is asserted by the farmer, over USSD, because that is the
+        // only channel she has — and because a confirmation the coop could
+        // write on her behalf would be the coop confirming its own delivery.
+        if (confirmed) {
+          push(
+            envelope(
+              {
+                id: ids.next(),
+                type: 'delivery_confirmation',
+                occurredAt: at(day, 18),
+                assertedBy: farmer.id,
+              },
+              {
+                delivery: deliveryId,
+                confirming_party: farmer.id,
+                channel: 'ussd_pin',
+                note: null,
+                evidence: [],
+              },
+            ),
+            'special_data_consent',
+          );
+        }
 
         deliveries.push({
           id: deliveryId,
@@ -807,8 +830,6 @@ export function generate(
           quantity: quantityFor(coop, 4),
           location: facilities[victim.coop],
           agreed_price: { amount_minor: 1150, currency: 'UGX' },
-          counterparty_confirmed_at: null,
-          counterparty_confirmed_by: null,
         },
       ),
       'special_data_consent',

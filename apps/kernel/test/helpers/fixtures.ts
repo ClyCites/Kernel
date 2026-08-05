@@ -359,6 +359,14 @@ export const ENTITY_BODIES: Record<string, () => Record<string, unknown>> = {
     location: uuidv7(),
     agreed_price: { amount_minor: 1150, currency: 'UGX' },
   }),
+  // Every field here is a placeholder: a confirmation only ingests when the
+  // delivery exists and the confirming party is the other side of it, so
+  // callers always override `delivery` and `confirming_party`.
+  delivery_confirmation: () => ({
+    delivery: uuidv7(),
+    confirming_party: uuidv7(),
+    channel: 'ussd_pin',
+  }),
   agreement: () => ({
     kind: 'forward',
     parties: [

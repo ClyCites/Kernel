@@ -59,6 +59,7 @@ describe('fulfilment arithmetic', () => {
     const fulfilment = resolveFulfilment(1000, {
       deliveries: 4,
       confirmed: 2,
+      independently_confirmed: 1,
       unconvertible: 1,
       forked: 0,
       delivered_kg: 600,
@@ -268,16 +269,26 @@ describe('an agreement reports what its deliveries add up to', () => {
     const buyer = uuidv7();
     const id = await agreement(10_000);
     await deliver(id, 1000);
-    await deliver(id, 1000, {
-      counterparty_confirmed_at: '2026-04-01T00:00:00.000Z',
-      counterparty_confirmed_by: buyer,
-      to_party: buyer,
-    });
+    const confirmable = await deliver(id, 1000, { to_party: buyer });
+
+    // The buyer's own record, not a field on the seller's. That is the whole
+    // change: a timestamp the seller could set was the seller's opinion of the
+    // buyer's agreement.
+    await ingest.ingest(
+      entityDocument('delivery_confirmation', {
+        id: uuidv7(),
+        asserted_by: buyer,
+        delivery: confirmable,
+        confirming_party: buyer,
+        channel: 'ussd_pin',
+      }),
+    );
 
     const view = await read.get(id, readingAs(seller));
 
     assert.equal(view?.fulfilment?.deliveries, 2);
     assert.equal(view?.fulfilment?.confirmed, 1);
+    assert.equal(view?.fulfilment?.independently_confirmed, 1);
   });
 
   test('a delivery that never reached kilograms is flagged, not silently dropped', async () => {

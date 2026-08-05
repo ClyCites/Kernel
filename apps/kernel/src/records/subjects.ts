@@ -24,6 +24,7 @@ export const SUBJECT_FIELDS: Record<string, readonly string[]> = {
   lot: ['custodian'],
   custody_transfer: ['lot', 'from_party', 'to_party'],
   delivery: ['from_party', 'to_party', 'lot', 'fulfils'],
+  delivery_confirmation: ['delivery', 'confirming_party'],
   agreement: ['parties[].party'],
   obligation: ['obligor', 'obligee', 'arising_from'],
   settlement_reference: ['obligation', 'confirmed_by'],
@@ -59,6 +60,9 @@ export const PARTY_SUBJECT_FIELDS: Record<string, readonly string[]> = {
   lot: ['custodian'],
   custody_transfer: ['from_party', 'to_party'],
   delivery: ['from_party', 'to_party'],
+  // Only the confirming party. The other side of the delivery reaches this
+  // record as the asserter of the delivery it names, not as its subject.
+  delivery_confirmation: ['confirming_party'],
   agreement: ['parties[].party'],
   obligation: ['obligor', 'obligee'],
   settlement_reference: ['confirmed_by'],

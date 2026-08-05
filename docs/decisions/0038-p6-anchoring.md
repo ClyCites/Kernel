@@ -7,6 +7,16 @@
 
 ---
 
+> **Not true yet.** No root has been published. The kernel computes roots and
+> stores them; nothing has been submitted to any topic, because no topic has
+> been created. Everything below describes what publication buys **once it
+> works**, and until `anchor-cli --check` reports a published root on a real
+> network, tamper evidence is not a property this system has. Every claim in
+> this document is conditional on that, and no other document, diagram or
+> pitch may state it in the present tense.
+
+---
+
 ## 1. What anchoring buys, stated narrowly
 
 A daily Merkle root published to a public consensus service proves one thing: a
@@ -183,13 +193,20 @@ never publishes. That is the same state a long outage produces, which means the
 un-configured case is exercised by the same code path as the failure case
 rather than being a special one.
 
-## 8. Why `@hashgraph/sdk` is not a dependency
+## 8. Which SDK, and why it is not a dependency
+
+The client library is `@hiero-ledger/sdk`. It is the same codebase as
+`@hashgraph/sdk`, moved under Linux Foundation governance as part of the Hiero
+project; the Hashgraph-scoped package is the one that has stopped moving
+(2.81.0 against Hiero's 2.86.2 at the time of writing). The network is still
+Hedera and the mirror node hostnames are unchanged, so the choice is a package
+name and a maintenance trajectory, not a ledger.
 
 It was installed, measured, and removed.
 
 - **+232 packages.**
-- Among them `@hashgraph/proto` 2.26.0-beta.3 — a beta, in the dependency
-  closure of the released SDK.
+- Among them a beta protobuf build in the dependency closure of the released
+  SDK.
 - Which requires `protobufjs@7.5.4` against the `8.0.0` already in this tree:
   an unmet peer dependency reported at install time.
 - Whose install script this workspace does not run (`Ignored build scripts:
@@ -203,7 +220,7 @@ deployment, for a subsystem most of them will never turn on. The same argument
 that put the S3 client behind `ObjectStore` in P5 applies here with more force:
 nothing in the kernel should know the name of a ledger vendor.
 
-So `TopicPublisher` is a port. `HederaPublisher` implements it against a set of
+So `TopicPublisher` is a port. `HieroPublisher` implements it against a set of
 locally declared structural interfaces and a dynamic import, so this file
 compiles and the whole test suite runs with no SDK present. A deployment that
 anchors installs the SDK itself and it is picked up at runtime. A deployment

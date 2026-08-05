@@ -142,16 +142,11 @@ function flagTransfer(
     flags.add('delivery_parties_identical');
   }
 
-  const confirmedBy = document['counterparty_confirmed_by'];
-  if (
-    typeof confirmedBy === 'string' &&
-    confirmedBy !== from &&
-    confirmedBy !== to
-  ) {
-    // Spec §5.11: a confirmation is evidence because it comes from the other
-    // side of the transfer. From anyone else it is not a confirmation.
-    flags.add('confirmation_by_uninvolved_party');
-  }
+  // `confirmation_by_uninvolved_party` used to be raised here. A confirmation
+  // is no longer a field on the delivery — it is its own record, asserted by
+  // the confirming party — and a confirmation by somebody who was not there is
+  // refused rather than flagged. See `checkConfirmationRight` in the ingest
+  // service, and 0039 §7.
 }
 
 /**

@@ -9,7 +9,7 @@ import {
 } from '../records/lawful-basis.js';
 import { partiesOf, partyHopOf } from '../records/subjects.js';
 import { toDocument, type Dataset, type StoredRecord } from '../records/record.js';
-import { ConsentRepository } from './consent.repository.js';
+import { ConsentRepository, type ConsentGrantRow } from './consent.repository.js';
 import {
   ObjectionRepository,
   type ObjectionChannel,
@@ -51,10 +51,47 @@ export interface BasisOutcome {
   ground?: string;
 }
 
+/**
+ * A grant the subject can withdraw, offered when the objection stopped
+ * nothing. Deliberately not the whole grant row: the subject needs to know
+ * who, what for, and which id to quote.
+ */
+export interface WithdrawableGrant {
+  grant: string;
+  grantee: string;
+  purpose: string;
+  record_types: string[];
+  granted_at: string;
+}
+
+/**
+ * What the objection actually did, as one word.
+ *
+ * `stopped_nothing_*` are separate codes rather than one, because they call
+ * for different next steps and are counted separately on /metrics. A rising
+ * `stopped_nothing_consent_only` means the interface is telling people to
+ * object when what they need is to withdraw.
+ */
+export type ObjectionEffect =
+  | 'stopped_some'
+  | 'stopped_nothing_no_records'
+  | 'stopped_nothing_out_of_scope'
+  | 'stopped_nothing_consent_only'
+  | 'stopped_nothing_exempt';
+
 export interface ObjectionOutcome {
   objection: ObjectionRow;
+  /** One word for what happened. Read this before reading the lists. */
+  effect: ObjectionEffect;
+  /** The same thing in a sentence a person can act on. */
+  headline: string;
   stopped: BasisOutcome[];
   continuing: BasisOutcome[];
+  /**
+   * The action that would work, when the one taken did not. Empty when the
+   * objection stopped something, or when there is nothing to withdraw.
+   */
+  withdrawable: WithdrawableGrant[];
   notice: string[];
 }
 
@@ -109,6 +146,17 @@ export class ObjectionService {
       );
     }
 
+    // Resolved before the insert, not after it. `kernel.objection` is
+    // append-only at the role level, so there is no UPDATE to add the effect
+    // with afterwards — the row has to be written complete. That is the
+    // constraint working: an objection whose recorded effect could be edited
+    // later is not evidence of what the subject was told.
+    const resolved = this.resolve(
+      request.scope,
+      await this.repository.basisCensusForSubject(request.subject, request.dataset),
+      await this.consent.grantsBySubject(request.subject, request.dataset),
+    );
+
     const objection = await this.repository.insertObjection({
       id: uuidv7(),
       subject: request.subject,
@@ -119,12 +167,13 @@ export class ObjectionService {
       delegation: request.delegation,
       evidence: request.evidence,
       dataset: request.dataset,
+      // Frozen here. The effect is a function of the records that existed at
+      // this moment, and what is worth counting is what the subject was told
+      // — not what the same objection would do today.
+      effect: resolved.effect,
     });
 
-    const outcome = this.resolve(
-      objection,
-      await this.repository.basisCensusForSubject(request.subject, request.dataset),
-    );
+    const outcome: ObjectionOutcome = { ...resolved, objection };
 
     await this.audit.record({
       action: 'record.write',
@@ -140,6 +189,10 @@ export class ObjectionService {
         delegated: request.delegation !== null,
         stopped: outcome.stopped.reduce((sum, row) => sum + row.records, 0),
         continuing: outcome.continuing.reduce((sum, row) => sum + row.records, 0),
+        // The metric reads this. An objection that stops nothing is not an
+        // error and will never appear in an error rate, so it has to be
+        // counted deliberately or it is invisible.
+        effect: outcome.effect,
       },
       correlationId: request.correlationId ?? null,
     });
@@ -280,7 +333,7 @@ export class ObjectionService {
     for (const candidate of effective) {
       const objected = candidate.parties.some((party) =>
         (objections.get(party) ?? []).some((objection) =>
-          inScope(objection, candidate.record.type),
+          inScope(objection.scope, candidate.record.type),
         ),
       );
       if (objected) withheld.add(candidate.record.id);
@@ -291,9 +344,10 @@ export class ObjectionService {
 
   /** Both sets, enumerated. Never a boolean. */
   private resolve(
-    objection: ObjectionRow,
+    scope: string[] | null,
     census: readonly { type: string; basis: string; records: number }[],
-  ): ObjectionOutcome {
+    grants: readonly ConsentGrantRow[],
+  ): Omit<ObjectionOutcome, 'objection'> {
     const stopped: BasisOutcome[] = [];
     const continuing: BasisOutcome[] = [];
 
@@ -304,7 +358,7 @@ export class ObjectionService {
         records: row.records,
       };
 
-      if (!inScope(objection, row.type)) {
+      if (!inScope(scope, row.type)) {
         continuing.push({
           ...entry,
           ground: 'outside the scope of this objection',
@@ -321,12 +375,78 @@ export class ObjectionService {
       stopped.push(entry);
     }
 
-    return { objection, stopped, continuing, notice: [...NOTICE] };
+    // FINDING, fixed here: this used to return the two lists and stop. That is
+    // legally accurate and it is not an answer. She pressed a button marked "I
+    // object", nothing happened, and nothing told her — so the response now
+    // says what happened in one sentence and, where the answer is "nothing",
+    // offers the act that would have worked.
+    const inScopeContinuing = continuing.filter((row) => row.ground?.startsWith('collected'));
+    const consentOnly =
+      inScopeContinuing.length > 0 &&
+      inScopeContinuing.every((row) => row.lawful_basis === 'consent');
+
+    let effect: ObjectionEffect;
+    let headline: string;
+
+    if (stopped.length > 0) {
+      effect = 'stopped_some';
+      headline =
+        `This objection stops disclosure of ` +
+        `${stopped.reduce((sum, row) => sum + row.records, 0)} record(s) to others.`;
+    } else if (census.length === 0) {
+      effect = 'stopped_nothing_no_records';
+      headline =
+        'Nothing stopped, because there are no records about you here to stop. ' +
+        'The objection is on file and will apply to anything recorded later.';
+    } else if (inScopeContinuing.length === 0) {
+      effect = 'stopped_nothing_out_of_scope';
+      headline =
+        'Nothing stopped. Every record about you is of a type this objection ' +
+        'did not name. Lodging it without a scope would reach all of them.';
+    } else if (consentOnly) {
+      effect = 'stopped_nothing_consent_only';
+      headline =
+        'Nothing stopped. This processing runs on your consent, and consent ' +
+        'ends by withdrawal, not by objection — s.7(3) only reaches ' +
+        'processing done without asking you. Withdraw the grants listed ' +
+        'below and it stops.';
+    } else {
+      effect = 'stopped_nothing_exempt';
+      headline =
+        'Nothing stopped. Every record about you within this objection is ' +
+        'held on a ground s.7(3) exempts, listed below with the reason.';
+    }
+
+    // Only where the objection failed, and only grants it would plausibly have
+    // been aimed at. Offering the full list after a successful objection would
+    // read as a demand to give up more than was asked.
+    const withdrawable =
+      stopped.length > 0
+        ? []
+        : grants
+            .filter((grant) => grant.revoked_at === null)
+            .filter((grant) => grant.record_types.some((type) => inScope(scope, type)))
+            .map((grant) => ({
+              grant: grant.id,
+              grantee: grant.grantee,
+              purpose: grant.purpose,
+              record_types: grant.record_types,
+              granted_at: grant.granted_at,
+            }));
+
+    return {
+      effect,
+      headline,
+      stopped,
+      continuing,
+      withdrawable,
+      notice: [...NOTICE],
+    };
   }
 }
 
-function inScope(objection: ObjectionRow, type: string): boolean {
-  return objection.scope === null || objection.scope.includes(type);
+function inScope(scope: string[] | null, type: string): boolean {
+  return scope === null || scope.includes(type);
 }
 
 /**

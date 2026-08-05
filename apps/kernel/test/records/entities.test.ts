@@ -60,10 +60,30 @@ describe('the registry covers the schema', () => {
 });
 
 describe('every entity uses the same write and read path', () => {
+  /**
+   * Most records stand alone. A confirmation cannot: it is the counterparty's
+   * assertion about a delivery that already exists, and the ingest path
+   * refuses one that names a delivery it cannot find. So the loop is given a
+   * way to put the world in place first.
+   */
+  const PREREQUISITES: Record<
+    string,
+    (asserter: string) => Promise<Record<string, unknown>>
+  > = {
+    delivery_confirmation: async (asserter) => {
+      const delivery = entityDocument('delivery', { to_party: asserter });
+      await ingest.ingest(delivery);
+      return { delivery: delivery['id'], confirming_party: asserter };
+    },
+  };
+
   for (const type of Object.keys(ENTITY_BODIES)) {
     test(`${type} round-trips`, async () => {
       const asserter = uuidv7();
-      const document = entityDocument(type, { asserted_by: asserter });
+      const document = entityDocument(type, {
+        asserted_by: asserter,
+        ...(await PREREQUISITES[type]?.(asserter)),
+      });
       const stored = await ingest.ingest(document);
 
       assert.equal(stored.record.type, type);

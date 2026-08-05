@@ -75,17 +75,13 @@ jobs:
           path: site/
           retention-days: 14
 
-  # Deployment is deliberately gated on a repository variable rather than being
-  # unconditional. GitHub Pages on a private repository requires a paid plan;
-  # this repository is private and the organisation is on the free tier, so the
-  # deploy cannot run today. Set the variable DOCS_PUBLISH to "true" once Pages
-  # is available and this job starts working with no further change.
+  # mike keeps every published version readable, so kernel-v1.0.0 survives v0.3
+  # of the schema landing and the concepts pages moving on. It publishes to the
+  # gh-pages branch, which is why this job needs contents: write and the full
+  # history.
   deploy:
     needs: build
-    if: >-
-      github.event_name == 'push'
-      && github.ref == 'refs/heads/staging'
-      && vars.DOCS_PUBLISH == 'true'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/staging'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -110,6 +106,6 @@ jobs:
           mike deploy --push --update-aliases "${DOCS_VERSION}" latest
           mike set-default --push latest
         env:
-          # Versioned, so that kernel-v1.0.0 stays readable after v0.3 of the
-          # schema lands and the concepts pages move on.
+          # There is no released version of this documentation yet. When one is
+          # cut, this becomes the tag and "dev" carries on alongside it.
           DOCS_VERSION: dev

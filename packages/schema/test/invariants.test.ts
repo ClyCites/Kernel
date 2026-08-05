@@ -31,6 +31,7 @@ const envelope = (over: Record<string, unknown> = {}) => ({
   occurred_at_precision: "day",
   recorded_at: "2026-07-18T14:32:11+03:00",
   asserted_by: uuid(2),
+  lawful_basis: "consent",
   ...over,
 });
 
@@ -289,14 +290,16 @@ describe("delivery — spec §5.11", () => {
 
   test("a confirmation is the counterparty's own record, naming one version", () => {
     const r = DeliveryConfirmation.safeParse({
-      id: uuid(200),
+      // Somebody pressed a key: a confirmation happens at a moment, not on a day.
+      ...envelope({
+        id: uuid(200),
+        occurred_at: "2026-07-18T14:35:02+03:00",
+        occurred_at_precision: "instant",
+        asserted_by: uuid(101),
+        lawful_basis: "special_data_consent",
+      }),
       type: "delivery_confirmation",
       record_class: "observation",
-      schema_version: "0.3.0",
-      occurred_at: "2026-07-18T14:35:02+03:00",
-      occurred_at_precision: "second",
-      asserted_by: uuid(101),
-      lawful_basis: "special_data_consent",
       delivery: uuid(1),
       confirming_party: uuid(101),
       channel: "ussd_pin",

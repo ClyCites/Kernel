@@ -44,17 +44,17 @@ happened on a rail somebody else operates. The money moves elsewhere.
 
 ---
 
-## You cannot compute a credit score here
+## You cannot judge a borrower here
 
-Not a score, not a rating, not a risk grade, not a creditworthiness assessment.
-A naming invariant test scans the codebase and fails on `credit score`,
-`credit rating`, `creditworthiness` and `risk score` in any spacing or casing.
+No judgement of anyone's worth as a borrower — under any of the four names the
+industry gives it. A naming invariant scans code, documentation and the
+generated contract, and fails the build on all four in any spacing or casing.
+This page tripped it on first run, which is the invariant doing its job.
 
-**Why.** Two reasons. A score is a judgement, and judgements belong to whoever
-carries the risk of being wrong — a lender, who must be able to explain a
-decline. And a score computed in the kernel would be an inference stored beside
-observations, which is exactly what the
-[quarantine](../concepts/inference-quarantine.md) exists to prevent.
+**Why.** Two reasons. Such a judgement belongs to whoever carries the risk of
+being wrong — a lender, who must be able to explain a decline. And computing it
+in the kernel would put an inference beside observations, which is exactly what
+the [quarantine](../concepts/inference-quarantine.md) exists to prevent.
 
 The kernel supplies the evidence and its flags. What that is worth is somebody
 else's decision, made in the open, under their own regulator.

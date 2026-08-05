@@ -38,6 +38,11 @@ const SKIPPED_DIRECTORIES = new Set([
   'dist',
   'build',
   'coverage',
+  // Build output, not source: the documentation site and the virtualenv that
+  // produces it. Scanning them means whether the suite passes depends on
+  // whether somebody has run `mkdocs build` since their last `git clean`.
+  'site',
+  '.venv-docs',
 ]);
 
 /**

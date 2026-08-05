@@ -2646,6 +2646,16 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "No verified subject.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
           }
         }
       },

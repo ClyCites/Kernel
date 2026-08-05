@@ -38,6 +38,10 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Both generators import @clycites/schema by its package entry point,
+      # which resolves to dist. On a clean checkout that does not exist yet.
+      - run: pnpm build
+
       # The generated pages are committed, so that the site can be built without
       # a Node toolchain and so that a schema change shows up as a documentation
       # diff in review rather than appearing silently at deploy time.

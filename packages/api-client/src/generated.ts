@@ -2660,6 +2660,15 @@ export interface operations {
                     };
                 };
             };
+            /** @description No verified subject. */
+            readonly 403: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     readonly authoriseClient: {

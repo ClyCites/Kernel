@@ -2417,6 +2417,7 @@ export function buildOpenApiDocument(): OpenApiDocument {
               description: 'Authorisations, including revoked ones.',
               content: { 'application/json': { schema: { type: 'object', required: ['authorisations'], properties: { authorisations: { type: 'array', items: ref('ClientAuthorisation') } } } } },
             },
+            '403': problemResponse('No verified subject.'),
           },
         },
         post: {

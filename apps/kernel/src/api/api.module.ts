@@ -14,7 +14,10 @@ import { SubjectAccessController } from './subject-access.controller.js';
 import { OperationsController } from './operations.controller.js';
 import { PartiesController } from './parties.controller.js';
 import { ProblemFilter } from './problem.filter.js';
-import { RateLimitMiddleware } from './rate-limit.middleware.js';
+import {
+  ClientRateLimitMiddleware,
+  RateLimitMiddleware,
+} from './rate-limit.middleware.js';
 import { RegistryCacheInterceptor } from './registry-cache.interceptor.js';
 import { RecordsController } from './records.controller.js';
 import { ConfirmationsController } from './confirmations.controller.js';
@@ -58,8 +61,10 @@ export class ApiModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
     consumer.apply(CorrelationMiddleware).forRoutes('*path');
     consumer.apply(PurposeHeaderMiddleware).forRoutes('*path');
-    // Anonymous registry traffic is keyed by IP. Authenticated traffic is
-    // keyed by the verified OAuth client identifier supplied by the gateway.
-    consumer.apply(RateLimitMiddleware).forRoutes('*path');
+    consumer.apply(RateLimitMiddleware).forRoutes('v1/registry/*path');
+    consumer
+      .apply(ClientRateLimitMiddleware)
+      .exclude('v1/registry/*path')
+      .forRoutes('*path');
   }
 }

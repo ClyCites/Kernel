@@ -1,4 +1,9 @@
-import { Module, type MiddlewareConsumer, type NestModule } from '@nestjs/common';
+import {
+  Module,
+  RequestMethod,
+  type MiddlewareConsumer,
+  type NestModule,
+} from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 
 import { RecordsModule } from '../records/records.module.js';
@@ -75,7 +80,9 @@ import { FieldController } from './field.controller.js';
 })
 export class ApiModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(SecurityHeadersMiddleware).forRoutes('*path');
+    consumer
+      .apply(SecurityHeadersMiddleware)
+      .forRoutes({ path: '/', method: RequestMethod.ALL }, '*path');
     consumer.apply(CorrelationMiddleware).forRoutes('*path');
     consumer.apply(LiveIngestMiddleware).forRoutes('*path');
     consumer.apply(MetricsAuthMiddleware).forRoutes('v1/metrics');

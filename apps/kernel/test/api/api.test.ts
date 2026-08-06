@@ -584,6 +584,7 @@ describe('liveness and readiness', () => {
 
     assert.equal(root.status, 200);
     assert.equal((root.body as Record<string, unknown>)['environment'], 'staging');
+    assert.equal(root.headers.get('x-powered-by'), null);
     assert.equal(contract.status, 200);
     assert.equal((contract.body as Record<string, unknown>)['openapi'], '3.1.0');
   });

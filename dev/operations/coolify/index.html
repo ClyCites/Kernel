@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://clycites.github.io/Kernel/dev/concepts/quantity/">
+        <link rel="canonical" href="https://clycites.github.io/Kernel/dev/operations/coolify/">
       
       
-        <link rel="prev" href="../provenance/">
+        <link rel="prev" href="../../building/api/">
       
       
-        <link rel="next" href="../append-only/">
+        <link rel="next" href="../migrations/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -24,7 +24,7 @@
     
     
       
-        <title>The quantity problem - ClyCites Kernel</title>
+        <title>Deploying on Coolify - ClyCites Kernel</title>
       
     
     
@@ -76,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#the-quantity-problem" class="md-skip">
+        <a href="#deploying-on-coolify" class="md-skip">
           Skip to content
         </a>
       
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              The quantity problem
+              Deploying on Coolify
             
           </span>
         </div>
@@ -410,10 +410,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -440,11 +438,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
         
           
           <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
@@ -460,7 +458,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             Concepts
@@ -474,7 +472,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../record-model/" class="md-nav__link">
+      <a href="../../concepts/record-model/" class="md-nav__link">
         
   
   
@@ -497,7 +495,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../provenance/" class="md-nav__link">
+      <a href="../../concepts/provenance/" class="md-nav__link">
         
   
   
@@ -517,32 +515,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    The quantity problem
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../concepts/quantity/" class="md-nav__link">
         
   
   
@@ -553,80 +529,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#a-bag-is-not-a-unit" class="md-nav__link">
-    <span class="md-ellipsis">
-      A bag is not a unit
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-is-stored-instead" class="md-nav__link">
-    <span class="md-ellipsis">
-      What is stored instead
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-registry-is-public-and-unauthenticated" class="md-nav__link">
-    <span class="md-ellipsis">
-      The registry is public and unauthenticated
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#every-factor-today-is-assumed" class="md-nav__link">
-    <span class="md-ellipsis">
-      Every factor today is assumed
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-flags-this-produces" class="md-nav__link">
-    <span class="md-ellipsis">
-      The flags this produces
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#mass-balance" class="md-nav__link">
-    <span class="md-ellipsis">
-      Mass balance
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -639,7 +541,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../append-only/" class="md-nav__link">
+      <a href="../../concepts/append-only/" class="md-nav__link">
         
   
   
@@ -662,7 +564,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../inference-quarantine/" class="md-nav__link">
+      <a href="../../concepts/inference-quarantine/" class="md-nav__link">
         
   
   
@@ -685,7 +587,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../datasets/" class="md-nav__link">
+      <a href="../../concepts/datasets/" class="md-nav__link">
         
   
   
@@ -708,7 +610,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../lawful-basis/" class="md-nav__link">
+      <a href="../../concepts/lawful-basis/" class="md-nav__link">
         
   
   
@@ -1139,8 +1041,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -1163,11 +1067,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
         
           
           <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
@@ -1183,7 +1087,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             Operations
@@ -1194,10 +1098,32 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../operations/coolify/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Deploying on Coolify
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1208,6 +1134,62 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#security-boundary" class="md-nav__link">
+    <span class="md-ellipsis">
+      Security boundary
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#create-the-resource" class="md-nav__link">
+    <span class="md-ellipsis">
+      Create the resource
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#first-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      First deployment
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#persistence-and-backups" class="md-nav__link">
+    <span class="md-ellipsis">
+      Persistence and backups
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1220,7 +1202,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../operations/migrations/" class="md-nav__link">
+      <a href="../migrations/" class="md-nav__link">
         
   
   
@@ -1243,7 +1225,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../operations/backup-and-restore/" class="md-nav__link">
+      <a href="../backup-and-restore/" class="md-nav__link">
         
   
   
@@ -1266,7 +1248,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../operations/metrics/" class="md-nav__link">
+      <a href="../metrics/" class="md-nav__link">
         
   
   
@@ -1640,54 +1622,36 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#a-bag-is-not-a-unit" class="md-nav__link">
+  <a href="#security-boundary" class="md-nav__link">
     <span class="md-ellipsis">
-      A bag is not a unit
+      Security boundary
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-is-stored-instead" class="md-nav__link">
+  <a href="#create-the-resource" class="md-nav__link">
     <span class="md-ellipsis">
-      What is stored instead
+      Create the resource
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-registry-is-public-and-unauthenticated" class="md-nav__link">
+  <a href="#first-deployment" class="md-nav__link">
     <span class="md-ellipsis">
-      The registry is public and unauthenticated
+      First deployment
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#every-factor-today-is-assumed" class="md-nav__link">
+  <a href="#persistence-and-backups" class="md-nav__link">
     <span class="md-ellipsis">
-      Every factor today is assumed
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-flags-this-produces" class="md-nav__link">
-    <span class="md-ellipsis">
-      The flags this produces
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#mass-balance" class="md-nav__link">
-    <span class="md-ellipsis">
-      Mass balance
+      Persistence and backups
     </span>
   </a>
   
@@ -1709,7 +1673,7 @@
 
 
   
-    <a href="https://github.com/ClyCites/Kernel/edit/staging/docs/concepts/quantity.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/ClyCites/Kernel/edit/staging/docs/operations/coolify.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -1717,139 +1681,97 @@
   
 
 
-<h1 id="the-quantity-problem">The quantity problem<a class="headerlink" href="#the-quantity-problem" title="Permanent link">&para;</a></h1>
-<p><strong>What it prevents: discovering that a conversion factor was wrong and having
-no way to recompute, because the original observation was overwritten by the
-converted one.</strong></p>
-<h2 id="a-bag-is-not-a-unit">A bag is not a unit<a class="headerlink" href="#a-bag-is-not-a-unit" title="Permanent link">&para;</a></h2>
-<p>A farmer sells "twelve bags" — <em>kaveera</em>. A bag is not a defined quantity. It
-varies by region, by crop, by season, by whether it was filled generously, and
-by which trader is doing the filling. Somewhere between 90 kg and 120 kg is
-normal for maize, and both ends of that range are honest.</p>
-<p>The naive design stores <code>weight_kg: 1416</code> and moves on. Six months later
-somebody weighs bags in that district properly and finds the factor was 98 kg,
-not 118. Every derived figure in the system is now wrong, and there is no way to
-fix any of it, because the twelve is gone.</p>
-<h2 id="what-is-stored-instead">What is stored instead<a class="headerlink" href="#what-is-stored-instead" title="Permanent link">&para;</a></h2>
-<p>Every quantity keeps all of:</p>
+<h1 id="deploying-on-coolify">Deploying on Coolify<a class="headerlink" href="#deploying-on-coolify" title="Permanent link">&para;</a></h1>
+<p>This deployment runs the kernel, PostGIS, migrations and private S3-compatible
+object storage. The Android field client is built separately; Coolify hosts the
+API it synchronizes with.</p>
+<h2 id="security-boundary">Security boundary<a class="headerlink" href="#security-boundary" title="Permanent link">&para;</a></h2>
+<p>Do not assign a public Coolify domain directly to the <code>kernel</code> service. The
+kernel trusts <code>x-clycites-subject</code>, <code>x-clycites-client-id</code> and <code>x-acting-for</code>
+because an authentication gateway is required to remove caller-supplied values
+and replace them from a validated Authentik token. Publishing the service
+directly makes those identities forgeable.</p>
+<p>The repository does not yet contain that gateway. The Compose deployment is
+therefore private by default. A production launch needs a gateway which:</p>
+<ol>
+<li>Terminates TLS and validates the Authentik access token.</li>
+<li>Removes all three identity headers from the inbound request.</li>
+<li>Sets the verified subject and OAuth client identifier from token claims.</li>
+<li>Permits <code>x-acting-for</code> only after checking the represented party.</li>
+<li>Proxies to <code>http://kernel:3000</code> on the private Compose network.</li>
+</ol>
+<h2 id="create-the-resource">Create the resource<a class="headerlink" href="#create-the-resource" title="Permanent link">&para;</a></h2>
+<ol>
+<li>In Coolify, create a <strong>Docker Compose</strong> resource from this repository.</li>
+<li>Set the compose file to <code>/docker-compose.coolify.yml</code> and the base directory
+   to <code>/</code>.</li>
+<li>Add the environment variables below. Use URL-safe random values containing
+   only letters and digits for database passwords because they are interpolated
+   into PostgreSQL URLs.</li>
+<li>Deploy. Do not add a domain to <code>postgres</code>, <code>minio</code>, <code>minio-init</code>, <code>migrate</code>
+   or <code>kernel</code>.</li>
+</ol>
+<p>Required secrets:</p>
 <table>
 <thead>
 <tr>
-<th>Field</th>
-<th>Example</th>
-<th>Why</th>
+<th>Variable</th>
+<th>Purpose</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>raw_value</code></td>
-<td><code>12</code></td>
-<td>What was actually observed</td>
+<td><code>POSTGRES_PASSWORD</code></td>
+<td>PostgreSQL schema-owner password</td>
 </tr>
 <tr>
-<td><code>raw_unit</code></td>
-<td><code>bag</code></td>
-<td>The unit class</td>
+<td><code>KERNEL_APP_PASSWORD</code></td>
+<td>Restricted application-role password</td>
 </tr>
 <tr>
-<td><code>raw_unit_label</code></td>
-<td><code>kaveera</code></td>
-<td>The word the farmer used</td>
+<td><code>KERNEL_TRAINING_PASSWORD</code></td>
+<td>Read-only training-role password</td>
 </tr>
 <tr>
-<td><code>normalized_kg</code></td>
-<td><code>1416</code></td>
-<td>The derived figure</td>
+<td><code>MINIO_ROOT_USER</code></td>
+<td>Private object-store access key</td>
 </tr>
 <tr>
-<td><code>conversion_id</code></td>
-<td><code>019fc600…0020</code></td>
-<td>Which factor was applied</td>
-</tr>
-<tr>
-<td><code>measurement_method</code></td>
-<td><code>coop_weighed</code></td>
-<td>How it was arrived at</td>
+<td><code>MINIO_ROOT_PASSWORD</code></td>
+<td>Private object-store secret key</td>
 </tr>
 </tbody>
 </table>
-<p>The invariant enforced by the schema: <strong><code>normalized_kg</code> requires
-<code>conversion_id</code>.</strong> A kilogram figure that cannot say where it came from is
-refused, because it is exactly the figure nobody can recheck. Kilograms need no
-conversion and carry none.</p>
-<p>When the factor turns out to be wrong, the registry supersedes it, and every
-record that cited it can be recomputed from the twelve that is still there.</p>
-<p><code>raw_unit_label</code> exists so the farmer's own word survives. It has no
-computational use. It matters when somebody goes to that district and asks what
-a <em>kaveera</em> is, and needs to be asking about the same thing.</p>
-<h2 id="the-registry-is-public-and-unauthenticated">The registry is public and unauthenticated<a class="headerlink" href="#the-registry-is-public-and-unauthenticated" title="Permanent link">&para;</a></h2>
-<p><code>GET /v1/registry/**</code> takes no subject header and passes no consent gate. It
-serves conversions, crop codes, administrative boundaries and grading
-vocabularies — data with no data subject.</p>
-<p>This is deliberate and it is the load-bearing part. A delivery cites a
-<code>conversion_id</code>. If resolving that id required a credential, then <strong>verifying a
-weight would require our permission</strong>, and a record you need our permission to
-verify is a record you are trusting us for. The entire point is that you should
-not have to.</p>
-<p>A conversion resolves to the individual weighings behind it: who took them, when,
-on what, and how many. See <a href="../../decisions/">0024</a> and
-<a href="../../decisions/">0018</a>.</p>
-<h2 id="every-factor-today-is-assumed">Every factor today is assumed<a class="headerlink" href="#every-factor-today-is-assumed" title="Permanent link">&para;</a></h2>
-<div class="admonition danger">
-<p class="admonition-title">Not one conversion factor has been measured</p>
-<p>Every row in the conversion registry is <code>assumed_default</code> or synthesised
-from published sources. None comes from somebody weighing bags in a store
-with a calibrated scale.</p>
-<p>This is why <code>/v1/metrics</code> publishes the share of normalised mass resting on
-an unverified factor. <strong>It reads high, and that is the point</strong> — a metric
-that reported comfortably would be hiding the largest known weakness in the
-data.</p>
-</div>
-<p>Getting real factors requires field work, which is one of the four open
-decisions that need cooperative visits rather than more code.</p>
-<h2 id="the-flags-this-produces">The flags this produces<a class="headerlink" href="#the-flags-this-produces" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Flag</th>
-<th>When</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>quantity_not_normalized</code></td>
-<td>No kilogram figure was derived; the raw count stands alone</td>
-</tr>
-<tr>
-<td><code>conversion_unresolved</code></td>
-<td>The cited factor is not in the registry, or none was cited</td>
-</tr>
-<tr>
-<td><code>conversion_mismatch</code></td>
-<td>Raw × factor ≠ the stated kilograms — the record kept both</td>
-</tr>
-<tr>
-<td><code>conversion_scope_mismatch</code></td>
-<td>The factor was registered for a different commodity or district</td>
-</tr>
-<tr>
-<td><code>region_unresolvable</code></td>
-<td>The factor is district-specific and the record does not say which district</td>
-</tr>
-</tbody>
-</table>
-<p><code>conversion_mismatch</code> deserves attention: the record disagrees with itself and
-<strong>both halves are kept</strong>. Recomputing silently would destroy the evidence that
-somebody's arithmetic or somebody's scale is wrong.</p>
-<p><code>region_unresolvable</code> is the honest one. It does not say the factor is wrong; it
-says whether it applies cannot be determined either way. A flag that admits
-ignorance is more useful than one that guesses.</p>
-<h2 id="mass-balance">Mass balance<a class="headerlink" href="#mass-balance" title="Permanent link">&para;</a></h2>
-<p>A lot that released more than it took in, after declared losses, is flagged
-<code>mass_balance_discrepancy</code>. The tolerance is a named constant, and the
-<a href="../../flows/read-path/">lender report</a> prints it — "discrepancy" without the
-threshold it exceeded is an accusation with no scale.</p>
-<p>See <a href="../../decisions/">0014</a>.</p>
+<p>Generate suitable values locally with <code>openssl rand -hex 32</code>. Keep all five
+different. Coolify should mark them as runtime secrets and never expose them in
+build logs.</p>
+<p>Optional settings include <code>AUDIT_SHIP_URL</code>, <code>AUDIT_SHIP_TOKEN</code> and the
+<code>ANCHOR_*</code> variables. Leave anchoring on <code>testnet</code> until the documented mainnet
+acknowledgement has been reviewed. Production always runs with seed ingest off
+and the special-data consent check on.</p>
+<h2 id="first-deployment">First deployment<a class="headerlink" href="#first-deployment" title="Permanent link">&para;</a></h2>
+<p>The <code>migrate</code> service waits for PostgreSQL, applies every forward-only migration
+and provisions the restricted roles. The kernel starts only after migrations
+and private bucket initialization succeed. On later deployments the migration
+job verifies checksums and applies only new files.</p>
+<p>From another service on the same private network, readiness is available at:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>http://kernel:3000/v1/ready
+</code></pre></div>
+<p>After the Authentik gateway is deployed, assign the public API domain to the
+gateway and verify that forged identity headers are removed before setting the
+field build variables:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>EXPO_PUBLIC_API_URL=https://api.example.org/v1
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>EXPO_PUBLIC_OIDC_ISSUER=https://auth.example.org/application/o/field/
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>EXPO_PUBLIC_OIDC_CLIENT_ID=field-client
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>EXPO_PUBLIC_ACTING_FOR=&lt;cooperative-party-uuid&gt;
+</code></pre></div>
+<p>SQLCipher requires an Android development or release build; the client cannot
+run in Expo Go.</p>
+<h2 id="persistence-and-backups">Persistence and backups<a class="headerlink" href="#persistence-and-backups" title="Permanent link">&para;</a></h2>
+<p><code>kernel-pgdata</code> and <code>kernel-objects-data</code> are named persistent volumes. Enable
+Coolify backups for both, but retain the repository backup scripts and perform
+restore drills: a volume snapshot alone does not prove that PostgreSQL and the
+object inventory agree.</p>
 
 
 

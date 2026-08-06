@@ -1436,6 +1436,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Operations
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#identity-and-parties" class="md-nav__link">
     <span class="md-ellipsis">
       Identity and parties
@@ -1764,6 +1773,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Operations
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#identity-and-parties" class="md-nav__link">
     <span class="md-ellipsis">
       Identity and parties
@@ -1842,7 +1860,7 @@
 
 
 <h1 id="decisions">Decisions<a class="headerlink" href="#decisions" title="Permanent link">&para;</a></h1>
-<p>Forty architecture decision records. Each one exists because a choice was made
+<p>Forty-one architecture decision records. Each one exists because a choice was made
 that looks arbitrary from the outside, and the reasoning would otherwise be lost
 the moment the person who made it stopped being reachable.</p>
 <p>These are the authority. Where a page elsewhere in this site summarises one, the
@@ -1850,7 +1868,8 @@ ADR wins.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>The work order that commissioned this site said thirty-eight. There are
-forty: <code>0039</code> (schema v0.3) and <code>0040</code> (MinIO) landed after it was written.
+forty-one: <code>0039</code> (schema v0.3), <code>0040</code> (MinIO) and <code>0041</code> (metrics exposure)
+landed after it was written.
 <code>0040</code> supersedes the object-store choice in <code>0037</code>; <code>0029</code> supersedes the
 consent stub in <code>0009</code>.</p>
 </div>
@@ -2051,6 +2070,23 @@ consent stub in <code>0009</code>.</p>
 <td><a href="0008-sync/">0008</a></td>
 <td>Sync is two endpoints and no server-held state</td>
 <td>Server-held per-device state is the part of sync that breaks</td>
+</tr>
+</tbody>
+</table>
+<h2 id="operations">Operations<a class="headerlink" href="#operations" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="0041-metrics-exposure/">0041</a></td>
+<td>Metrics require HTTP authentication</td>
+<td>Operational intelligence is not part of the public verification surface</td>
 </tr>
 </tbody>
 </table>

@@ -10,26 +10,24 @@
       
       
       
-        <link rel="canonical" href="https://clycites.github.io/Kernel/dev/">
+        <link rel="canonical" href="https://clycites.github.io/Kernel/dev/decisions/0041-metrics-exposure/">
       
       
       
-        <link rel="next" href="getting-started/running-locally/">
       
-      
-      <link rel="icon" href="assets/images/favicon.png">
+      <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.21">
     
     
       
-        <title>ClyCites Kernel</title>
+        <title>0041 — Metrics require HTTP authentication - ClyCites Kernel</title>
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.2a3383ac.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.2a3383ac.min.css">
       
         
-        <link rel="stylesheet" href="assets/stylesheets/palette.06af60db.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
       
       
 
@@ -48,7 +46,7 @@
       
     
     
-    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -74,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#clycites-kernel" class="md-skip">
+        <a href="#0041-metrics-require-http-authentication" class="md-skip">
           Skip to content
         </a>
       
@@ -94,7 +92,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="." title="ClyCites Kernel" class="md-header__button md-logo" aria-label="ClyCites Kernel" data-md-component="logo">
+    <a href="../.." title="ClyCites Kernel" class="md-header__button md-logo" aria-label="ClyCites Kernel" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -114,7 +112,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Home
+              0041 — Metrics require HTTP authentication
             
           </span>
         </div>
@@ -232,7 +230,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="." title="ClyCites Kernel" class="md-nav__button md-logo" aria-label="ClyCites Kernel" data-md-component="logo">
+    <a href="../.." title="ClyCites Kernel" class="md-nav__button md-logo" aria-label="ClyCites Kernel" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -259,32 +257,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    Home
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="." class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
         
   
   
@@ -295,71 +271,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#the-problem" class="md-nav__link">
-    <span class="md-ellipsis">
-      The problem
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-is-not-true-of-it" class="md-nav__link">
-    <span class="md-ellipsis">
-      What is not true of it
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-one-architectural-invariant" class="md-nav__link">
-    <span class="md-ellipsis">
-      The one architectural invariant
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#six-invariants" class="md-nav__link">
-    <span class="md-ellipsis">
-      Six invariants
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#where-to-go-next" class="md-nav__link">
-    <span class="md-ellipsis">
-      Where to go next
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -422,7 +333,7 @@
   
   
     <li class="md-nav__item">
-      <a href="getting-started/running-locally/" class="md-nav__link">
+      <a href="../../getting-started/running-locally/" class="md-nav__link">
         
   
   
@@ -445,7 +356,7 @@
   
   
     <li class="md-nav__item">
-      <a href="getting-started/dry-run/" class="md-nav__link">
+      <a href="../../getting-started/dry-run/" class="md-nav__link">
         
   
   
@@ -468,7 +379,7 @@
   
   
     <li class="md-nav__item">
-      <a href="getting-started/reading-the-output/" class="md-nav__link">
+      <a href="../../getting-started/reading-the-output/" class="md-nav__link">
         
   
   
@@ -557,7 +468,7 @@
   
   
     <li class="md-nav__item">
-      <a href="concepts/record-model/" class="md-nav__link">
+      <a href="../../concepts/record-model/" class="md-nav__link">
         
   
   
@@ -580,7 +491,7 @@
   
   
     <li class="md-nav__item">
-      <a href="concepts/provenance/" class="md-nav__link">
+      <a href="../../concepts/provenance/" class="md-nav__link">
         
   
   
@@ -603,7 +514,7 @@
   
   
     <li class="md-nav__item">
-      <a href="concepts/quantity/" class="md-nav__link">
+      <a href="../../concepts/quantity/" class="md-nav__link">
         
   
   
@@ -626,7 +537,7 @@
   
   
     <li class="md-nav__item">
-      <a href="concepts/append-only/" class="md-nav__link">
+      <a href="../../concepts/append-only/" class="md-nav__link">
         
   
   
@@ -649,7 +560,7 @@
   
   
     <li class="md-nav__item">
-      <a href="concepts/inference-quarantine/" class="md-nav__link">
+      <a href="../../concepts/inference-quarantine/" class="md-nav__link">
         
   
   
@@ -672,7 +583,7 @@
   
   
     <li class="md-nav__item">
-      <a href="concepts/datasets/" class="md-nav__link">
+      <a href="../../concepts/datasets/" class="md-nav__link">
         
   
   
@@ -695,7 +606,7 @@
   
   
     <li class="md-nav__item">
-      <a href="concepts/lawful-basis/" class="md-nav__link">
+      <a href="../../concepts/lawful-basis/" class="md-nav__link">
         
   
   
@@ -784,7 +695,7 @@
   
   
     <li class="md-nav__item">
-      <a href="flows/write-path/" class="md-nav__link">
+      <a href="../../flows/write-path/" class="md-nav__link">
         
   
   
@@ -807,7 +718,7 @@
   
   
     <li class="md-nav__item">
-      <a href="flows/read-path/" class="md-nav__link">
+      <a href="../../flows/read-path/" class="md-nav__link">
         
   
   
@@ -830,7 +741,7 @@
   
   
     <li class="md-nav__item">
-      <a href="flows/offline-sync/" class="md-nav__link">
+      <a href="../../flows/offline-sync/" class="md-nav__link">
         
   
   
@@ -853,7 +764,7 @@
   
   
     <li class="md-nav__item">
-      <a href="flows/corrections/" class="md-nav__link">
+      <a href="../../flows/corrections/" class="md-nav__link">
         
   
   
@@ -876,7 +787,7 @@
   
   
     <li class="md-nav__item">
-      <a href="flows/confirmation/" class="md-nav__link">
+      <a href="../../flows/confirmation/" class="md-nav__link">
         
   
   
@@ -899,7 +810,7 @@
   
   
     <li class="md-nav__item">
-      <a href="flows/anchoring/" class="md-nav__link">
+      <a href="../../flows/anchoring/" class="md-nav__link">
         
   
   
@@ -922,7 +833,7 @@
   
   
     <li class="md-nav__item">
-      <a href="flows/subject-access/" class="md-nav__link">
+      <a href="../../flows/subject-access/" class="md-nav__link">
         
   
   
@@ -1007,7 +918,7 @@
   
   
     <li class="md-nav__item">
-      <a href="building/authorisation/" class="md-nav__link">
+      <a href="../../building/authorisation/" class="md-nav__link">
         
   
   
@@ -1030,7 +941,7 @@
   
   
     <li class="md-nav__item">
-      <a href="building/grant/" class="md-nav__link">
+      <a href="../../building/grant/" class="md-nav__link">
         
   
   
@@ -1053,7 +964,7 @@
   
   
     <li class="md-nav__item">
-      <a href="building/cannot/" class="md-nav__link">
+      <a href="../../building/cannot/" class="md-nav__link">
         
   
   
@@ -1076,7 +987,7 @@
   
   
     <li class="md-nav__item">
-      <a href="api-versioning/" class="md-nav__link">
+      <a href="../../api-versioning/" class="md-nav__link">
         
   
   
@@ -1099,7 +1010,7 @@
   
   
     <li class="md-nav__item">
-      <a href="building/api/" class="md-nav__link">
+      <a href="../../building/api/" class="md-nav__link">
         
   
   
@@ -1184,7 +1095,7 @@
   
   
     <li class="md-nav__item">
-      <a href="operations/coolify/" class="md-nav__link">
+      <a href="../../operations/coolify/" class="md-nav__link">
         
   
   
@@ -1207,7 +1118,7 @@
   
   
     <li class="md-nav__item">
-      <a href="operations/migrations/" class="md-nav__link">
+      <a href="../../operations/migrations/" class="md-nav__link">
         
   
   
@@ -1230,7 +1141,7 @@
   
   
     <li class="md-nav__item">
-      <a href="operations/backup-and-restore/" class="md-nav__link">
+      <a href="../../operations/backup-and-restore/" class="md-nav__link">
         
   
   
@@ -1253,7 +1164,7 @@
   
   
     <li class="md-nav__item">
-      <a href="operations/metrics/" class="md-nav__link">
+      <a href="../../operations/metrics/" class="md-nav__link">
         
   
   
@@ -1276,7 +1187,7 @@
   
   
     <li class="md-nav__item">
-      <a href="runbook/" class="md-nav__link">
+      <a href="../../runbook/" class="md-nav__link">
         
   
   
@@ -1355,7 +1266,7 @@
   
   
     <li class="md-nav__item">
-      <a href="compliance/statutory-mapping/" class="md-nav__link">
+      <a href="../../compliance/statutory-mapping/" class="md-nav__link">
         
   
   
@@ -1378,7 +1289,7 @@
   
   
     <li class="md-nav__item">
-      <a href="compliance/not-yet-true/" class="md-nav__link">
+      <a href="../../compliance/not-yet-true/" class="md-nav__link">
         
   
   
@@ -1408,7 +1319,7 @@
   
   
     <li class="md-nav__item">
-      <a href="decisions/" class="md-nav__link">
+      <a href="../" class="md-nav__link">
         
   
   
@@ -1485,7 +1396,7 @@
   
   
     <li class="md-nav__item">
-      <a href="reference/schema/" class="md-nav__link">
+      <a href="../../reference/schema/" class="md-nav__link">
         
   
   
@@ -1508,7 +1419,7 @@
   
   
     <li class="md-nav__item">
-      <a href="reference/enumerations/" class="md-nav__link">
+      <a href="../../reference/enumerations/" class="md-nav__link">
         
   
   
@@ -1531,7 +1442,7 @@
   
   
     <li class="md-nav__item">
-      <a href="reference/quality-flags/" class="md-nav__link">
+      <a href="../../reference/quality-flags/" class="md-nav__link">
         
   
   
@@ -1554,7 +1465,7 @@
   
   
     <li class="md-nav__item">
-      <a href="data-sources/" class="md-nav__link">
+      <a href="../../data-sources/" class="md-nav__link">
         
   
   
@@ -1577,7 +1488,7 @@
   
   
     <li class="md-nav__item">
-      <a href="field-validation-kit/" class="md-nav__link">
+      <a href="../../field-validation-kit/" class="md-nav__link">
         
   
   
@@ -1627,45 +1538,27 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#the-problem" class="md-nav__link">
+  <a href="#decision" class="md-nav__link">
     <span class="md-ellipsis">
-      The problem
+      Decision
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-is-not-true-of-it" class="md-nav__link">
+  <a href="#why" class="md-nav__link">
     <span class="md-ellipsis">
-      What is not true of it
+      Why
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-one-architectural-invariant" class="md-nav__link">
+  <a href="#consequences" class="md-nav__link">
     <span class="md-ellipsis">
-      The one architectural invariant
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#six-invariants" class="md-nav__link">
-    <span class="md-ellipsis">
-      Six invariants
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#where-to-go-next" class="md-nav__link">
-    <span class="md-ellipsis">
-      Where to go next
+      Consequences
     </span>
   </a>
   
@@ -1687,7 +1580,7 @@
 
 
   
-    <a href="https://github.com/ClyCites/Kernel/edit/staging/docs/index.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+    <a href="https://github.com/ClyCites/Kernel/edit/staging/docs/decisions/0041-metrics-exposure.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
     </a>
@@ -1695,125 +1588,33 @@
   
 
 
-<h1 id="clycites-kernel">ClyCites Kernel<a class="headerlink" href="#clycites-kernel" title="Permanent link">&para;</a></h1>
-<p>The append-only record layer everything else sits on.</p>
-<div class="admonition warning">
-<p class="admonition-title">Public deployment is staging</p>
-</div>
-<p><code>kernel.hope4africa.cloud</code> is a staging environment. It is not approved for
-  real farmer records or production use.</p>
-<h2 id="the-problem">The problem<a class="headerlink" href="#the-problem" title="Permanent link">&para;</a></h2>
-<p>A smallholder farmer in Uganda cannot borrow against her own production. Not
-because she has none, and not because no lender wants the business — because
-what she produced was never recorded in a form anyone can underwrite. She sold
-fourteen bags of maize to her cooperative in June. There is a number in a
-notebook, a figure in the cooperative's spreadsheet that was copied from the
-notebook, and nothing that says who weighed it, on what, or whether "a bag" that
-day meant the same weight as "a bag" the previous week. A lender looking at that
-has no way to tell an honest record from an optimistic one, so it prices for the
-worst case, which usually means declining.</p>
-<p>The gap is not data. Cooperatives collect a great deal of data. The gap is
-<strong>provenance</strong>: a record that carries who asserted it, on whose authority, by
-what measurement, under what legal ground, and what happened to it since. A
-figure without that is an opinion, and an opinion cannot be lent against.</p>
-<p>This kernel records production in a form that keeps its provenance attached.
-Records are appended and never changed; a correction is a new record pointing at
-the one before it. Every quantity keeps the original observation — twelve bags —
-alongside any conversion to kilograms and the factor used, so that when a factor
-turns out to be wrong the original is still there to convert again. Every record
-states the lawful basis it was collected under. Nothing that a model produced is
-allowed into the same tables as something a person observed. Where the kernel
-cannot be sure, it stores the record and flags it, because a record refused at
-the door exists only in the head of the person who was turned away.</p>
-<h2 id="what-is-not-true-of-it">What is not true of it<a class="headerlink" href="#what-is-not-true-of-it" title="Permanent link">&para;</a></h2>
-<p>A reader deciding whether to trust this should have the following before
-anything else, not after.</p>
-<div class="admonition danger">
-<p class="admonition-title">State of the system, as at 5 August 2026</p>
+<h1 id="0041-metrics-require-http-authentication">0041 — Metrics require HTTP authentication<a class="headerlink" href="#0041-metrics-require-http-authentication" title="Permanent link">&para;</a></h1>
+<p><strong>Status:</strong> accepted</p>
+<h2 id="decision">Decision<a class="headerlink" href="#decision" title="Permanent link">&para;</a></h2>
+<p><code>/v1/metrics</code> is operational infrastructure, not a public API. The kernel
+requires HTTP Basic authentication before it computes or returns metrics. If no
+credential is configured, the route is hidden with a 404 response.</p>
+<p>The credential is supplied through <code>METRICS_BASIC_AUTH</code> in <code>username:password</code>
+form by the deployment's secret store. It is not committed or stored beside a
+backup. Prometheus uses the same standard Basic-auth support to scrape it.</p>
+<h2 id="why">Why<a class="headerlink" href="#why" title="Permanent link">&para;</a></h2>
+<p>The endpoint contains no personal data, but it does disclose operational
+intelligence: lawful-basis distribution, objection effects, delegation grounds,
+seed volume, anchoring freshness and the share of mass based on assumptions.
+Public access provides no independent-verification benefit. The registry and
+published roots remain public because their value depends on independent access.</p>
+<p>Network-only restriction would be preferable once the monitoring system and
+kernel share a private network, but Coolify's generated exposure must not be
+assumed from a repository Compose file. Authentication is enforceable by the
+application in every topology and fails closed when configuration is absent.</p>
+<h2 id="consequences">Consequences<a class="headerlink" href="#consequences" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>No Merkle root has ever been published.</strong> Roots are computed daily and
-  stored. Nothing is anchored to any public ledger, so <strong>the kernel has no
-  tamper evidence today</strong> — it can show you a root it computed and kept
-  itself, which proves nothing an operator could not have fabricated. See
-  <a href="flows/anchoring/">Anchoring</a>.</li>
-<li><strong>No real record has ever been stored.</strong> Every record in every database
-  to date is seed or dry-run data. The system has not been used by a
-  cooperative, a farmer or a lender.</li>
-<li><strong>Erasure is unimplemented.</strong> There is no route that deletes a data
-  subject's records, and the design question is open and with counsel.</li>
-<li><strong>There has been no penetration test</strong>, no external security review and
-  no load test.</li>
-<li><strong>There is no registration with the PDPO</strong>, which the DPPA requires of a
-  data controller before processing.</li>
-<li><strong>Every unit conversion factor in the registry is assumed or synthesised.</strong>
-  Not one has been measured against a scale in a real store.</li>
+<li>External unauthenticated requests receive 404 or 401, never metrics.</li>
+<li>Scrapers need a credential from the deployment secret store.</li>
+<li>Credential rotation does not require a build.</li>
+<li>The endpoint should still be removed from public routing when private
+  monitoring networking is available; authentication remains defence in depth.</li>
 </ul>
-<p>The full list, with what each depends on, is
-<a href="compliance/not-yet-true/">What is not yet true</a>. It is in the top-level
-navigation deliberately.</p>
-</div>
-<p>What <em>is</em> true is the shape: the invariants below hold, they have tests that
-fail when broken, and the <a href="getting-started/dry-run/">dry run</a> exercises the
-whole system end to end in about fifteen seconds.</p>
-<h2 id="the-one-architectural-invariant">The one architectural invariant<a class="headerlink" href="#the-one-architectural-invariant" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Applications  →  Public API (/v1, OpenAPI 3.1)  →  Kernel  →  PostgreSQL
-</code></pre></div>
-<p><strong>No application ever reaches past the public API.</strong> Not to the database, not to
-a kernel module, not to a shared library that happens to know the table names.
-That is what lets the schema change without seven applications breaking, and it
-is the constraint most likely to be argued with under deadline pressure.</p>
-<h2 id="six-invariants">Six invariants<a class="headerlink" href="#six-invariants" title="Permanent link">&para;</a></h2>
-<p>Each has a test that fails when it is broken.</p>
-<ol>
-<li><strong>Append-only, at the database role level.</strong> <code>kernel_app</code> holds <code>INSERT</code> and
-   <code>SELECT</code> and nothing else. There is no privileged path by which a correction
-   could overwrite a record, because the permission does not exist — not a code
-   review rule. <a href="concepts/append-only/">Append-only and supersession</a>
-   states the qualification this claim needs.</li>
-<li><strong>Observations and inferences never mix.</strong> Separate schemas, separate tables,
-   separate endpoints. A model output is reachable only by asking for it by
-   name. <a href="concepts/inference-quarantine/">The inference quarantine</a></li>
-<li><strong>Provenance is mandatory.</strong> <code>asserted_by</code> always; acting for someone else
-   requires a delegation that was live when the event
-   happened. <a href="concepts/provenance/">Provenance and the trust ladder</a></li>
-<li><strong>Flag, never reject.</strong> Only structurally impossible records are
-   refused. <a href="concepts/record-model/">The record model</a></li>
-<li><strong>Offline by default.</strong> Client-generated ids, idempotent ingest, batch drain,
-   cursor pull. <a href="flows/offline-sync/">Offline sync</a></li>
-<li><strong>Non-custodial.</strong> No wallet, no balance, no funds move
-   here. <a href="building/cannot/">What you cannot do</a></li>
-</ol>
-<h2 id="where-to-go-next">Where to go next<a class="headerlink" href="#where-to-go-next" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>If you are</th>
-<th>Start at</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Evaluating whether this does what it claims</td>
-<td><a href="compliance/not-yet-true/">What is not yet true</a>, then <a href="getting-started/dry-run/">the dry run</a></td>
-</tr>
-<tr>
-<td>Building an application on it</td>
-<td><a href="building/authorisation/">The authorisation model</a> and <a href="building/cannot/">What you cannot do</a></td>
-</tr>
-<tr>
-<td>Running it</td>
-<td><a href="getting-started/running-locally/">Running locally</a>, then the <a href="runbook/">Runbook</a></td>
-</tr>
-<tr>
-<td>Reviewing it for compliance</td>
-<td><a href="compliance/statutory-mapping/">Statutory mapping</a></td>
-</tr>
-<tr>
-<td>Asking why something is the way it is</td>
-<td><a href="decisions/">Decisions</a> — forty records, and they are the authority</td>
-</tr>
-</tbody>
-</table>
 
 
 
@@ -1872,10 +1673,10 @@ is the constraint most likely to be argued with under deadline pressure.</p>
     
     
       
-      <script id="__config" type="application/json">{"base": ".", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.top", "navigation.indexes", "toc.follow", "content.code.copy", "content.action.edit", "search.highlight", "search.suggest"], "search": "assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.top", "navigation.indexes", "toc.follow", "content.code.copy", "content.action.edit", "search.highlight", "search.suggest"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
     
     
-      <script src="assets/javascripts/bundle.f55a23d4.min.js"></script>
+      <script src="../../assets/javascripts/bundle.f55a23d4.min.js"></script>
       
     
   </body>

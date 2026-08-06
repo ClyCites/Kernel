@@ -6,6 +6,16 @@ loadDotenv();
 
 const config = loadConfig();
 
+const migratorDatabaseUrl = config.MIGRATOR_DATABASE_URL;
+if (migratorDatabaseUrl === undefined) {
+  throw new Error('MIGRATOR_DATABASE_URL is not set — migrations require the schema owner connection');
+}
+
+const appPassword = config.KERNEL_APP_PASSWORD;
+if (appPassword === undefined) {
+  throw new Error('KERNEL_APP_PASSWORD is not set — migrations provision the kernel_app role');
+}
+
 // Required here and nowhere else. The role has to exist before anything can
 // connect as it, and a migration that silently skipped provisioning it would
 // leave the training guard looking present and doing nothing.
@@ -18,8 +28,8 @@ if (trainingPassword === undefined) {
 }
 
 const result = await migrate({
-  connectionString: config.MIGRATOR_DATABASE_URL,
-  appPassword: config.KERNEL_APP_PASSWORD,
+  connectionString: migratorDatabaseUrl,
+  appPassword,
   trainingPassword,
   monthsAhead: config.PARTITION_MONTHS_AHEAD,
   log: (message) => console.log(message),

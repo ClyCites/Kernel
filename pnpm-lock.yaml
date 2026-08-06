@@ -156,6 +156,9 @@ importers:
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2
+      express:
+        specifier: ^5.2.1
+        version: 5.2.1
       pg:
         specifier: ^8.22.0
         version: 8.22.0
@@ -199,9 +202,6 @@ importers:
       ajv-formats:
         specifier: ^3.0.1
         version: 3.0.1(ajv@8.20.0)
-      express:
-        specifier: ^5.2.1
-        version: 5.2.1
       testcontainers:
         specifier: ^12.0.4
         version: 12.0.4
@@ -6009,9 +6009,7 @@ snapshots:
       metro-runtime: 0.84.4
     transitivePeerDependencies:
       - '@babel/core'
-      - bufferutil
       - supports-color
-      - utf-8-validate
 
   '@react-native/normalize-colors@0.86.2': {}
 

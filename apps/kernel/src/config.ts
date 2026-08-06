@@ -16,8 +16,10 @@ const unset = z
 
 const Env = z.object({
   DATABASE_URL: z.string().min(1),
-  MIGRATOR_DATABASE_URL: z.string().min(1),
-  KERNEL_APP_PASSWORD: z.string().min(1),
+  /** Required by migrate-cli, but never supplied to the request-serving process. */
+  MIGRATOR_DATABASE_URL: z.string().min(1).optional(),
+  /** Required by migrate-cli to provision the restricted application role. */
+  KERNEL_APP_PASSWORD: z.string().min(1).optional(),
   /**
    * The read-only role the training path connects as (migration 0028). It has
    * no privileges on the inference schema, which is what makes "training never

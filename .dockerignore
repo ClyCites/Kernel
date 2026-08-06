@@ -1,0 +1,11 @@
+.git
+.github
+.turbo
+.env
+.env.*
+!.env.example
+**/node_modules
+**/dist
+site
+tmp
+apps/field

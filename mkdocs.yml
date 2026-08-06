@@ -117,6 +117,7 @@ nav:
       - API versioning: api-versioning.md
       - API reference: building/api.md
   - Operations:
+      - Deploying on Coolify: operations/coolify.md
       - Migrations: operations/migrations.md
       - Backup and restore: operations/backup-and-restore.md
       - Metrics: operations/metrics.md

@@ -13,7 +13,8 @@
     "migrate": "tsx src/storage/migrate-cli.ts",
     "openapi": "tsx src/api/openapi-cli.ts",
     "docs:reference": "tsx scripts/generate-docs-reference.ts",
-    "seed": "tsx src/seed/cli.ts"
+    "seed": "tsx src/seed/cli.ts",
+    "seed:reset": "tsx src/seed/reset-cli.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1102.0",

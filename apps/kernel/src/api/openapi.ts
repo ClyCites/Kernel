@@ -2501,6 +2501,43 @@ export function buildOpenApiDocument(): OpenApiDocument {
           },
         },
       },
+      '/clients/sandbox/registrations': {
+        post: {
+          tags: ['identity'],
+          operationId: 'registerSandboxClient',
+          summary: 'Register an email-verified developer sandbox client',
+          description:
+            'Records acceptance of the current developer terms for an Authentik-issued client. The kernel neither creates nor returns credentials. The client is permanently confined to the seed dataset and cannot receive authority from a real party.',
+          requestBody: {
+            required: true,
+            content: { 'application/json': { schema: {
+              type: 'object',
+              required: ['display_name', 'terms_accepted', 'terms_version'],
+              properties: {
+                display_name: { type: 'string', minLength: 1, maxLength: 200 },
+                terms_accepted: { type: 'boolean', const: true },
+                terms_version: { type: 'string', minLength: 1, maxLength: 100 },
+              },
+            } } },
+          },
+          responses: {
+            '201': {
+              description: 'Registered against the seed dataset.',
+              content: { 'application/json': { schema: {
+                type: 'object',
+                required: ['client_id', 'dataset', 'scopes', 'terms_version'],
+                properties: {
+                  client_id: { type: 'string' },
+                  dataset: { type: 'string', const: 'seed' },
+                  scopes: { type: 'array', items: { type: 'string', enum: [...CLIENT_SCOPES] } },
+                  terms_version: { type: 'string' },
+                },
+              } } },
+            },
+            '403': problemResponse('Verified email and the current terms are required.'),
+          },
+        },
+      },
       '/clients/authorisations': {
         get: {
           tags: ['identity'],

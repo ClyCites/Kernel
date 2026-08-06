@@ -23,10 +23,19 @@ import { isLawfulBasis, type LawfulBasis } from '../records/lawful-basis.js';
  */
 export const DATASET_HEADER = 'x-clycites-dataset';
 
+const FORCED_SEED_DATASET = Symbol('forced-seed-dataset');
+type DatasetRequest = Request & { [FORCED_SEED_DATASET]?: true };
+
+/** Set only by the kernel after resolving a registered sandbox OAuth client. */
+export function forceSeedDataset(request: Request): void {
+  (request as DatasetRequest)[FORCED_SEED_DATASET] = true;
+}
+
 export function requestedDataset(
   request: Request,
   seedIngestEnabled: boolean,
 ): Dataset {
+  if ((request as DatasetRequest)[FORCED_SEED_DATASET] === true) return 'seed';
   if (!seedIngestEnabled) return 'live';
   const claim = request.header(DATASET_HEADER);
   return DATASETS.includes(claim as Dataset) ? (claim as Dataset) : 'live';

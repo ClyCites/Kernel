@@ -10,6 +10,7 @@ import type {
   GradingSchemeValue,
   ObservationTypeEntry,
   SeasonCalendarEntry,
+  RegistryMetadata,
   UnitConversionRow,
 } from './types.js';
 
@@ -195,6 +196,60 @@ export class RegistryRepository {
       params,
     );
     return rows;
+  }
+
+  /** Complete conversion catalogue for public machine-readable distributions. */
+  async allConversions(): Promise<UnitConversionRow[]> {
+    const { rows } = await this.pool.query<UnitConversionRow>(
+      `select ${CONVERSION_COLUMNS}
+         from registry.unit_conversion
+        order by created_at, id`,
+    );
+    return rows;
+  }
+
+  async conversionSamples(ids: string[]): Promise<Map<string, ConversionSample[]>> {
+    if (ids.length === 0) return new Map();
+    const { rows } = await this.pool.query<ConversionSample & { conversion: string }>(
+      `select conversion, ordinal, weight_kg::float8 as weight_kg, condition
+         from registry.unit_conversion_sample
+        where conversion = any($1::uuid[])
+        order by conversion, ordinal`,
+      [ids],
+    );
+    const samples = new Map<string, ConversionSample[]>();
+    for (const { conversion, ...sample } of rows) {
+      samples.set(conversion, [...(samples.get(conversion) ?? []), sample]);
+    }
+    return samples;
+  }
+
+  async metadata(): Promise<RegistryMetadata> {
+    const { rows } = await this.pool.query<{
+      as_at: string;
+      basis: string;
+      conversions: number;
+    }>(
+            `select to_char(
+          (select max(latest.created_at) from registry.unit_conversion latest)
+          at time zone 'UTC',
+          'YYYY-MM-DD'
+              ) as as_at,
+              basis,
+              count(*)::int as conversions
+         from registry.unit_conversion
+        group by basis
+        order by basis`,
+    );
+    const basisCounts: Record<string, number> = {};
+    for (const row of rows) {
+      basisCounts[row.basis] = (basisCounts[row.basis] ?? 0) + row.conversions;
+    }
+    return {
+      as_at: rows[0]?.as_at ?? new Date(0).toISOString().slice(0, 10),
+      basis_counts: basisCounts,
+      conversions: Object.values(basisCounts).reduce((sum, count) => sum + count, 0),
+    };
   }
 
   async listObservationTypes(filter: {

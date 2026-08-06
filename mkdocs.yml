@@ -92,6 +92,7 @@ nav:
   - Home: index.md
   - Getting started:
       - Running locally: getting-started/running-locally.md
+      - Developer sandbox: getting-started/developer-sandbox.md
       - The dry run: getting-started/dry-run.md
       - Reading the output: getting-started/reading-the-output.md
   - Concepts:
@@ -111,12 +112,14 @@ nav:
       - Anchoring: flows/anchoring.md
       - Subject access and objection: flows/subject-access.md
   - Building on the kernel:
+      - Public registry: public-registry.md
       - The authorisation model: building/authorisation.md
       - Obtaining a grant: building/grant.md
       - What you cannot do: building/cannot.md
       - API versioning: api-versioning.md
       - API reference: building/api.md
   - Operations:
+      - Self-hosting: operations/self-hosting.md
       - Deploying on Coolify: operations/coolify.md
       - Migrations: operations/migrations.md
       - Backup and restore: operations/backup-and-restore.md

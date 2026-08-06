@@ -2,6 +2,15 @@
   "name": "@clycites/schema",
   "version": "0.3.0",
   "description": "Single source of truth for the ClyCites kernel core-facts schema",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ClyCites/Kernel.git",
+    "directory": "packages/schema"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "dist/src/index.js",
   "directories": {
     "test": "test"
@@ -9,7 +18,8 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test test/**/*.test.ts"
+    "test": "tsx --test test/**/*.test.ts",
+    "prepublishOnly": "pnpm build && pnpm test"
   },
   "dependencies": {
     "zod": "^4.4.3"

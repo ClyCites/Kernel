@@ -95,6 +95,13 @@ const Env = z.object({
     .default('production'),
   /** `username:password` for the Prometheus endpoint. Absent means hidden. */
   METRICS_BASIC_AUTH: unset,
+  /** Canonical origin used in permanent registry URLs and dataset metadata. */
+  PUBLIC_BASE_URL: unset,
+  SANDBOX_TERMS_VERSION: z.string().min(1).max(100).default('2026-08-06'),
+  SANDBOX_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
   /**
    * Requests per window per address against `/v1/registry`, the only surface
    * with no authenticated caller behind it. The registry is immutable and
@@ -211,10 +218,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): KernelConfig {
   // would report it: seeded records are well formed and indistinguishable from
   // real ones once written, and the log is append-only. Refusing to start is
   // the last point at which it is still cheap.
-  if (parsed.data.NODE_ENV === 'production' && parsed.data.SEED_INGEST_ENABLED) {
+  if (
+    parsed.data.NODE_ENV === 'production' &&
+    parsed.data.SEED_INGEST_ENABLED &&
+    !parsed.data.SANDBOX_ENABLED
+  ) {
     throw new Error(
       'refusing to start: SEED_INGEST_ENABLED is true in production. ' +
-        'Fabricated records cannot be removed from an append-only log.',
+        'Enable the structurally isolated sandbox explicitly or disable seed ingest.',
     );
   }
   return parsed.data;

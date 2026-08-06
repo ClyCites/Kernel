@@ -112,6 +112,12 @@ export interface UnitConversionDetail extends UnitConversionRow {
   sample: ConversionSample[];
 }
 
+export interface RegistryMetadata {
+  as_at: string;
+  basis_counts: Record<string, number>;
+  conversions: number;
+}
+
 export const CropCodeEntry = z.object({
   code: z.string().min(1),
   label: z.string().min(1),

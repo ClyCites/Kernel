@@ -175,6 +175,7 @@ export class RecordsController {
       requester: client?.requester ?? subject,
       clientId: client?.clientId ?? null,
       actingFor: client?.actingFor ?? null,
+      sandboxClient: client?.dataset === 'seed',
       purpose: purpose ?? null,
       dataset: requestedDataset(request, this.config.SEED_INGEST_ENABLED),
       correlationId: correlationOf(request),

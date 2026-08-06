@@ -45,6 +45,7 @@ before(async () => {
       REGISTRY_RATE_LIMIT: 600,
       REGISTRY_RATE_WINDOW_SECONDS: 60,
       REGISTRY_CACHE_SECONDS: 600,
+      PUBLIC_BASE_URL: 'https://registry.example',
     })
     .compile();
 
@@ -140,6 +141,17 @@ describe('a stranger can dereference a conversion factor', () => {
     assert.match(String(response.body['instrument']), /platform scale/);
   });
 
+  test('a conversion carries a permanent URL and citation line', async () => {
+    const response = await anonymous(`/conversions/${MEASURED}`);
+
+    assert.equal(
+      response.body['permanent_url'],
+      `https://registry.example/v1/registry/conversions/${MEASURED}`,
+    );
+    assert.match(String(response.body['citation']), /as at \d{4}-\d{2}-\d{2}/u);
+    assert.match(String(response.body['citation']), new RegExp(MEASURED, 'u'));
+  });
+
   test('an unverified factor claims no evidence it does not have', async () => {
     const response = await anonymous(`/conversions/${ASSUMED}`);
 
@@ -191,6 +203,17 @@ describe('the collections are filterable', () => {
     assert.ok(conversions.every((c) => !('sample' in c)));
   });
 
+  test('the index states uncertainty and counts each evidence basis', async () => {
+    const list = await anonymous('/conversions?limit=100');
+    const counts = list.body['basis_counts'] as Record<string, number>;
+
+    assert.match(String(list.body['uncertainty_notice']), /assumptions/u);
+    assert.equal(list.body['license'], 'https://creativecommons.org/publicdomain/zero/1.0/');
+    assert.ok(counts['measured']! > 0);
+    assert.ok(counts['assumed_default']! > 0);
+    assert.ok(counts['published_standard']! > 0);
+  });
+
   test('a limit beyond the ceiling is refused rather than quietly clamped', async () => {
     const response = await anonymous('/conversions?limit=5000');
     assert.equal(response.status, 400);
@@ -208,6 +231,51 @@ describe('the collections are filterable', () => {
 
     const schemes = await anonymous('/grading-schemes');
     assert.ok((schemes.body['grading_schemes'] as unknown[]).length > 0);
+
+    const cropsAlias = await anonymous('/crops');
+    const regionsAlias = await anonymous('/regions');
+    assert.deepEqual(cropsAlias.body, crops.body);
+    assert.deepEqual(regionsAlias.body, regions.body);
+  });
+
+  test('bulk JSON and CSV carry complete conversion evidence', async () => {
+    const json = await anonymous('/conversions.json');
+    const conversions = json.body['conversions'] as Record<string, unknown>[];
+    const measured = conversions.find((row) => row['id'] === MEASURED);
+
+    assert.ok(measured);
+    assert.equal((measured['sample'] as unknown[]).length, 12);
+    assert.match(String(measured['measured_by']), /Cooperative/u);
+    assert.equal(measured['basis'], 'measured');
+
+    const csv = await fetch(`${base}/v1/registry/conversions.csv`);
+    const text = await csv.text();
+    assert.equal(csv.status, 200);
+    assert.match(csv.headers.get('content-type') ?? '', /^text\/csv/u);
+    assert.match(text, /permanent_url,citation/u);
+    assert.match(text, new RegExp(MEASURED, 'u'));
+    assert.match(text, /damp,tight/u);
+  });
+
+  test('dataset.json is a CC0 DCAT descriptor for both distributions', async () => {
+    const descriptor = await anonymous('/dataset.json');
+    const distributions = descriptor.body['dcat:distribution'] as Record<
+      string,
+      string
+    >[];
+
+    assert.equal(descriptor.body['@type'], 'dcat:Dataset');
+    assert.equal(
+      descriptor.body['dct:license'],
+      'https://creativecommons.org/publicdomain/zero/1.0/',
+    );
+    assert.deepEqual(
+      distributions.map((entry) => entry['dcat:accessURL']),
+      [
+        'https://registry.example/v1/registry/conversions.json',
+        'https://registry.example/v1/registry/conversions.csv',
+      ],
+    );
   });
 
   test('a grading scheme comes with the values it permits', async () => {

@@ -14,6 +14,7 @@ export const CLIENT_SCOPES = [
 
 export type ClientScope = (typeof CLIENT_SCOPES)[number];
 export type ClientStatus = 'active' | 'suspended' | 'retired';
+export type ClientDataset = 'live' | 'seed';
 
 export interface ClientRow {
   id: string;
@@ -22,6 +23,7 @@ export interface ClientRow {
   owner_party: string;
   scopes: ClientScope[];
   status: ClientStatus;
+  dataset: ClientDataset;
   recorded_at: string;
 }
 
@@ -42,7 +44,7 @@ export class ClientRepository {
 
   async current(clientId: string): Promise<ClientRow | null> {
     const { rows } = await this.pool.query<ClientRow>(
-      `select id, client_id, display_name, owner_party, scopes, status,
+      `select id, client_id, display_name, owner_party, scopes, status, dataset,
               to_json(recorded_at) #>> '{}' as recorded_at
          from kernel.client
         where client_id = $1
@@ -56,9 +58,9 @@ export class ClientRepository {
   async insert(client: Omit<ClientRow, 'recorded_at'>): Promise<ClientRow> {
     const { rows } = await this.pool.query<ClientRow>(
       `insert into kernel.client
-         (id, client_id, display_name, owner_party, scopes, status)
-       values ($1, $2, $3, $4, $5, $6)
-       returning id, client_id, display_name, owner_party, scopes, status,
+         (id, client_id, display_name, owner_party, scopes, status, dataset)
+       values ($1, $2, $3, $4, $5, $6, $7)
+       returning id, client_id, display_name, owner_party, scopes, status, dataset,
                  to_json(recorded_at) #>> '{}' as recorded_at`,
       [
         client.id,
@@ -67,6 +69,42 @@ export class ClientRepository {
         client.owner_party,
         client.scopes,
         client.status,
+        client.dataset,
+      ],
+    );
+    return rows[0]!;
+  }
+
+  async insertSandbox(input: {
+    client: Omit<ClientRow, 'recorded_at'>;
+    registrationId: string;
+    termsVersion: string;
+    acceptedAt: string;
+  }): Promise<ClientRow> {
+    const { client } = input;
+    const { rows } = await this.pool.query<ClientRow>(
+      `with inserted_client as (
+         insert into kernel.client
+           (id, client_id, display_name, owner_party, scopes, status, dataset)
+         values ($1, $2, $3, $4, $5, $6, 'seed')
+         returning id, client_id, display_name, owner_party, scopes, status, dataset,
+                   to_json(recorded_at) #>> '{}' as recorded_at
+       ), accepted as (
+         insert into kernel.sandbox_registration
+           (id, client_id, developer_subject, terms_version, accepted_at)
+         values ($7, $2, $4, $8, $9)
+       )
+       select * from inserted_client`,
+      [
+        client.id,
+        client.client_id,
+        client.display_name,
+        client.owner_party,
+        client.scopes,
+        client.status,
+        input.registrationId,
+        input.termsVersion,
+        input.acceptedAt,
       ],
     );
     return rows[0]!;

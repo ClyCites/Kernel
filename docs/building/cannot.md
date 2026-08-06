@@ -19,11 +19,14 @@ breach is least visible until it is expensive.
 
 ---
 
-## You cannot export in bulk
+## You cannot export personal data in bulk
 
 There is no route that returns everything. Reads are filtered, paged, and pass a
 consent gate per record. A test in `test/ops/` asserts that no route resembling
 a bulk export exists.
+
+The public registry is different: its JSON and CSV distributions contain only
+reference data from the `registry` schema and no data subject.
 
 **Why.** A bulk export is a consent gate applied once to an unbounded set, and
 the resulting file has no gate at all. Every subsequent copy of it is

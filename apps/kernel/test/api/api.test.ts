@@ -44,6 +44,8 @@ before(async () => {
       MASS_BALANCE_TOLERANCE: DEFAULT_MASS_BALANCE_TOLERANCE,
       REGISTRY_RATE_LIMIT: 600,
       REGISTRY_RATE_WINDOW_SECONDS: 60,
+      SANDBOX_TERMS_VERSION: '2026-08-06',
+      SANDBOX_ENABLED: true,
       SEED_INGEST_ENABLED: false,
       LIVE_INGEST_ENABLED: true,
       DEPLOYMENT_ENVIRONMENT: 'staging',
@@ -176,6 +178,59 @@ describe('the field client boundary', () => {
       headers,
     });
     assert.equal(refused.status, 403);
+  });
+});
+
+describe('the developer sandbox boundary', () => {
+  test('a sandbox client cannot read a live record', async () => {
+    const developer = uuidv7();
+    const clientId = `sandbox-${uuidv7()}`;
+    const { ingest } = ingestServiceFor(db.app);
+    const live = await ingest.ingest(deliveryDocument({ asserted_by: developer }));
+    const fixtureFarmer = uuidv7();
+    const seed = await ingest.ingest(
+      deliveryDocument({ asserted_by: fixtureFarmer }),
+      { dataset: 'seed' },
+    );
+
+    const registration = await call(
+      'POST',
+      '/v1/clients/sandbox/registrations',
+      {
+        display_name: 'Developer sandbox',
+        terms_accepted: true,
+        terms_version: '2026-08-06',
+      },
+      {
+        as: developer,
+        headers: {
+          [CLIENT_HEADER]: clientId,
+          'x-clycites-email-verified': 'true',
+        },
+      },
+    );
+    assert.equal(registration.status, 201);
+
+    const read = await call('GET', `/v1/records/${live.record.id}`, undefined, {
+      as: developer,
+      headers: {
+        [CLIENT_HEADER]: clientId,
+        'x-clycites-dataset': 'live',
+      },
+    });
+    assert.equal(read.status, 404);
+
+    const seedRead = await call(
+      'GET',
+      `/v1/records/${seed.record.id}`,
+      undefined,
+      {
+        as: developer,
+        headers: { [CLIENT_HEADER]: clientId },
+      },
+    );
+    assert.equal(seedRead.status, 200);
+    assert.equal((seedRead.body as { record: { id: string } }).record.id, seed.record.id);
   });
 });
 

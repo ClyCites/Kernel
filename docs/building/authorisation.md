@@ -69,6 +69,18 @@ signature and a lender should be able to see which they are reading.
     `/metrics` carries two series intended to answer this empirically rather
     than by argument.
 
+## OAuth clients and acting-for
+
+A client has its own scope ceiling. A party authorisation can only narrow that
+ceiling; it can never add a scope. `x-acting-for` changes the represented party
+only after the kernel resolves an active authorisation for that exact client,
+party, scope, and time.
+
+Sandbox clients are a separate structural case. Their client row has a `seed`
+dataset ceiling, they cannot receive a party authorisation, and every request
+resolves to `seed` even if it asks for `live`. They may browse the fabricated
+corpus without personal-data consent because no person described there exists.
+
 ## Rate limiting
 
 Only the registry is rate limited, because it is the only unauthenticated

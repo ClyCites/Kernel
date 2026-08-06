@@ -1,6 +1,6 @@
 # Decisions
 
-Forty-one architecture decision records. Each one exists because a choice was made
+Forty-two architecture decision records. Each one exists because a choice was made
 that looks arbitrary from the outside, and the reasoning would otherwise be lost
 the moment the person who made it stopped being reachable.
 
@@ -10,7 +10,8 @@ ADR wins.
 !!! note
 
     The work order that commissioned this site said thirty-eight. There are
-    forty-one: `0039` (schema v0.3), `0040` (MinIO) and `0041` (metrics exposure)
+    forty-two: `0039` (schema v0.3), `0040` (MinIO), `0041` (metrics exposure),
+    and `0042` (public registry)
     landed after it was written.
     `0040` supersedes the object-store choice in `0037`; `0029` supersedes the
     consent stub in `0009`.
@@ -68,6 +69,7 @@ ADR wins.
 | [0024](0024-registry-read-api.md) | The registry is public, and the sample is stored | The only unauthenticated read surface, and the one that must be auditable |
 | [0027](0027-season-calendar.md) | The season calendar is a registry table, not a schema change | Defers D5 |
 | [0028](0028-registry-ceiling.md) | A ceiling on the observation vocabulary | Defers D8; an unbounded vocabulary is an unbounded schema |
+| [0042](0042-public-registry.md) | Registry data is CC0 and separate from personal-data export | Public reference distributions do not weaken consent-gated record reads |
 
 ## Sync and devices
 

@@ -1,5 +1,24 @@
 # @clycites/schema
 
+Zod schemas and TypeScript types for the ClyCites append-only agricultural
+record format. The package is independent of the kernel runtime.
+
+```bash
+pnpm add @clycites/schema
+```
+
+```ts
+import { RecordDocument, SCHEMA_VERSION } from '@clycites/schema';
+
+const record = RecordDocument.parse(input);
+console.log(SCHEMA_VERSION, record.type);
+```
+
+Schema versions follow semantic versioning. See the repository contribution
+guide for compatibility and proposal requirements.
+
+Licensed under Apache-2.0.
+
 Single source of truth for the ClyCites kernel core-facts schema.
 
 Companion to **ClyCites Kernel — Core Facts Specification v0.2**. Section

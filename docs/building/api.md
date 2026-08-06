@@ -29,7 +29,8 @@ committed contract differs from what the schemas produce.
 | `GET /v1/registry/**` | Public reference data, no subject, no consent gate |
 | `GET /v1/anchors/roots` | Published roots — no subject required, and currently empty |
 | `GET /v1/health`, `/v1/ready` | Liveness, readiness |
-| `GET /v1/metrics` | Prometheus text |
+| `GET /v1/metrics` | Prometheus text; hidden unless HTTP authentication is configured |
+| `POST /v1/clients/sandbox/registrations` | Record an Authentik-backed sandbox registration |
 
 Errors are RFC 9457 problem documents and carry a correlation id. Refusals to
 disclose are bare 404s carrying no identifiers — see

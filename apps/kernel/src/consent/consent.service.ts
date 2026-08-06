@@ -78,6 +78,7 @@ export type ConsentReason =
   | 'member_body_with_grant'
   | 'third_party_with_grant'
   | 'kernel_integrity'
+  | 'sandbox_seed'
   // denied
   | 'unattributed_record'
   | 'no_attributable_party'
@@ -138,6 +139,8 @@ export interface ConsentRequest {
   /** Why the data is wanted. Null is only viable for self and asserter reads. */
   purpose: ConsentPurpose | null;
   dataset: Dataset;
+  /** Set only after the kernel resolves a registered seed-ceiling OAuth client. */
+  sandboxClient?: boolean | undefined;
   at: string;
 }
 
@@ -180,6 +183,15 @@ export class ConsentService {
     const { requester } = request;
     if (request.records.length === 0) {
       return deny('unattributed_record', 'there is nothing to decide about');
+    }
+
+    if (request.sandboxClient === true && request.dataset === 'seed') {
+      return {
+        allowed: true,
+        reason: 'sandbox_seed',
+        detail: 'released from the fabricated seed corpus to a sandbox client',
+        grants: [],
+      };
     }
 
     for (const record of request.records) {

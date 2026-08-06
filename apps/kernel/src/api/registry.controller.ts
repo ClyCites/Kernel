@@ -2,19 +2,27 @@ import {
   BadRequestException,
   Controller,
   Get,
+  Header,
   Inject,
   NotFoundException,
   Param,
   Query,
+  Req,
   Res,
   UseInterceptors,
 } from '@nestjs/common';
-import type { Response } from 'express';
+import { SCHEMA_VERSION } from '@clycites/schema';
+import type { Request, Response } from 'express';
 import { z } from 'zod';
 
 import { RegistryRepository } from '../registry/registry.repository.js';
-import type { UnitConversionDetail } from '../registry/types.js';
+import type {
+  RegistryMetadata,
+  UnitConversionDetail,
+  UnitConversionRow,
+} from '../registry/types.js';
 import { RegistryCacheInterceptor, cacheable } from './registry-cache.interceptor.js';
+import { KERNEL_CONFIG, type KernelConfig } from '../config.js';
 
 /**
  * Reference data, readable by anyone.
@@ -73,22 +81,30 @@ const SeasonQuery = z.object({
 
 const Id = z.uuid();
 
+const DATASET_LICENSE = 'https://creativecommons.org/publicdomain/zero/1.0/';
+const UNCERTAINTY_NOTICE =
+  'Most conversion factors are currently assumptions, not field measurements. ' +
+  'Use basis and sample provenance to decide what each factor supports.';
+
 @Controller('v1/registry')
 @UseInterceptors(RegistryCacheInterceptor)
 export class RegistryController {
   constructor(
     @Inject(RegistryRepository) private readonly registry: RegistryRepository,
+    @Inject(KERNEL_CONFIG)
+    private readonly config: Pick<KernelConfig, 'PUBLIC_BASE_URL'>,
   ) {}
 
   @Get('conversions')
   async conversions(
     @Query() query: unknown,
+    @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<unknown> {
     const filter = parse(ConversionQuery, query);
     cacheable(response);
-    return {
-      conversions: await this.registry.listConversions({
+    const [conversions, metadata] = await Promise.all([
+      this.registry.listConversions({
         fromUnit: filter.from_unit,
         toUnit: filter.to_unit,
         commodity: filter.commodity,
@@ -96,22 +112,111 @@ export class RegistryController {
         basis: filter.basis,
         limit: filter.limit,
       }),
+      this.registry.metadata(),
+    ]);
+    return {
+      ...this.datasetSummary(metadata, request),
+      conversions: conversions.map((row) => this.citable(row, metadata, request)),
+    };
+  }
+
+  @Get('conversions.json')
+  async conversionsJson(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<unknown> {
+    cacheable(response);
+    const { conversions, metadata } = await this.catalogue();
+    return {
+      ...this.datasetSummary(metadata, request),
+      conversions: conversions.map((row) => this.citable(row, metadata, request)),
+    };
+  }
+
+  @Get('conversions.csv')
+  @Header('Content-Type', 'text/csv; charset=utf-8')
+  async conversionsCsv(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<string> {
+    cacheable(response);
+    const { conversions, metadata } = await this.catalogue();
+    const columns = [
+      'id', 'permanent_url', 'citation', 'from_unit', 'to_unit', 'factor',
+      'commodity', 'region_code', 'region_vintage', 'valid_from', 'valid_to',
+      'basis', 'source', 'supersedes', 'sample_size', 'sample_min', 'sample_max',
+      'sample_stddev', 'condition', 'local_label', 'measured_by', 'measured_at',
+      'instrument', 'sample_json',
+    ];
+    const lines = [columns.join(',')];
+    for (const row of conversions) {
+      const citable = this.citable(row, metadata, request);
+      const values: Record<string, unknown> = {
+        ...citable,
+        sample_json: JSON.stringify(row.sample),
+      };
+      lines.push(columns.map((column) => csv(values[column])).join(','));
+    }
+    return `${lines.join('\n')}\n`;
+  }
+
+  @Get('dataset.json')
+  async dataset(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<unknown> {
+    cacheable(response);
+    const metadata = await this.registry.metadata();
+    const origin = this.origin(request);
+    return {
+      '@context': {
+        dcat: 'http://www.w3.org/ns/dcat#',
+        dct: 'http://purl.org/dc/terms/',
+      },
+      '@id': `${origin}/v1/registry/dataset.json`,
+      '@type': 'dcat:Dataset',
+      'dct:title': 'ClyCites Ugandan Agricultural Conversion Registry',
+      'dct:description': UNCERTAINTY_NOTICE,
+      'dct:license': DATASET_LICENSE,
+      'dct:modified': metadata.as_at,
+      'dct:identifier': `clycites-conversions-${SCHEMA_VERSION}`,
+      'dcat:landingPage': `${origin}/v1/registry/conversions`,
+      'dcat:distribution': [
+        {
+          '@type': 'dcat:Distribution',
+          'dcat:accessURL': `${origin}/v1/registry/conversions.json`,
+          'dct:format': 'application/json',
+        },
+        {
+          '@type': 'dcat:Distribution',
+          'dcat:accessURL': `${origin}/v1/registry/conversions.csv`,
+          'dct:format': 'text/csv',
+        },
+      ],
+      basis_counts: metadata.basis_counts,
+      citation: this.datasetCitation(metadata),
     };
   }
 
   @Get('conversions/:id')
   async conversion(
     @Param('id') id: string,
+    @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
-  ): Promise<UnitConversionDetail> {
+  ): Promise<unknown> {
     const parsed = Id.safeParse(id);
     if (!parsed.success) throw new NotFoundException(`${id} is not a conversion id`);
 
     const row = await this.registry.conversion(parsed.data);
     if (row === null) throw new NotFoundException(`no conversion ${id}`);
 
+    const metadata = await this.registry.metadata();
     cacheable(response);
-    return { ...row, sample: await this.registry.conversionSample(parsed.data) };
+    return this.citable(
+      { ...row, sample: await this.registry.conversionSample(parsed.data) },
+      metadata,
+      request,
+    );
   }
 
   @Get('observation-types')
@@ -155,6 +260,14 @@ export class RegistryController {
     };
   }
 
+  @Get('crops')
+  async crops(
+    @Query() query: unknown,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<unknown> {
+    return this.cropCodes(query, response);
+  }
+
   @Get('crop-codes/:code')
   async cropCode(
     @Param('code') code: string,
@@ -181,6 +294,14 @@ export class RegistryController {
         limit: filter.limit,
       }),
     };
+  }
+
+  @Get('regions')
+  async regions(
+    @Query() query: unknown,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<unknown> {
+    return this.adminRegions(query, response);
   }
 
   /**
@@ -266,6 +387,72 @@ export class RegistryController {
     cacheable(response);
     return { ...entry, values: await this.registry.gradingSchemeValues(scheme) };
   }
+
+  private async catalogue(): Promise<{
+    conversions: UnitConversionDetail[];
+    metadata: RegistryMetadata;
+  }> {
+    const [rows, metadata] = await Promise.all([
+      this.registry.allConversions(),
+      this.registry.metadata(),
+    ]);
+    const samples = await this.registry.conversionSamples(rows.map((row) => row.id));
+    return {
+      metadata,
+      conversions: rows.map((row) => ({
+        ...row,
+        sample: samples.get(row.id) ?? [],
+      })),
+    };
+  }
+
+  private citable<T extends UnitConversionRow>(
+    row: T,
+    metadata: RegistryMetadata,
+    request: Request,
+  ): T & { permanent_url: string; citation: string } {
+    const permanentUrl = `${this.origin(request)}/v1/registry/conversions/${row.id}`;
+    return {
+      ...row,
+      permanent_url: permanentUrl,
+      citation:
+        `ClyCites Ugandan Agricultural Conversion Registry ${SCHEMA_VERSION}, ` +
+        `${row.id}, as at ${metadata.as_at}. ${permanentUrl}`,
+    };
+  }
+
+  private datasetSummary(metadata: RegistryMetadata, request: Request): object {
+    return {
+      version: SCHEMA_VERSION,
+      as_at: metadata.as_at,
+      license: DATASET_LICENSE,
+      citation: this.datasetCitation(metadata),
+      uncertainty_notice: UNCERTAINTY_NOTICE,
+      basis_counts: metadata.basis_counts,
+      total_conversions: metadata.conversions,
+      dataset: `${this.origin(request)}/v1/registry/dataset.json`,
+    };
+  }
+
+  private datasetCitation(metadata: RegistryMetadata): string {
+    return (
+      `ClyCites Ugandan Agricultural Conversion Registry ${SCHEMA_VERSION}, ` +
+      `as at ${metadata.as_at}, CC0 1.0.`
+    );
+  }
+
+  private origin(request: Request): string {
+    return (
+      this.config.PUBLIC_BASE_URL?.replace(/\/$/u, '') ??
+      `${request.protocol}://${request.get('host')}`
+    );
+  }
+}
+
+function csv(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  const text = String(value);
+  return /[",\r\n]/u.test(text) ? `"${text.replace(/"/gu, '""')}"` : text;
 }
 
 function parse<T>(schema: z.ZodType<T>, query: unknown): T {

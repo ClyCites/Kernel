@@ -2,6 +2,8 @@
 
 The append-only record layer everything else sits on.
 
+Licensed under Apache-2.0. Public registry data is dedicated under CC0 1.0.
+
 Applications never touch this database. They reach the kernel through a
 versioned REST contract and never past it — that is the one architectural
 invariant, and the reason the schema can change without seven applications

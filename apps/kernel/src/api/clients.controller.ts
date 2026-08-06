@@ -10,14 +10,17 @@ import {
   Param,
   Post,
   Req,
+  Res,
 } from '@nestjs/common';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { z } from 'zod';
 
 import { CLIENT_SCOPES } from '../identity/client.repository.js';
 import { ClientService } from '../identity/client.service.js';
 import { verifiedSubject } from './subject.js';
 import { DelegationService } from '../records/delegation.service.js';
+import { verifiedClient } from './subject.js';
+import { KERNEL_CONFIG, type KernelConfig } from '../config.js';
 
 const Authorisation = z.object({
   client_id: z.string().min(1).max(200),
@@ -32,12 +35,59 @@ const Revocation = z.object({
   reason: z.string().max(500).nullable().optional(),
 });
 
+const SandboxRegistration = z.object({
+  display_name: z.string().min(1).max(200),
+  terms_accepted: z.literal(true),
+  terms_version: z.string().min(1).max(100),
+});
+
+const EMAIL_VERIFIED_HEADER = 'x-clycites-email-verified';
+
 @Controller('v1/clients')
 export class ClientsController {
   constructor(
     @Inject(ClientService) private readonly clients: ClientService,
     @Inject(DelegationService) private readonly delegations: DelegationService,
+    @Inject(KERNEL_CONFIG)
+    private readonly config: Pick<
+      KernelConfig,
+      'SANDBOX_ENABLED' | 'SANDBOX_TERMS_VERSION'
+    >,
   ) {}
+
+  @Post('sandbox/registrations')
+  async registerSandbox(
+    @Body() body: unknown,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<unknown> {
+    const parsed = SandboxRegistration.safeParse(body);
+    const subject = verifiedSubject(request);
+    const clientId = verifiedClient(request);
+    if (
+      !parsed.success ||
+      !this.config.SANDBOX_ENABLED ||
+      subject === null ||
+      clientId === null ||
+      request.header(EMAIL_VERIFIED_HEADER) !== 'true' ||
+      parsed.data.terms_version !== this.config.SANDBOX_TERMS_VERSION
+    ) {
+      throw new ForbiddenException('verified sandbox registration required');
+    }
+    const client = await this.clients.registerSandbox({
+      clientId,
+      displayName: parsed.data.display_name,
+      developerSubject: subject,
+      termsVersion: parsed.data.terms_version,
+    });
+    response.status(201);
+    return {
+      client_id: client.client_id,
+      dataset: client.dataset,
+      scopes: client.scopes,
+      terms_version: parsed.data.terms_version,
+    };
+  }
 
   @Get('authorisations')
   async held(@Req() request: Request): Promise<unknown> {

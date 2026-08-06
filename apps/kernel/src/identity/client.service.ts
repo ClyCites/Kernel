@@ -13,6 +13,7 @@ export interface ClientRequestContext {
   requester: string;
   clientId: string;
   actingFor: string;
+  dataset: 'live' | 'seed';
 }
 
 @Injectable()
@@ -39,6 +40,40 @@ export class ClientService {
       owner_party: input.ownerParty,
       scopes: [...new Set(input.scopes)],
       status: input.status ?? 'active',
+      dataset: 'live',
+    });
+  }
+
+  async registerSandbox(input: {
+    clientId: string;
+    displayName: string;
+    developerSubject: string;
+    termsVersion: string;
+  }): Promise<ClientRow> {
+    const current = await this.repository.current(input.clientId);
+    if (current !== null) {
+      if (
+        current.dataset !== 'seed' ||
+        current.owner_party !== input.developerSubject
+      ) {
+        throw new ForbiddenException('sandbox registration is not permitted');
+      }
+      return current;
+    }
+    const acceptedAt = new Date().toISOString();
+    return this.repository.insertSandbox({
+      client: {
+        id: uuidv7(),
+        client_id: input.clientId,
+        display_name: input.displayName,
+        owner_party: input.developerSubject,
+        scopes: [...CLIENT_SANDBOX_SCOPES],
+        status: 'active',
+        dataset: 'seed',
+      },
+      registrationId: uuidv7(),
+      termsVersion: input.termsVersion,
+      acceptedAt,
     });
   }
 
@@ -54,6 +89,7 @@ export class ClientService {
     if (
       client === null ||
       client.status !== 'active' ||
+      client.dataset !== 'live' ||
       scopes.some((scope) => !client.scopes.includes(scope))
     ) {
       throw new ForbiddenException('client authorisation is not permitted');
@@ -76,15 +112,38 @@ export class ClientService {
     requiredScope: ClientScope,
   ): Promise<ClientRequestContext | null> {
     if (clientId === null && actingFor === null) return null;
-    if (clientId === null || actingFor === null) {
+    if (clientId === null) {
+      throw new ForbiddenException('client is not authorised to act');
+    }
+
+    const client = await this.repository.current(clientId);
+    if (client?.dataset === 'seed') {
+      if (
+        requester === null ||
+        actingFor !== null ||
+        client.status !== 'active' ||
+        !client.scopes.includes(requiredScope)
+      ) {
+        throw new ForbiddenException('sandbox client is not authorised');
+      }
+      return {
+        requester,
+        clientId,
+        actingFor: requester,
+        dataset: 'seed',
+      };
+    }
+
+    if (actingFor === null) {
       throw new ForbiddenException('client is not authorised to act');
     }
 
     const now = new Date().toISOString();
-    const [client, authorisation] = await Promise.all([
-      this.repository.current(clientId),
-      this.repository.activeAuthorisation(actingFor, clientId, now),
-    ]);
+    const authorisation = await this.repository.activeAuthorisation(
+      actingFor,
+      clientId,
+      now,
+    );
     if (
       client === null ||
       client.status !== 'active' ||
@@ -95,7 +154,7 @@ export class ClientService {
       throw new ForbiddenException('client is not authorised to act');
     }
 
-    return { requester: actingFor, clientId, actingFor };
+    return { requester: actingFor, clientId, actingFor, dataset: 'live' };
   }
 
   authorisations(party: string): Promise<ClientAuthorisationRow[]> {
@@ -118,3 +177,12 @@ export class ClientService {
     );
   }
 }
+
+const CLIENT_SANDBOX_SCOPES = [
+  'records:read',
+  'records:write',
+  'registry:read',
+  'media:read',
+  'media:write',
+  'sync',
+] as const satisfies readonly ClientScope[];

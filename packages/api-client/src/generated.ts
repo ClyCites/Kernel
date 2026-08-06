@@ -83,6 +83,26 @@ export type paths = {
         readonly patch?: never;
         readonly trace?: never;
     };
+    readonly "/clients/sandbox/registrations": {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly get?: never;
+        readonly put?: never;
+        /**
+         * Register an email-verified developer sandbox client
+         * @description Records acceptance of the current developer terms for an Authentik-issued client. The kernel neither creates nor returns credentials. The client is permanently confined to the seed dataset and cannot receive authority from a real party.
+         */
+        readonly post: operations["registerSandboxClient"];
+        readonly delete?: never;
+        readonly options?: never;
+        readonly head?: never;
+        readonly patch?: never;
+        readonly trace?: never;
+    };
     readonly "/consent/grants": {
         readonly parameters: {
             readonly query?: never;
@@ -2846,6 +2866,50 @@ export interface operations {
             };
             /** @description No authorisation of this party with that id. */
             readonly 404: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    readonly registerSandboxClient: {
+        readonly parameters: {
+            readonly query?: never;
+            readonly header?: never;
+            readonly path?: never;
+            readonly cookie?: never;
+        };
+        readonly requestBody: {
+            readonly content: {
+                readonly "application/json": {
+                    readonly display_name: string;
+                    /** @constant */
+                    readonly terms_accepted: true;
+                    readonly terms_version: string;
+                };
+            };
+        };
+        readonly responses: {
+            /** @description Registered against the seed dataset. */
+            readonly 201: {
+                headers: {
+                    readonly [name: string]: unknown;
+                };
+                content: {
+                    readonly "application/json": {
+                        readonly client_id: string;
+                        /** @constant */
+                        readonly dataset: "seed";
+                        readonly scopes: readonly ("records:read" | "records:write" | "registry:read" | "media:read" | "media:write" | "sync")[];
+                        readonly terms_version: string;
+                    };
+                };
+            };
+            /** @description Verified email and the current terms are required. */
+            readonly 403: {
                 headers: {
                     readonly [name: string]: unknown;
                 };

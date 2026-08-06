@@ -2,6 +2,7 @@ import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ForbiddenException } from '@nestjs/common';
 import { uuidv7 } from 'uuidv7';
+import type { Request } from 'express';
 
 import { AuditRepository } from '../../src/audit/audit.repository.js';
 import { AuditService } from '../../src/audit/audit.service.js';
@@ -10,6 +11,10 @@ import { ConsentRepository } from '../../src/consent/consent.repository.js';
 import { InferenceRepository } from '../../src/inference/inference.repository.js';
 import { ClientRepository } from '../../src/identity/client.repository.js';
 import { ClientService } from '../../src/identity/client.service.js';
+import {
+  forceSeedDataset,
+  requestedDataset,
+} from '../../src/api/dataset.js';
 import { ObjectionService } from '../../src/consent/objection.service.js';
 import { ObjectionRepository } from '../../src/consent/objection.repository.js';
 import { ReadService } from '../../src/records/read.service.js';
@@ -159,5 +164,74 @@ describe('a client is a narrowing lens over one party', () => {
       ForbiddenException,
       'an authorisation cannot exceed the registered client ceiling',
     );
+  });
+
+  test('a sandbox client is structurally confined to seed', async () => {
+    const developer = uuidv7();
+    const realParty = uuidv7();
+    const clientId = `sandbox-${uuidv7()}`;
+    const sandbox = await clients.registerSandbox({
+      clientId,
+      displayName: 'Developer sandbox',
+      developerSubject: developer,
+      termsVersion: '2026-08-06',
+    });
+
+    assert.equal(sandbox.dataset, 'seed');
+    assert.deepEqual(
+      await clients.resolve(developer, clientId, null, 'records:read'),
+      { requester: developer, clientId, actingFor: developer, dataset: 'seed' },
+    );
+    await assert.rejects(
+      clients.resolve(developer, clientId, realParty, 'records:read'),
+      ForbiddenException,
+    );
+    await assert.rejects(
+      clients.authorise({
+        party: realParty,
+        clientId,
+        scopes: ['records:read'],
+        expiresAt: null,
+        grantedVia: 'test',
+      }),
+      ForbiddenException,
+    );
+
+    const directGrant = db.app.query(
+      `insert into kernel.client_authorisation
+         (id, party, client_id, scopes, granted_at, granted_via)
+       values ($1, $2, $3, $4, now(), 'test')`,
+      [uuidv7(), realParty, clientId, ['records:read']],
+    );
+    await assert.rejects(
+      directGrant,
+      /sandbox client .* cannot be authorised by a party/,
+    );
+
+    const request = {
+      header: (name: string) =>
+        name === 'x-clycites-dataset' ? 'live' : undefined,
+    } as Request;
+    forceSeedDataset(request);
+    assert.equal(requestedDataset(request, true), 'seed');
+
+    const { rows: registrations } = await db.app.query<{
+      client_id: string;
+      developer_subject: string;
+      terms_version: string;
+      dataset: string;
+    }>(
+      `select client_id, developer_subject, terms_version, dataset
+         from kernel.sandbox_registration where client_id = $1`,
+      [clientId],
+    );
+    assert.deepEqual(registrations, [
+      {
+        client_id: clientId,
+        developer_subject: developer,
+        terms_version: '2026-08-06',
+        dataset: 'seed',
+      },
+    ]);
   });
 });

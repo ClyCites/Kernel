@@ -48,8 +48,13 @@ build logs.
 
 Optional settings include `AUDIT_SHIP_URL`, `AUDIT_SHIP_TOKEN` and the
 `ANCHOR_*` variables. Leave anchoring on `testnet` until the documented mainnet
-acknowledgement has been reviewed. Production always runs with seed ingest off
-and the special-data consent check on.
+acknowledgement has been reviewed. Keep the special-data consent check on.
+
+For the public developer sandbox, set both `SANDBOX_ENABLED=true` and
+`SEED_INGEST_ENABLED=true`. In Coolify, add a scheduled task to the `migrate`
+service with command `node dist/src/seed/reset-cli.js` and cron expression
+`0 2 * * *`. The task uses the owner connection only for the transactional
+seed-only reset; repopulation goes through the public API with the demo profile.
 
 ## First deployment
 

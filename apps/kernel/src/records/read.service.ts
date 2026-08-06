@@ -68,6 +68,8 @@ export interface Reader {
   clientId?: string | null | undefined;
   /** Party represented by the client and recipient of the disclosure. */
   actingFor?: string | null | undefined;
+  /** True only for an authenticated OAuth client whose storage ceiling is seed. */
+  sandboxClient?: boolean | undefined;
   /** Null means “my own records”. Any purpose is denied by the stub. */
   purpose?: ConsentPurpose | null | undefined;
   /**
@@ -610,6 +612,7 @@ export class ReadService {
       requester: reader.requester,
       purpose: reader.purpose ?? null,
       dataset: datasetOf(reader),
+      sandboxClient: reader.sandboxClient === true,
       at: new Date().toISOString(),
     });
 

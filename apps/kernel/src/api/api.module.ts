@@ -32,6 +32,7 @@ import { LiveIngestMiddleware } from './live-ingest.middleware.js';
 import { MetricsAuthMiddleware } from './metrics-auth.middleware.js';
 import { SecurityHeadersMiddleware } from './security-headers.middleware.js';
 import { DeploymentController } from './deployment.controller.js';
+import { SandboxDatasetMiddleware } from './sandbox-dataset.middleware.js';
 import { InferencesController } from './inferences.controller.js';
 import { MediaController } from './media.controller.js';
 import { AnchorsController } from './anchors.controller.js';
@@ -84,6 +85,7 @@ export class ApiModule implements NestModule {
       .apply(SecurityHeadersMiddleware)
       .forRoutes({ path: '/', method: RequestMethod.ALL }, '*path');
     consumer.apply(CorrelationMiddleware).forRoutes('*path');
+    consumer.apply(SandboxDatasetMiddleware).forRoutes('*path');
     consumer.apply(LiveIngestMiddleware).forRoutes('*path');
     consumer.apply(MetricsAuthMiddleware).forRoutes('v1/metrics');
     consumer.apply(PurposeHeaderMiddleware).forRoutes('*path');

@@ -29,6 +29,10 @@
       "description": "Offline devices push and pull."
     },
     {
+      "name": "field",
+      "description": "Field-client operations: no-PIN confirmation requests and bounded product signals without personal payloads."
+    },
+    {
       "name": "anchoring",
       "description": "A daily Merkle root, published once to a public consensus service. What it buys is narrow and worth stating: it proves a record existed, unchanged, on a given day, to somebody who does not trust us. It proves nothing about whether the record is true. Per-record anchoring would cost a message per record and buy the same thing."
     },
@@ -2784,6 +2788,233 @@
           },
           "404": {
             "description": "No authorisation of this party with that id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/field/confirmation-requests": {
+      "get": {
+        "tags": [
+          "field"
+        ],
+        "operationId": "listConfirmationRequests",
+        "summary": "List this cooperative’s confirmation requests",
+        "parameters": [
+          {
+            "name": "x-clycites-client-id",
+            "in": "header",
+            "description": "The Authentik OAuth client identifier, set by the trusted gateway from the validated token.",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "x-acting-for",
+            "in": "header",
+            "description": "Exactly one party represented by the OAuth client. Repeated or list-valued forms are refused.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recent requests made by this represented party.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "requests"
+                  ],
+                  "properties": {
+                    "requests": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ConfirmationRequest"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The field client is not currently authorised.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "field"
+        ],
+        "operationId": "requestDeliveryConfirmation",
+        "summary": "Queue a farmer confirmation prompt",
+        "description": "Queues work for the external USSD adapter. The officer’s device never receives or submits the farmer’s PIN.",
+        "parameters": [
+          {
+            "name": "x-clycites-client-id",
+            "in": "header",
+            "description": "The Authentik OAuth client identifier, set by the trusted gateway from the validated token.",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "x-acting-for",
+            "in": "header",
+            "description": "Exactly one party represented by the OAuth client. Repeated or list-valued forms are refused.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "delivery"
+                ],
+                "properties": {
+                  "delivery": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Queued, or the existing request returned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmationRequest"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The delivery id is malformed.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The field client is not currently authorised.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No delivery visible to this cooperative.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/field/events": {
+      "post": {
+        "tags": [
+          "field"
+        ],
+        "operationId": "recordFieldEvent",
+        "summary": "Record one bounded field-use signal",
+        "description": "The closed schema has no payload or free-text field, so farmer data cannot be sent as analytics.",
+        "parameters": [
+          {
+            "name": "x-clycites-client-id",
+            "in": "header",
+            "description": "The Authentik OAuth client identifier, set by the trusted gateway from the validated token.",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "x-acting-for",
+            "in": "header",
+            "description": "Exactly one party represented by the OAuth client. Repeated or list-valued forms are refused.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FieldEventSubmission"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Recorded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FieldEvent"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The event is outside the closed vocabulary.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The field client is not currently authorised.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -16370,6 +16601,263 @@
               "string",
               "null"
             ],
+            "format": "date-time"
+          }
+        }
+      },
+      "ConfirmationRequest": {
+        "type": "object",
+        "required": [
+          "id",
+          "delivery",
+          "requested_by",
+          "client_id",
+          "dataset",
+          "status",
+          "attempts",
+          "requested_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "delivery": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requested_by": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "client_id": {
+            "type": "string"
+          },
+          "dataset": {
+            "type": "string",
+            "enum": [
+              "live",
+              "seed"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "sent",
+              "failed"
+            ]
+          },
+          "attempts": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "last_error": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 500
+          },
+          "requested_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "FieldEventSubmission": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "event",
+              "choice"
+            ],
+            "properties": {
+              "event": {
+                "const": "delegation_basis"
+              },
+              "choice": {
+                "type": "string",
+                "enum": [
+                  "witnessed_in_person",
+                  "ussd_confirmation",
+                  "organisational_bylaw"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "event",
+              "choice"
+            ],
+            "properties": {
+              "event": {
+                "const": "name_collision"
+              },
+              "choice": {
+                "type": "string",
+                "enum": [
+                  "created_separate",
+                  "same_as_linked",
+                  "kept_separate"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "event",
+              "choice"
+            ],
+            "properties": {
+              "event": {
+                "const": "season_label"
+              },
+              "choice": {
+                "type": "string",
+                "enum": [
+                  "registry_label",
+                  "officer_label",
+                  "no_label"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "event",
+              "choice",
+              "flow",
+              "step"
+            ],
+            "properties": {
+              "event": {
+                "const": "missing_field"
+              },
+              "choice": {
+                "type": "string",
+                "enum": [
+                  "unsupported"
+                ]
+              },
+              "flow": {
+                "type": "string",
+                "enum": [
+                  "enrolment",
+                  "delivery",
+                  "confirmation",
+                  "calibration",
+                  "media",
+                  "sync"
+                ]
+              },
+              "step": {
+                "type": "string",
+                "pattern": "^[a-z0-9_]{1,80}$"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "event",
+              "choice",
+              "flow",
+              "step"
+            ],
+            "properties": {
+              "event": {
+                "const": "flow_abandoned"
+              },
+              "choice": {
+                "type": "string",
+                "enum": [
+                  "abandoned"
+                ]
+              },
+              "flow": {
+                "type": "string",
+                "enum": [
+                  "enrolment",
+                  "delivery",
+                  "confirmation",
+                  "calibration",
+                  "media",
+                  "sync"
+                ]
+              },
+              "step": {
+                "type": "string",
+                "pattern": "^[a-z0-9_]{1,80}$"
+              }
+            }
+          }
+        ]
+      },
+      "FieldEvent": {
+        "type": "object",
+        "required": [
+          "id",
+          "client_id",
+          "acting_for",
+          "event",
+          "choice",
+          "recorded_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "client_id": {
+            "type": "string"
+          },
+          "acting_for": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "event": {
+            "type": "string",
+            "enum": [
+              "delegation_basis",
+              "name_collision",
+              "season_label",
+              "missing_field",
+              "flow_abandoned"
+            ]
+          },
+          "choice": {
+            "type": "string"
+          },
+          "flow": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "step": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "recorded_at": {
+            "type": "string",
             "format": "date-time"
           }
         }

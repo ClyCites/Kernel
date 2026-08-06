@@ -2,302 +2,302 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://clycites.github.io/Kernel/dev/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/api-versioning/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/data-sources/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/field-validation-kit/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/runbook/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/building/api/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/building/authorisation/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/building/cannot/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/building/grant/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/compliance/not-yet-true/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/compliance/statutory-mapping/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/concepts/append-only/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/concepts/datasets/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/concepts/inference-quarantine/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/concepts/lawful-basis/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/concepts/provenance/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/concepts/quantity/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/concepts/record-model/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0001-append-only-enforcement/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0002-derived-fields/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0003-toolchain/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0004-postgis-image/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0005-record-storage-layout/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0006-idempotency-and-id-conflict/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0007-delegation-resolution/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0008-sync/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0009-consent-stub/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0010-registry-storage/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0011-losses-as-observations/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0012-derived-custody/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0013-fulfilment-on-read/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0014-mass-balance/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0015-subject-ref-integrity/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0016-settlement-summary/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0017-dataset-discriminator/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0018-conversion-provenance/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0019-lawful-basis/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0020-operational-baseline/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0021-fork-semantics-in-derived-views/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0022-lineage/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0023-adversarial-seed/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0024-registry-read-api/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0025-audit-log/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0026-party-links/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0027-season-calendar/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0028-registry-ceiling/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0029-consent/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0030-objection/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0031-subject-access/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0032-disclosure-notification/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0033-p1-fixes/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0034-p2-lender-view/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0035-p3-retention-and-naming/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0036-p4-inference/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0037-p5-media/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0038-p6-anchoring/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0039-schema-v0.3/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/decisions/0040-minio/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/flows/anchoring/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/flows/confirmation/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/flows/corrections/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/flows/offline-sync/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/flows/read-path/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/flows/subject-access/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/flows/write-path/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/getting-started/dry-run/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/getting-started/reading-the-output/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/getting-started/running-locally/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/operations/backup-and-restore/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/operations/metrics/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/operations/migrations/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/reference/enumerations/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/reference/quality-flags/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/reference/schema/</loc>
-         <lastmod>2026-08-05</lastmod>
+         <lastmod>2026-08-06</lastmod>
     </url>
 </urlset>

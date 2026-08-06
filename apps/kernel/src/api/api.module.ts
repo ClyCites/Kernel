@@ -23,6 +23,10 @@ import { RegistryCacheInterceptor } from './registry-cache.interceptor.js';
 import { RecordsController } from './records.controller.js';
 import { ConfirmationsController } from './confirmations.controller.js';
 import { PurposeHeaderMiddleware } from './purpose.middleware.js';
+import { LiveIngestMiddleware } from './live-ingest.middleware.js';
+import { MetricsAuthMiddleware } from './metrics-auth.middleware.js';
+import { SecurityHeadersMiddleware } from './security-headers.middleware.js';
+import { DeploymentController } from './deployment.controller.js';
 import { InferencesController } from './inferences.controller.js';
 import { MediaController } from './media.controller.js';
 import { AnchorsController } from './anchors.controller.js';
@@ -47,6 +51,7 @@ import { FieldController } from './field.controller.js';
     FieldModule,
   ],
   controllers: [
+    DeploymentController,
     RecordsController,
     ConfirmationsController,
     InferencesController,
@@ -70,7 +75,10 @@ import { FieldController } from './field.controller.js';
 })
 export class ApiModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(SecurityHeadersMiddleware).forRoutes('*path');
     consumer.apply(CorrelationMiddleware).forRoutes('*path');
+    consumer.apply(LiveIngestMiddleware).forRoutes('*path');
+    consumer.apply(MetricsAuthMiddleware).forRoutes('v1/metrics');
     consumer.apply(PurposeHeaderMiddleware).forRoutes('*path');
     consumer.apply(RateLimitMiddleware).forRoutes('v1/registry/*path');
     consumer

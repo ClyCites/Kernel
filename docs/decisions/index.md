@@ -1,6 +1,6 @@
 # Decisions
 
-Forty architecture decision records. Each one exists because a choice was made
+Forty-one architecture decision records. Each one exists because a choice was made
 that looks arbitrary from the outside, and the reasoning would otherwise be lost
 the moment the person who made it stopped being reachable.
 
@@ -10,7 +10,8 @@ ADR wins.
 !!! note
 
     The work order that commissioned this site said thirty-eight. There are
-    forty: `0039` (schema v0.3) and `0040` (MinIO) landed after it was written.
+    forty-one: `0039` (schema v0.3), `0040` (MinIO) and `0041` (metrics exposure)
+    landed after it was written.
     `0040` supersedes the object-store choice in `0037`; `0029` supersedes the
     consent stub in `0009`.
 
@@ -73,6 +74,12 @@ ADR wins.
 | | | |
 |---|---|---|
 | [0008](0008-sync.md) | Sync is two endpoints and no server-held state | Server-held per-device state is the part of sync that breaks |
+
+## Operations
+
+| | | |
+|---|---|---|
+| [0041](0041-metrics-exposure.md) | Metrics require HTTP authentication | Operational intelligence is not part of the public verification surface |
 
 ## Identity and parties
 

@@ -4,6 +4,7 @@
 #
 #   scripts/check-secrets.sh              # everything tracked by git
 #   scripts/check-secrets.sh --staged     # what is about to be committed
+#   scripts/check-secrets.sh --all        # tracked and untracked deployment files
 #
 # Deliberately narrow. A scanner that fires on every base64 string gets turned
 # off within a week, and a disabled scanner is worse than none because it stays
@@ -13,11 +14,28 @@
 
 set -uo pipefail
 
-if [ "${1:-}" = "--staged" ]; then
-  FILES=$(git diff --cached --name-only --diff-filter=ACM)
-else
-  FILES=$(git ls-files)
-fi
+case "${1:-}" in
+  --staged)
+    FILES=$(git diff --cached --name-only --diff-filter=ACM)
+    ;;
+  --all)
+    FILES=$(find . -type f \
+      ! -path './.git/*' \
+      ! -path '*/node_modules/*' \
+      ! -path '*/dist/*' \
+      ! -path './site/*' \
+      ! -path './coverage/*' \
+      ! -path './tmp/*' \
+      ! -path '*/.turbo/*')
+    ;;
+  '')
+    FILES=$(git ls-files)
+    ;;
+  *)
+    echo "usage: $0 [--staged|--all]" >&2
+    exit 2
+    ;;
+esac
 
 # Binaries, lockfiles and the generated contract. None can hold a hand-written
 # credential, and all are large enough to slow the scan to the point of being
@@ -34,7 +52,8 @@ PLACEHOLDER='dev[-_]only|[-_]test|test[-_]only|changeme|placeholder|example|xxxx
 FOUND=0
 report() {
   FOUND=1
-  printf '\033[31msecret\033[0m  %s\n' "$1"
+  location=$(printf '%s' "$1" | sed -E 's/^([^:]+:[0-9]+):.*/\1/')
+  printf '\033[31msecret\033[0m  %s\n' "$location"
 }
 
 # ── Unambiguous credential formats ───────────────────────────────────────────
@@ -49,6 +68,8 @@ done < <(
     -e 'sk-[A-Za-z0-9]{32,}' \
     -e 'xox[baprs]-[A-Za-z0-9-]{10,}' \
     -e 'eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.' \
+    -e '302e020100300506032b657004220420[0-9A-Fa-f]{64}' \
+    -e '3030020100300706052b8104000a04220420[0-9A-Fa-f]{64}' \
     2>/dev/null || true
 )
 

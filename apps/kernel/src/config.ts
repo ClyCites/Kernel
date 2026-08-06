@@ -83,6 +83,19 @@ const Env = z.object({
     .default('false')
     .transform((value) => value === 'true'),
   /**
+   * Emergency/staging guard for every live-corpus mutation at the HTTP edge.
+   * Production remains permissive unless an operator explicitly disables it.
+   */
+  LIVE_INGEST_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
+  DEPLOYMENT_ENVIRONMENT: z
+    .enum(['production', 'staging', 'development'])
+    .default('production'),
+  /** `username:password` for the Prometheus endpoint. Absent means hidden. */
+  METRICS_BASIC_AUTH: unset,
+  /**
    * Requests per window per address against `/v1/registry`, the only surface
    * with no authenticated caller behind it. The registry is immutable and
    * served with a day-long `Cache-Control`, so a well-behaved consumer fetches

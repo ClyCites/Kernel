@@ -203,6 +203,8 @@ describe('the seed ingest switch', () => {
     };
 
     assert.equal(loadConfig(base).SEED_INGEST_ENABLED, false);
+    assert.equal(loadConfig(base).LIVE_INGEST_ENABLED, true);
+    assert.equal(loadConfig(base).DEPLOYMENT_ENVIRONMENT, 'production');
     assert.equal(
       loadConfig({ ...base, SEED_INGEST_ENABLED: 'true' }).SEED_INGEST_ENABLED,
       true,
@@ -210,5 +212,6 @@ describe('the seed ingest switch', () => {
     // A coercing parser would read this as true. That is the whole reason the
     // field is an enum rather than a boolean.
     assert.throws(() => loadConfig({ ...base, SEED_INGEST_ENABLED: 'no' }));
+    assert.throws(() => loadConfig({ ...base, LIVE_INGEST_ENABLED: 'no' }));
   });
 });

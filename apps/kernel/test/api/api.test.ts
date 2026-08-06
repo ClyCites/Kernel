@@ -45,6 +45,8 @@ before(async () => {
       REGISTRY_RATE_LIMIT: 600,
       REGISTRY_RATE_WINDOW_SECONDS: 60,
       SEED_INGEST_ENABLED: false,
+      LIVE_INGEST_ENABLED: true,
+      DEPLOYMENT_ENVIRONMENT: 'staging',
       // Set explicitly rather than left undefined. An absent flag is a
       // falsy flag, and a harness that quietly runs the permissive s.9
       // reading would be testing a configuration nobody has approved.
@@ -576,10 +578,21 @@ describe('errors are RFC 9457 problem details', () => {
 /* ── operations ───────────────────────────────────────────────────────── */
 
 describe('liveness and readiness', () => {
+  test('the root labels staging and publishes the API contract', async () => {
+    const root = await call('GET', '/');
+    const contract = await call('GET', '/openapi.json');
+
+    assert.equal(root.status, 200);
+    assert.equal((root.body as Record<string, unknown>)['environment'], 'staging');
+    assert.equal(contract.status, 200);
+    assert.equal((contract.body as Record<string, unknown>)['openapi'], '3.1.0');
+  });
+
   test('health does not touch the database', async () => {
     const response = await call('GET', '/v1/health');
     assert.equal(response.status, 200);
     conforms('Health', response.body);
+    assert.equal(response.headers.get('x-powered-by'), null);
   });
 
   test('readiness reports that the log is reachable', async () => {

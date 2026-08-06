@@ -24,7 +24,7 @@ therefore private by default. A production launch needs a gateway which:
 ## Create the resource
 
 1. In Coolify, create a **Docker Compose** resource from this repository.
-2. Set the compose file to `/docker-compose.coolify.yml` and the base directory
+2. Set the compose file to `/docker-compose.coolify.yaml` and the base directory
    to `/`.
 3. Add the environment variables below. Use URL-safe random values containing
    only letters and digits for database passwords because they are interpolated

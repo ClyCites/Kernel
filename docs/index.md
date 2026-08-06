@@ -2,6 +2,11 @@
 
 The append-only record layer everything else sits on.
 
+!!! warning "Public deployment is staging"
+
+  `kernel.hope4africa.cloud` is a staging environment. It is not approved for
+  real farmer records or production use.
+
 ## The problem
 
 A smallholder farmer in Uganda cannot borrow against her own production. Not

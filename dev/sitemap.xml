@@ -17,6 +17,10 @@
          <lastmod>2026-08-06</lastmod>
     </url>
     <url>
+         <loc>https://clycites.github.io/Kernel/dev/public-registry/</loc>
+         <lastmod>2026-08-06</lastmod>
+    </url>
+    <url>
          <loc>https://clycites.github.io/Kernel/dev/runbook/</loc>
          <lastmod>2026-08-06</lastmod>
     </url>
@@ -241,6 +245,10 @@
          <lastmod>2026-08-06</lastmod>
     </url>
     <url>
+         <loc>https://clycites.github.io/Kernel/dev/decisions/0042-public-registry/</loc>
+         <lastmod>2026-08-06</lastmod>
+    </url>
+    <url>
          <loc>https://clycites.github.io/Kernel/dev/flows/anchoring/</loc>
          <lastmod>2026-08-06</lastmod>
     </url>
@@ -269,6 +277,10 @@
          <lastmod>2026-08-06</lastmod>
     </url>
     <url>
+         <loc>https://clycites.github.io/Kernel/dev/getting-started/developer-sandbox/</loc>
+         <lastmod>2026-08-06</lastmod>
+    </url>
+    <url>
          <loc>https://clycites.github.io/Kernel/dev/getting-started/dry-run/</loc>
          <lastmod>2026-08-06</lastmod>
     </url>
@@ -294,6 +306,10 @@
     </url>
     <url>
          <loc>https://clycites.github.io/Kernel/dev/operations/migrations/</loc>
+         <lastmod>2026-08-06</lastmod>
+    </url>
+    <url>
+         <loc>https://clycites.github.io/Kernel/dev/operations/self-hosting/</loc>
          <lastmod>2026-08-06</lastmod>
     </url>
     <url>

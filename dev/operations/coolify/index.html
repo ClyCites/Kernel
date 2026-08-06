@@ -13,7 +13,7 @@
         <link rel="canonical" href="https://clycites.github.io/Kernel/dev/operations/coolify/">
       
       
-        <link rel="prev" href="../../building/api/">
+        <link rel="prev" href="../self-hosting/">
       
       
         <link rel="next" href="../migrations/">
@@ -294,6 +294,8 @@
       
         
       
+        
+      
     
     
     
@@ -343,6 +345,29 @@
   
   <span class="md-ellipsis">
     Running locally
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/developer-sandbox/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Developer sandbox
     
   </span>
   
@@ -879,6 +904,8 @@
       
         
       
+        
+      
     
     
     
@@ -914,6 +941,29 @@
             Building on the kernel
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../public-registry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Public registry
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -1058,6 +1108,8 @@
       
         
       
+        
+      
     
     
     
@@ -1093,6 +1145,29 @@
             Operations
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../self-hosting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Self-hosting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -1747,8 +1822,12 @@ different. Coolify should mark them as runtime secrets and never expose them in
 build logs.</p>
 <p>Optional settings include <code>AUDIT_SHIP_URL</code>, <code>AUDIT_SHIP_TOKEN</code> and the
 <code>ANCHOR_*</code> variables. Leave anchoring on <code>testnet</code> until the documented mainnet
-acknowledgement has been reviewed. Production always runs with seed ingest off
-and the special-data consent check on.</p>
+acknowledgement has been reviewed. Keep the special-data consent check on.</p>
+<p>For the public developer sandbox, set both <code>SANDBOX_ENABLED=true</code> and
+<code>SEED_INGEST_ENABLED=true</code>. In Coolify, add a scheduled task to the <code>migrate</code>
+service with command <code>node dist/src/seed/reset-cli.js</code> and cron expression
+<code>0 2 * * *</code>. The task uses the owner connection only for the transactional
+seed-only reset; repopulation goes through the public API with the demo profile.</p>
 <h2 id="first-deployment">First deployment<a class="headerlink" href="#first-deployment" title="Permanent link">&para;</a></h2>
 <p>The <code>migrate</code> service waits for PostgreSQL, applies every forward-only migration
 and provisions the restricted roles. The kernel starts only after migrations

@@ -16,7 +16,7 @@
         <link rel="prev" href="../../api-versioning/">
       
       
-        <link rel="next" href="../../operations/coolify/">
+        <link rel="next" href="../../operations/self-hosting/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -294,6 +294,8 @@
       
         
       
+        
+      
     
     
     
@@ -343,6 +345,29 @@
   
   <span class="md-ellipsis">
     Running locally
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/developer-sandbox/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Developer sandbox
     
   </span>
   
@@ -881,6 +906,8 @@
       
         
       
+        
+      
     
     
     
@@ -916,6 +943,29 @@
             Building on the kernel
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../public-registry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Public registry
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -1109,6 +1159,8 @@
       
         
       
+        
+      
     
     
     
@@ -1144,6 +1196,29 @@
             Operations
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/self-hosting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Self-hosting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -1700,7 +1775,11 @@ document alone will not know about them until it receives a 422.</p>
 </tr>
 <tr>
 <td><code>GET /v1/metrics</code></td>
-<td>Prometheus text</td>
+<td>Prometheus text; hidden unless HTTP authentication is configured</td>
+</tr>
+<tr>
+<td><code>POST /v1/clients/sandbox/registrations</code></td>
+<td>Record an Authentik-backed sandbox registration</td>
 </tr>
 </tbody>
 </table>

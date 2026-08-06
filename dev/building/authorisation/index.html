@@ -13,7 +13,7 @@
         <link rel="canonical" href="https://clycites.github.io/Kernel/dev/building/authorisation/">
       
       
-        <link rel="prev" href="../../flows/subject-access/">
+        <link rel="prev" href="../../public-registry/">
       
       
         <link rel="next" href="../grant/">
@@ -294,6 +294,8 @@
       
         
       
+        
+      
     
     
     
@@ -343,6 +345,29 @@
   
   <span class="md-ellipsis">
     Running locally
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/developer-sandbox/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Developer sandbox
     
   </span>
   
@@ -881,6 +906,8 @@
       
         
       
+        
+      
     
     
     
@@ -916,6 +943,29 @@
             Building on the kernel
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../public-registry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Public registry
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -1004,6 +1054,15 @@
   <a href="#delegation" class="md-nav__link">
     <span class="md-ellipsis">
       Delegation
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#oauth-clients-and-acting-for" class="md-nav__link">
+    <span class="md-ellipsis">
+      OAuth clients and acting-for
     </span>
   </a>
   
@@ -1154,6 +1213,8 @@
       
         
       
+        
+      
     
     
     
@@ -1189,6 +1250,29 @@
             Operations
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/self-hosting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Self-hosting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -1676,6 +1760,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#oauth-clients-and-acting-for" class="md-nav__link">
+    <span class="md-ellipsis">
+      OAuth clients and acting-for
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#rate-limiting" class="md-nav__link">
     <span class="md-ellipsis">
       Rate limiting
@@ -1793,6 +1886,15 @@ deliveries is narrower than a mandate to assert them.</p>
 <p><code>/metrics</code> carries two series intended to answer this empirically rather
 than by argument.</p>
 </div>
+<h2 id="oauth-clients-and-acting-for">OAuth clients and acting-for<a class="headerlink" href="#oauth-clients-and-acting-for" title="Permanent link">&para;</a></h2>
+<p>A client has its own scope ceiling. A party authorisation can only narrow that
+ceiling; it can never add a scope. <code>x-acting-for</code> changes the represented party
+only after the kernel resolves an active authorisation for that exact client,
+party, scope, and time.</p>
+<p>Sandbox clients are a separate structural case. Their client row has a <code>seed</code>
+dataset ceiling, they cannot receive a party authorisation, and every request
+resolves to <code>seed</code> even if it asks for <code>live</code>. They may browse the fabricated
+corpus without personal-data consent because no person described there exists.</p>
 <h2 id="rate-limiting">Rate limiting<a class="headerlink" href="#rate-limiting" title="Permanent link">&para;</a></h2>
 <p>Only the registry is rate limited, because it is the only unauthenticated
 surface. That counter lives in one process, which makes it <strong>per replica</strong> and

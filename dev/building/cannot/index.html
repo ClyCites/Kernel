@@ -294,6 +294,8 @@
       
         
       
+        
+      
     
     
     
@@ -343,6 +345,29 @@
   
   <span class="md-ellipsis">
     Running locally
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/developer-sandbox/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Developer sandbox
     
   </span>
   
@@ -881,6 +906,8 @@
       
         
       
+        
+      
     
     
     
@@ -916,6 +943,29 @@
             Building on the kernel
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../public-registry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Public registry
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -1029,9 +1079,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#you-cannot-export-in-bulk" class="md-nav__link">
+  <a href="#you-cannot-export-personal-data-in-bulk" class="md-nav__link">
     <span class="md-ellipsis">
-      You cannot export in bulk
+      You cannot export personal data in bulk
     </span>
   </a>
   
@@ -1199,6 +1249,8 @@
       
         
       
+        
+      
     
     
     
@@ -1234,6 +1286,29 @@
             Operations
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../operations/self-hosting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Self-hosting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -1694,9 +1769,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#you-cannot-export-in-bulk" class="md-nav__link">
+  <a href="#you-cannot-export-personal-data-in-bulk" class="md-nav__link">
     <span class="md-ellipsis">
-      You cannot export in bulk
+      You cannot export personal data in bulk
     </span>
   </a>
   
@@ -1821,10 +1896,12 @@ embedded in another codebase, and there is no way to find them all when a column
 moves. This is the invariant most likely to be argued with, and the one whose
 breach is least visible until it is expensive.</p>
 <hr />
-<h2 id="you-cannot-export-in-bulk">You cannot export in bulk<a class="headerlink" href="#you-cannot-export-in-bulk" title="Permanent link">&para;</a></h2>
+<h2 id="you-cannot-export-personal-data-in-bulk">You cannot export personal data in bulk<a class="headerlink" href="#you-cannot-export-personal-data-in-bulk" title="Permanent link">&para;</a></h2>
 <p>There is no route that returns everything. Reads are filtered, paged, and pass a
 consent gate per record. A test in <code>test/ops/</code> asserts that no route resembling
 a bulk export exists.</p>
+<p>The public registry is different: its JSON and CSV distributions contain only
+reference data from the <code>registry</code> schema and no data subject.</p>
 <p><strong>Why.</strong> A bulk export is a consent gate applied once to an unbounded set, and
 the resulting file has no gate at all. Every subsequent copy of it is
 processing nobody consented to, in a place nobody is auditing. Cursor pull for

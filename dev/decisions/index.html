@@ -294,6 +294,8 @@
       
         
       
+        
+      
     
     
     
@@ -343,6 +345,29 @@
   
   <span class="md-ellipsis">
     Running locally
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/developer-sandbox/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Developer sandbox
     
   </span>
   
@@ -879,6 +904,8 @@
       
         
       
+        
+      
     
     
     
@@ -914,6 +941,29 @@
             Building on the kernel
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../public-registry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Public registry
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -1056,6 +1106,8 @@
       
         
       
+        
+      
     
     
     
@@ -1091,6 +1143,29 @@
             Operations
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operations/self-hosting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Self-hosting
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -1860,7 +1935,7 @@
 
 
 <h1 id="decisions">Decisions<a class="headerlink" href="#decisions" title="Permanent link">&para;</a></h1>
-<p>Forty-one architecture decision records. Each one exists because a choice was made
+<p>Forty-two architecture decision records. Each one exists because a choice was made
 that looks arbitrary from the outside, and the reasoning would otherwise be lost
 the moment the person who made it stopped being reachable.</p>
 <p>These are the authority. Where a page elsewhere in this site summarises one, the
@@ -1868,7 +1943,8 @@ ADR wins.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>The work order that commissioned this site said thirty-eight. There are
-forty-one: <code>0039</code> (schema v0.3), <code>0040</code> (MinIO) and <code>0041</code> (metrics exposure)
+forty-two: <code>0039</code> (schema v0.3), <code>0040</code> (MinIO), <code>0041</code> (metrics exposure),
+and <code>0042</code> (public registry)
 landed after it was written.
 <code>0040</code> supersedes the object-store choice in <code>0037</code>; <code>0029</code> supersedes the
 consent stub in <code>0009</code>.</p>
@@ -2053,6 +2129,11 @@ consent stub in <code>0009</code>.</p>
 <td><a href="0028-registry-ceiling/">0028</a></td>
 <td>A ceiling on the observation vocabulary</td>
 <td>Defers D8; an unbounded vocabulary is an unbounded schema</td>
+</tr>
+<tr>
+<td><a href="0042-public-registry/">0042</a></td>
+<td>Registry data is CC0 and separate from personal-data export</td>
+<td>Public reference distributions do not weaken consent-gated record reads</td>
 </tr>
 </tbody>
 </table>
